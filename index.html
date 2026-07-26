@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Convite de Aniversário</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="confetti" id="confetti" aria-hidden="true"></div>
+
+  <!-- ===================== HERO / CONVITE ===================== -->
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="hero-eyebrow">🎉 Você está convidado 🎉</p>
+      <h1 class="hero-title" id="festaTitulo">Aniversário</h1>
+      <p class="hero-sub" id="festaSubtitulo">Vem comemorar com a gente!</p>
+
+      <ul class="hero-nomes" id="heroNomes"><!-- aniversariantes --></ul>
+
+      <div class="hero-info">
+        <div class="info-card">
+          <span class="info-ico">📅</span>
+          <span id="festaData">—</span>
+        </div>
+        <div class="info-card">
+          <span class="info-ico">📍</span>
+          <a id="festaLocal" href="#" target="_blank" rel="noopener">—</a>
+        </div>
+      </div>
+
+      <div class="countdown" id="countdown" aria-label="Contagem regressiva">
+        <div class="cd-box"><b id="cdDias">0</b><span>dias</span></div>
+        <div class="cd-box"><b id="cdHoras">0</b><span>horas</span></div>
+        <div class="cd-box"><b id="cdMin">0</b><span>min</span></div>
+        <div class="cd-box"><b id="cdSeg">0</b><span>seg</span></div>
+      </div>
+
+      <a href="#confirmar" class="btn btn-primary btn-lg">Confirmar presença ↓</a>
+    </div>
+  </header>
+
+  <!-- ===================== CARROSSEL ===================== -->
+  <section class="carrossel-secao">
+    <div class="carrossel" id="carrossel" aria-label="Fotos">
+      <div class="carrossel-track" id="carrosselTrack"><!-- slides --></div>
+      <button class="car-nav prev" id="carPrev" aria-label="Anterior">‹</button>
+      <button class="car-nav next" id="carNext" aria-label="Próxima">›</button>
+      <div class="car-dots" id="carDots"></div>
+    </div>
+    <p class="carrossel-vazio" id="carrosselVazio" hidden>
+      As fotos aparecerão aqui assim que forem adicionadas. 📸
+    </p>
+  </section>
+
+  <!-- ===================== FORMULÁRIO RSVP ===================== -->
+  <section class="rsvp" id="confirmar">
+    <div class="rsvp-inner">
+      <h2 class="secao-titulo">Confirmar presença</h2>
+      <p class="secao-sub">Preencha para você e para quem vem com você.</p>
+
+      <form id="rsvpForm" novalidate>
+        <!-- Responsável -->
+        <div class="campo">
+          <label for="responsavel">Seu nome *</label>
+          <input type="text" id="responsavel" name="responsavel" required placeholder="Nome de quem está confirmando" />
+        </div>
+
+        <div class="campo">
+          <label for="contato">WhatsApp / telefone (opcional)</label>
+          <input type="tel" id="contato" name="contato" placeholder="(00) 00000-0000" />
+        </div>
+
+        <!-- Quais aniversariantes convidaram -->
+        <fieldset class="campo">
+          <legend>Quem te convidou? * <small>(pode marcar mais de um)</small></legend>
+          <div class="chips" id="chipsAniversariantes"></div>
+        </fieldset>
+
+        <!-- Pessoas (responsável + acompanhantes) -->
+        <div class="pessoas-bloco">
+          <div class="pessoas-cabecalho">
+            <h3>Quem vai? 🎈</h3>
+            <p>Adicione você e seus acompanhantes com as preferências de cada um.</p>
+          </div>
+          <div id="pessoasLista"><!-- cards de pessoa --></div>
+          <button type="button" class="btn btn-ghost" id="addPessoa">+ Adicionar acompanhante</button>
+        </div>
+
+        <!-- Recado -->
+        <div class="campo">
+          <label for="mensagem">Recado (opcional)</label>
+          <textarea id="mensagem" name="mensagem" rows="3" placeholder="Deixe um recado para os aniversariantes 💌"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg" id="btnEnviar">Confirmar presença 🎉</button>
+        <p class="form-status" id="formStatus" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <footer class="rodape">
+    <p>Feito com 💜 para a festa. <a href="admin.html">Área do organizador</a></p>
+  </footer>
+
+  <!-- Template de card de pessoa (clonado via JS) -->
+  <template id="tplPessoa">
+    <div class="pessoa-card">
+      <div class="pessoa-topo">
+        <input type="text" class="p-nome" placeholder="Nome" />
+        <select class="p-relacao"></select>
+        <button type="button" class="p-remover" aria-label="Remover" title="Remover">✕</button>
+      </div>
+      <div class="pessoa-prefs">
+        <div class="pref-grupo">
+          <span class="pref-titulo">🥤 Bebidas</span>
+          <div class="pref-chips p-bebidas"></div>
+        </div>
+        <div class="pref-grupo">
+          <span class="pref-titulo">🍕 Comidas</span>
+          <div class="pref-chips p-comidas"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

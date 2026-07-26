@@ -1,0 +1,15 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Dependências / logs (caso venha a usar)
+node_modules/
+*.log
+
+# Configuração local de preview do Claude Code
+.claude/

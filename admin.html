@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Convite de Aniversário</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ===================== LOGIN ===================== -->
+  <div class="login-box" id="loginBox">
+    <h1>Área do organizador 🔐</h1>
+    <form id="loginForm">
+      <div class="campo">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" required autocomplete="username" />
+      </div>
+      <div class="campo" style="margin-top:1rem">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:1.2rem">Entrar</button>
+      <p class="msg-toast" id="loginMsg"></p>
+    </form>
+    <p style="text-align:center;font-size:.85rem;color:var(--ink-soft);margin-top:1rem">
+      <a href="index.html">← Voltar ao convite</a>
+    </p>
+  </div>
+
+  <!-- ===================== PAINEL ===================== -->
+  <main class="admin-wrap" id="painel" hidden>
+    <div class="admin-topo">
+      <h1>Confirmações 🎉</h1>
+      <div style="display:flex;gap:.6rem">
+        <button class="btn btn-ghost" id="btnAtualizar">↻ Atualizar</button>
+        <button class="btn btn-ghost" id="btnSair">Sair</button>
+      </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="stats" id="stats"></div>
+
+    <!-- Tabela de confirmações -->
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Quando</th>
+            <th>Responsável</th>
+            <th>Convidou</th>
+            <th>Pessoas</th>
+            <th>Preferências</th>
+            <th>Recado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tabelaBody"></tbody>
+      </table>
+    </div>
+    <p class="vazio" id="tabelaVazia" hidden>Nenhuma confirmação ainda.</p>
+
+    <!-- Gestão de fotos -->
+    <section class="admin-secao">
+      <h2>Fotos do carrossel 📸</h2>
+      <label class="upload-drop" id="uploadDrop">
+        <input type="file" id="fileInput" accept="image/*" multiple />
+        <b>Clique ou arraste as fotos aqui</b><br />
+        <small>JPG, PNG, WEBP ou GIF</small>
+      </label>
+      <p class="msg-toast" id="fotoMsg"></p>
+      <div class="fotos-grid" id="fotosGrid"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
