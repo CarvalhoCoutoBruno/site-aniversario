@@ -1,23 +1,14 @@
-# Status — Fatia 2: config de preços, taxas e prazo
+# Status — Fatia 3: cadastro dos aniversariantes
 
-**Fatia fechada.** Aprovada sem ajustes; as 3 respostas do review foram seguidas e a nota leve
-(vazio vs inválido) virou mensagem distinta para cada caso.
+**Fatia fechada.** Aprovada sem ajustes; as 3 decisões do plano confirmadas pelo review e
+aplicadas. O achado do `.upsert()` se confirmou em runtime — o caminho `update`/`insert`
+funciona onde o upsert teria falhado.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-2-config-admin` → merge `--ff-only` → apagada |
-| Commit da fatia | `a2aa4ff164645ce9233d2b166712ad09a3ca8b2e` |
+| Branch | `feat/fatia-3-aniversariantes` → merge `--ff-only` → apagada |
+| Commit da fatia | `adcb024f622a2b3d1b6fd825836039cba26920f0` |
 | `./verify.sh` | **VERDE** — 41/41, sem regressão |
-
-## Decisões do review, aplicadas
-
-1. **`<details>` fechado por padrão** — confirmado na tela: `configFechadaPorPadrao: true`.
-2. **`calculo.js` no `admin.html`** — incluído; `calculoCarregado: true`.
-3. **`atualizado_em` pelo cliente** — `new Date().toISOString()` no `update`.
-4. **Nota leve:** vazio e inválido agora dão mensagens diferentes (saída abaixo). Decidi
-   **recusar campo vazio** em preço e taxa, em vez de virar `0` — um campo em branco é mais
-   provavelmente esquecimento do que intenção de zerar, e a mensagem diz como zerar de fato.
-   O prazo é a exceção: vazio = `NULL` = sem limite, que é o comportamento documentado.
 
 ## `./verify.sh`
 
@@ -38,147 +29,118 @@ VERDE — verificação estática ok. Falta a integrada (navegador + banco).
 
 ## Verificação integrada — saída crua
 
-### 1. Config carrega com as sementes
+### 1. Tela carrega os 3 do `config.js`
 ```json
 { "painelVisivel": true,
-  "configFechadaPorPadrao": true,
-  "taxas":  { "chopp": "2", "refri": "0,6", "agua": "0,5" },
-  "precos": { "chopp": "0,00", "pizzaAdulto": "0,00" },
-  "prazo": "",
-  "atualizadoEm": "Última alteração: 02/08 17:08",
-  "calculoCarregado": true }
+  "secaoFechada": true,
+  "blocos": [
+   { "id": "1", "legenda": "Bruno (id 1)",  "tipoMarcado": "adulto", "bebidasMarcadas": 0, "pizzaMarcada": false },
+   { "id": "2", "legenda": "Braz (id 2)",   "tipoMarcado": "adulto", "bebidasMarcadas": 0, "pizzaMarcada": false },
+   { "id": "3", "legenda": "Bocão (id 3)",  "tipoMarcado": "adulto", "bebidasMarcadas": 0, "pizzaMarcada": false } ],
+  "statAniv": "Aniversariantes cadastrados=0/3" }
 ```
 
-### 2. Validação no cliente — cinco casos, cinco mensagens distintas
+### 2. Primeiro save — `SELECT` cru
+Tela: `{"msg": "Aniversariantes salvos. ✅", "statAniv": "Aniversariantes cadastrados=3/3"}`
+
+```
+LINHAS (aniv_id, nome, tipo, papel, rsvp_id, agua, refri, chopp, pizza):
+   [1, 'Bruno', 'adulto', 'aniversariante', None, False, False, True, True]
+   [2, 'Braz',  'adulto', 'aniversariante', None, False, True,  False, False]
+   [3, 'Bocão', 'adulto', 'aniversariante', None, True,  False, False, False]
+  total = 3
+```
+`rsvp_id = None` nos três, `papel` e `aniversariante_id` corretos, `nome` batendo com o
+`config.js`.
+
+### 3. Recarregar — os valores persistem
 ```json
-{ "vazio":          "Preencha \"Chopp (por litro)\". Use 0 se for zero mesmo.",
-  "invalido":       "\"Chopp (por litro)\" não é um número válido.",
-  "negativo":       "\"Chopp (por litro)\" não pode ser negativo.",
-  "taxaEstourada":  "\"Chopp por adulto\" passou do máximo aceito para taxa (999,999).",
-  "precoEstourado": "\"Chopp (por litro)\" passou do máximo aceito para preço (99.999.999,99).",
-  "nenhumSalvouAinda": true }
+{ "persistiuAposReload": {
+   "bruno": { "tipo": "adulto", "agua": false, "refri": false, "chopp": true, "pizza": true },
+   "braz":  { "tipo": "adulto", "agua": false, "refri": true,  "chopp": false, "pizza": false },
+   "bocao": { "tipo": "adulto", "agua": true,  "refri": false, "chopp": false, "pizza": false } } }
 ```
-Os dois últimos são as faixas de `numeric(6,3)` e `numeric(10,2)` — sem isso, o overflow
-voltaria como erro cru de tipo.
+É o teste que pegaria erro no casamento por `aniversariante_id`.
 
-### 3. Salvamento real, com `1.234,56` e prazo
-Tela: `{"msg": "Configuração salva. ✅", "classe": "msg-toast ok"}`
-
-`SELECT` cru:
-```
-SALVO (precos + taxas):
-  [Decimal('18.50'), Decimal('1234.56'), Decimal('3.00'), Decimal('45.90'),
-   Decimal('24.50'), Decimal('2.250'), Decimal('0.600'), Decimal('0.500')]
-PRAZO:
-  armazenado (UTC): 2026-10-21 02:59:59+00:00
-  em Sao Paulo    : 2026-10-20 23:59:59
-```
-`1.234,56` → `1234.56`. É o caso que o `paraCentavos` transformaria em `0` silenciosamente.
-
-### 4. Teste defensivo — campos da Fatia 5 intactos
-Antes de salvar, populei `custo_real_*` e `preco_real_pizza_*` na mão. Depois de salvar a
-config pela tela:
-```
-DEFENSIVO — campos da Fatia 5 continuam intactos?
-  [Decimal('777.77'), Decimal('88.88'), Decimal('9.99'), Decimal('55.55'), Decimal('33.33')]
-```
-O `update` estreito faz o que prometia.
-
-### 5. Ida e volta do fuso — o teste que pega o bug
-Recarregando a tela depois de salvar:
+### 4. Chopp × criança na tela
+Marcando Braz como criança:
 ```json
-{ "prazoNaTela": "2026-10-20",
-  "esperado": "2026-10-20",
-  "oQueOIngenuoDaria": "2026-10-21",
-  "dataVoltouIgual": true,
-  "precoRefri": "1.234,56",
-  "precoChopp": "18,50",
-  "taxaChopp": "2,25",
-  "fusoDoNavegador": "America/Sao_Paulo" }
+{ "regraChoppCrianca": { "desabilitado": true, "riscado": true, "avisoVisivel": true } }
 ```
 
-O navegador estava em São Paulo, o que **não** provaria independência de fuso. Rodei a função
-sob cinco fusos diferentes:
+### 5. **A prova do upsert** — segundo save com valores diferentes
+Bruno perdeu o chopp e ganhou água; Braz virou criança.
 
 ```
-fuso local do runtime: America/Sao_Paulo
-  2026-10-21T02:59:59+00:00 -> com fuso: 2026-10-20 (OK) | ingenuo: 2026-10-21
-  2026-01-01T02:59:59+00:00 -> com fuso: 2025-12-31 (OK) | ingenuo: 2026-01-01
-fuso local do runtime: America/New_York        (mesmos dois resultados OK)
-fuso local do runtime: Asia/Tokyo              (mesmos dois resultados OK)
-fuso local do runtime: Europe/Lisbon           (mesmos dois resultados OK)
-fuso local do runtime: Pacific/Kiritimati      (mesmos dois resultados OK)
-```
-Kiritimati é +14; o ingênuo erra em todos, o nosso acerta em todos.
-
-### 6. Ponta a ponta — a config dirige o formulário público
-Com o prazo em 20/10/2026:
-```json
-{ "formAberto": true, "avisoPrazo": "⏳ Confirme até 20/10/2026.", "encerradoOculto": true }
+PROVA DO UPSERT — apos o SEGUNDO save:
+  total de linhas = 3 (esperado 3; com .upsert() quebrado seriam 6 ou erro)
+   [1, 'Bruno', 'adulto',  True, False, False, True]
+   [2, 'Braz',  'crianca', False, True, False, False]
+   [3, 'Bocão', 'adulto',  True, False, False, False]
+  ids distintos = 3
 ```
 
-### 7. Limpar o prazo → `NULL` → convite sem aviso
+Confirma em runtime o que o plano tinha medido em SQL: `ON CONFLICT (aniversariante_id)` — a
+única forma que o supabase-js sabe emitir — falha contra o índice **parcial**
+(`WHERE papel='aniversariante'`), porque a inferência de índice parcial exige repetir o
+predicado. Ler as linhas e decidir `update`/`insert` resolve e deixa o código mais explícito.
+
+### 6. Backstop do banco
 ```
-prazo apos limpar = None | preco preservado = 18.50
-status_rsvp (anon): [{"aberto":true,"prazo":null}]
+  update Braz (crianca) para bebe_chopp=true     rejeitou -> violates check constraint
+  insert aniversariante_id=1 duplicado           rejeitou -> violates unique constraint
 ```
-```json
-{ "formAberto": true, "avisoPrazoOculto": true, "encerradoOculto": true }
+A regra do chopp na tela é espelho de UX; a fonte da verdade é a constraint.
+
+### 7. Negativo (RLS) — provado pelo estado do banco
+```
+  anon SELECT pessoas: []
+  anon INSERT aniversariante: {"code":"42501","message":"new row violates row-level security policy for table \"pessoas\""}
+  anon UPDATE aniversariante 1: HTTP 204
+  anon DELETE aniversariantes: HTTP 204
 ```
 
-### 8. Negativo — anon não lê nem grava `config`
-```
-anon SELECT em config:
-  HTTP 200  body=[]
-anon UPDATE em config (tentando zerar preço e abrir o prazo):
-  HTTP 204
-anon SELECT em admins:
-  []
-```
-
-> **Atenção ao 204.** O `UPDATE` do anon devolve `204 No Content`, que **parece sucesso**: a RLS
-> não rejeita, ela simplesmente não deixa nenhuma linha visível para atualizar. Só o `SELECT`
-> como dono prova o que aconteceu:
+> Os dois `204` de novo — como na Fatia 2, **parecem sucesso**. O `DELETE` do anon pediu para
+> apagar os três aniversariantes e voltou `204 No Content`. Só o `SELECT` como dono resolve:
 > ```
-> depois da tentativa do anon:
->   preco_litro_chopp = 18.50 (o anon tentou zerar)
->   prazo_confirmacao = 2026-10-21 02:59:59+00:00 (o anon tentou anular)
->   -> INTACTO ✅
+> depois das tentativas do anon (UPDATE bebe_chopp=true e DELETE de todos):
+>   total de linhas = 3 (o anon tentou APAGAR os 3)
+>    [1, 'Bruno', 'adulto',  True, False, False, True]
+>    [2, 'Braz',  'crianca', False, True, False, False]
+>    [3, 'Bocão', 'adulto',  True, False, False, False]
+>   -> INTACTO ✅ (nao apagou, nao alterou o chopp do Bruno)
 > ```
-> Fica registrado para as próximas fatias: em teste negativo de RLS, código HTTP não é
-> evidência — só o estado do banco é.
+> Só o `INSERT` devolve `42501` explícito, porque a policy de insert avalia o `WITH CHECK` na
+> linha nova. `UPDATE` e `DELETE` filtram por `USING`: sem linha visível, não há o que
+> rejeitar — a operação "sucede" sobre zero linhas.
 
-### 9. Base restaurada
+### 8. Base restaurada
 ```
-config (taxas, preco, prazo, custo_real): [2.000, 0.600, 0.500, 0.00, None, None]
 rsvps = 0
 pessoas = 0
 admins = 4
+config (taxas, prazo, custo_real) = [2.000, 0.600, 0.500, None, None]
 auth.users = ['bruno.carvalho@gmail.com','brazrs@gmail.com','rscouto47@hotmail.com','jhboca@hotmail.com']
 ```
 Usuário temporário apagado.
 
-## Notas para a próxima fatia
+## Decisões aplicadas (confirmadas no review)
 
-- **`calculo.js` já está carregado no `admin.html`** — a Fatia 4 não precisa mexer nisso.
-- **`parseNumeroBR` e `fmtNumeroBR` estão prontos** no `admin.js` e servem para a Fatia 5, que
-  também recebe dinheiro digitado (`custo_real_*`). Mesma regra: vírgula manda como decimal.
-- **Fatia 3 (cadastro de aniversariantes) segue como pré-requisito da 4 e da 5.**
+1. **Save cria linha para os 3**, mesmo sem nada marcado — linha com booleanos `false` é "está
+   na festa, não consome", diferente de "não cadastrado".
+2. **Sem "remover cadastro"** — zerar é desmarcar.
+3. **Regra do chopp duplicada** entre `main.js` e `admin.js`, com a constraint como fonte única.
+
+## Notas para a próxima fatia (4 — estimativa)
+
+- **Os 3 aniversariantes agora têm linha** quando o organizador salvar a tela; até lá a base
+  fica sem eles, e a estimativa sairia sem o consumo dos três. A tela mostra "cadastrados: N/3",
+  o que dá para usar como aviso na Fatia 4 se `N < 3`.
+- **`calculo.js` já está no `admin.html`** desde a Fatia 2 — `estimativa(pessoas, config)` está
+  pronta e testada, faltando só a tela.
+- A estimativa precisa de **todas** as pessoas: as de grupos (`rsvp_id` preenchido) e as três de
+  `papel='aniversariante'`. O `carregarRSVPs` já faz esse join e separa os aniversariantes.
 - Ainda pendente do Bruno: rotacionar a senha do Postgres.
-
-## Processo — o sync do handoff
-
-Esta rodada travou duas vezes antes do `revisa` porque `prompt.md` e `plano.md` estavam
-gravados no disco mas **não commitados**, e a outra ponta lê pelo git. O Cowork recusou o
-`revisa` — corretamente, pelo conteúdo que via.
-
-Corrigido no commit `8a0eecd`, e a regra está no `FLUXO.md`: **o arquivo de handoff é commitado
-e enviado no gatilho em que muda**, não só no `executa`. No `planeja` isso inclui subir o
-`prompt.md` do Cowork, que não faz git de escrita.
-
-Uma assimetria que fica: eu leio o disco, então enxergo o que o Cowork escreve mesmo sem
-commit; ele não enxerga o meu. Por isso o `review.md` desta rodada estava no disco e só agora
-sobe, junto deste commit.
 
 ---
 
@@ -186,7 +148,7 @@ sobe, junto deste commit.
 
 | | |
 |---|---|
-| Commit da fatia (o código) | `a2aa4ff164645ce9233d2b166712ad09a3ca8b2e` |
+| Commit da fatia (o código) | `adcb024f622a2b3d1b6fd825836039cba26920f0` |
 | Commit deste `status.md` | logo em seguida, na `main` |
 
 > Gravar o hash pós-push dentro de um arquivo versionado muda o hash — por isso os dois são

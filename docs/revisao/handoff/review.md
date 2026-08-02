@@ -1,35 +1,30 @@
-# Review — Fatia 2
+# Review — Fatia 3
 
-**Veredito: aprovado, sem ajustes.** Plano sólido. Os dois riscos que você mediu antes de
-planejar são exatamente os que eu levantaria — e as soluções estão certas:
+**Veredito: aprovado, sem ajustes.** O achado do `.upsert()` é ótimo — exatamente o tipo de
+falha de runtime que o loop de review existe pra pegar antes do save.
 
-- **Fuso na ida-e-volta do prazo:** correto, e pior que "borda" (anda todo dia, e no 1/jan muda
-  o ANO). Ler com `Intl.DateTimeFormat` + `timeZone: America/Sao_Paulo` e gravar o literal
-  `...T23:59:59-03:00` é o caminho. Bate com o `at time zone` que o `criar_rsvp` já usa.
-- **`paraCentavos` não serve pra entrada digitada:** certíssimo não tocar nele (`"1.234,56"→0`
-  silencioso, aceita negativo) — ele está certo pro uso do banco e tem 41 asserções em cima.
-  `parseNumeroBR` próprio, devolvendo `null` pra distinguir vazio/inválido, é a decisão certa.
+## O catch do upsert
+Correto e bem provado (testou as duas formas de `ON CONFLICT` contra o banco). O índice único é
+**parcial** (`WHERE papel='aniversariante'`), e o `supabase-js`/PostgREST não expressa o `WHERE`
+na inferência → `.upsert({onConflict:'aniversariante_id'})` quebraria no primeiro save. Trocar
+por **ler-e-decidir `update`/`insert`** é a solução certa e deixa o código mais explícito. O
+tratamento da corrida (índice parcial barra o segundo → UI diz "recarregue") fecha o buraco.
 
-Aprovo também o **`update` estreito** (só os 9 campos + `atualizado_em`): é a salvaguarda que
-garante que um bug aqui não zera `custo_real_*`/`preco_real_pizza_*` da Fatia 5 — e o teste
-defensivo #7 prova isso. Ótimo.
-
-## Respostas às 3 perguntas
-1. **`<details>` fechado por padrão:** sim. Config é set-once, consultada raramente; manter as
-   confirmações acima da dobra é o certo.
-2. **Incluir `calculo.js` no `admin.html` agora:** sim. Uma linha, módulo puro sem efeito
-   colateral, e evita esquecer na Fatia 4.
-3. **`atualizado_em` pelo cliente:** concordo — cliente agora; trigger só se um dia virar dado
-   de auditoria. Não vale mexer no schema estável por isso.
-
-## Nota leve (não bloqueia)
-Vazio vs zero em preço/taxa: como `parseNumeroBR` devolve `null` tanto pra vazio quanto pra
-inválido, garanta que a mensagem distinga "preencha o campo" de "não é número válido", e decida
-se campo vazio é recusado ou vira `0` explícito — só não deixar vazio virar `0`/`null` silencioso.
+## As 3 decisões — todas confirmadas
+1. **Criar linha para os 3 no save, mesmo sem nada marcado:** sim. Linha com 4 booleanos `false`
+   = "está na festa, não consome" ≠ "não cadastrado" — é o modelo mais previsível e deixa os 3
+   sempre presentes pro rateio/estimativa (do que a Fatia 4 depende).
+2. **Sem "remover cadastro":** concordo. Zerar = desmarcar. Um delete daria como sumir com um
+   pagante do rateio sem perceber — não vale o risco.
+3. **Regra do chopp duplicada (`main.js` + `admin.js`):** aceito. A **fonte única da verdade da
+   regra é a constraint `chopp_nao_para_crianca`** no banco; as duas cópias no JS são só espelho
+   de UX. Extrair ~10 linhas de lógica de DOM pra um 4º arquivo acopla mais do que resolve. (Se
+   um dia a regra mudar, muda a constraint e os dois espelhos — anotado, mas é barato.)
 
 ## Verify
-Cobre bem — o **#3 (recarregar e conferir que a data volta igual)** é o que pega o bug de fuso,
-e o **#7 (`custo_real_*` intactos após salvar)** blinda o out-of-scope. Mantém a saída crua no
-`status.md` e restaura as sementes ao fim.
+Cobre certo: o **#5 (salvar de novo → 3 linhas, não 6)** é a prova do caminho `update`/`insert`
+onde o `.upsert()` falharia; o **#6** valida o backstop da constraint; o **#7** já vem com o
+negativo de RLS **provado pelo estado do banco** (não pelo 204). Mantém a saída crua no
+`status.md` e restaura a base ao fim.
 
 Pode `executa`.
