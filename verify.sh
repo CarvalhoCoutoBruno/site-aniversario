@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# =============================================================
+#  verify — o "build verde" deste projeto
+# =============================================================
+#  Substitui o `./mvnw clean verify` do protocolo de handoff.
+#  Projeto sem build: o que dá para verificar sem navegador e sem
+#  banco é sintaxe, testes puros e higiene de credencial.
+#
+#      ./verify.sh
+#
+#  ⚠️ O QUE ISTO **NÃO** PROVA:
+#  que o formulário grava no Supabase, que a RLS barra o anon, que o
+#  painel renderiza. Isso é a "verificação integrada" do protocolo e
+#  exige navegador + banco real, com saída crua colada no status.md.
+#  Verde aqui não dispensa aquilo.
+# =============================================================
+set -uo pipefail
+cd "$(dirname "$0")"
+
+JSC=/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc
+falhas=0
+
+secao() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+ok()    { printf '  \033[32m✓\033[0m %s\n' "$1"; }
+erro()  { printf '  \033[31m✗\033[0m %s\n' "$1"; falhas=$((falhas + 1)); }
+
+# ---------- runtime ----------
+if [ -x "$JSC" ]; then
+  RUN_JS() { "$JSC" "$@"; }
+elif command -v node >/dev/null 2>&1; then
+  RUN_JS() { node "$@"; }   # node aceita os mesmos arquivos
+else
+  echo "Nenhum runtime JS (jsc ou node). Impossível verificar." >&2
+  exit 2
+fi
+
+# ---------- 1. sintaxe ----------
+secao "Sintaxe"
+for f in js/*.js tests/*.js; do
+  saida=$("$JSC" -e "
+    try { new Function(readFile('$f')); print('OK'); }
+    catch (e) { print('FALHOU: ' + e); }" 2>&1)
+  case "$saida" in
+    OK*) ok "$f" ;;
+    *)   erro "$f — $saida" ;;
+  esac
+done
+
+# ---------- 2. testes de cálculo ----------
+secao "Testes de cálculo"
+if saida=$("$JSC" js/calculo.js tests/calculo.test.js 2>&1); then
+  ok "$(printf '%s' "$saida" | tail -1)"
+else
+  printf '%s\n' "$saida" | sed 's/^/  /'
+  erro "suite de cálculo falhou"
+fi
+
+# ---------- 3. higiene de credencial ----------
+secao "Higiene"
+# a chave anon/publishable é pública por design; senha e service_role não são
+if git grep -nIE 'service_role|postgresql://|PGPASSWORD|sb_secret' -- . >/dev/null 2>&1; then
+  git grep -nIE 'service_role|postgresql://|PGPASSWORD|sb_secret' -- . \
+    | grep -vE '\.md:' | sed 's/^/  /' && erro "credencial suspeita rastreada" || \
+    ok "só menções em documentação"
+else
+  ok "sem connection string, service_role ou senha rastreada"
+fi
+
+if grep -q 'COLE_A_' js/config.js 2>/dev/null; then
+  erro "js/config.js ainda tem placeholder COLE_A_*"
+else
+  ok "js/config.js preenchido"
+fi
+
+# ---------- 4. coerência do schema ----------
+secao "Coerência"
+if grep -q '<UID_DO_ADMIN>' supabase-setup.sql 2>/dev/null; then
+  erro "supabase-setup.sql tem placeholder <UID_DO_ADMIN> por substituir"
+else
+  ok "supabase-setup.sql sem placeholder"
+fi
+
+# o formulário não pode voltar a inserir direto na tabela
+if grep -qE '\.from\("rsvps"\)\.insert|\.from\("pessoas"\)\.insert' js/main.js 2>/dev/null; then
+  erro "js/main.js insere direto na tabela — a escrita anônima é só via criar_rsvp"
+else
+  ok "js/main.js escreve só pelo RPC"
+fi
+
+# ---------- resultado ----------
+if [ "$falhas" -eq 0 ]; then
+  printf '\n\033[32mVERDE\033[0m — verificação estática ok. Falta a integrada (navegador + banco).\n'
+  exit 0
+fi
+printf '\n\033[31mVERMELHO\033[0m — %s problema(s).\n' "$falhas"
+exit 1
