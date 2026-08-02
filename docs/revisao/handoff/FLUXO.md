@@ -4,7 +4,8 @@
 > Aqui ficam só as decisões que ele delega ao projeto — o que é "commit verde", o que
 > é fonte da verdade, e o que o push provoca.
 >
-> O estado da vez (entregue, backlog, gotchas) está em [CONTINUIDADE.md](../CONTINUIDADE.md).
+> O estado da vez vai no `status.md` a cada fatia — não há doc de estado separado
+> (ver *Onde mora cada coisa*, no fim).
 
 ## O que é "commit verde": `./verify.sh`
 
@@ -34,6 +35,17 @@ Para a área autenticada, sem tocar na senha do organizador: criar usuário temp
 
 Acesso ao banco: `pg8000` num venv descartável no scratchpad (não há `psql` nem Docker rodando). A senha do Postgres **nunca** vai para arquivo — só variável de ambiente por comando.
 
+### Gotchas do ambiente (cada um já custou uma tentativa falha)
+
+- **Sem Node e sem `psql`; daemon do Docker parado.** Testes rodam no `jsc`, que já vem no macOS:
+  `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc js/calculo.js tests/calculo.test.js`
+- **O sandbox impede servir de `~/Documents`** — daí a cópia no scratchpad descrita acima.
+- **Injeção de script no site publicado é bloqueada** pelo classificador. Verificação em produção é read-only (`get_page_text`); o teste que dirige a página roda contra a cópia local.
+- **Screenshot sai preto** com o painel do navegador oculto — inspecionar o DOM em vez de tirar print.
+- **GoTrue recusa login** com `confirmation_token`, `recovery_token`, `email_change_token_new` ou `email_change` em `NULL`; precisam ser `''`.
+
+Esta seção é **durável** e mora aqui de propósito: o `status.md` é sobrescrito a cada fatia e perderia isso toda rodada.
+
 ## Schema: recriar, não migrar
 
 Decisão registrada na ET: **não há migrations de errata**. Quando o modelo muda, corrige-se o `supabase-setup.sql` e recria-se do zero. O arquivo é a fonte da verdade, não um histórico.
@@ -58,9 +70,21 @@ Já aconteceu entre a Fatia 0 e a 1: o schema novo estava no ar mas o `main.js` 
 
 | Arquivo | O quê |
 |---|---|
-| [CONTINUIDADE.md](../CONTINUIDADE.md) | estado atual, backlog, gotchas |
 | [REGRAS-NEGOCIO.md](../../REGRAS-NEGOCIO.md) | o "o quê" — regra de negócio, versionada (v5) |
 | [ESPECIFICACAO-TECNICA.md](../../ESPECIFICACAO-TECNICA.md) | o "como" — schema, RPCs, RLS, cálculo |
 | `supabase-setup.sql` | o schema real |
 
 Divergiu? **A regra de negócio vence** e a ET é corrigida. Não existe `CLAUDE.md` neste repo; se um dia existir, passa a ser a autoridade sobre convenção.
+
+## Onde mora cada coisa
+
+Não há doc de estado separado. Existia um `CONTINUIDADE.md`, mas sem dono definido na tabela do protocolo ele foi sobrescrito pelas duas pontas e perdeu conteúdo. Removido. No lugar:
+
+| O quê | Onde | Por quê |
+|---|---|---|
+| Estado da fatia: o que entregou, evidência crua, hash pós-push, o que sobrou | `status.md` | é o canal Claude Code → Cowork que o protocolo já define |
+| Backlog e fatiamento | com o Cowork, materializado no `prompt.md` | é ele quem fatia por risco |
+| Gotchas de ambiente, receita de verificação, convenções | **este arquivo** | durável; sobreviver à rotação do `status.md` |
+| Modelo de dados e decisões de negócio | ET e regras de negócio | já versionados |
+
+Regra prática: se vale para **esta** fatia, vai no `status.md`; se vale para **todas**, vem para cá.
