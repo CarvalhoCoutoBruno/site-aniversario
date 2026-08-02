@@ -57,11 +57,14 @@ fi
 
 # ---------- 3. higiene de credencial ----------
 secao "Higiene"
-# a chave anon/publishable é pública por design; senha e service_role não são
-if git grep -nIE 'service_role|postgresql://|PGPASSWORD|sb_secret' -- . >/dev/null 2>&1; then
-  git grep -nIE 'service_role|postgresql://|PGPASSWORD|sb_secret' -- . \
-    | grep -vE '\.md:' | sed 's/^/  /' && erro "credencial suspeita rastreada" || \
-    ok "só menções em documentação"
+# A chave anon/publishable é pública por design; senha e service_role não são.
+# Exclui *.md (documentação fala sobre credencial) e este próprio script,
+# que contém os padrões de busca e casaria consigo mesmo.
+achados=$(git grep -nIE 'service_role|postgresql://|PGPASSWORD|sb_secret' \
+  -- . ':(exclude)*.md' ':(exclude)verify.sh' 2>/dev/null)
+if [ -n "$achados" ]; then
+  printf '%s\n' "$achados" | sed 's/^/    /'
+  erro "credencial suspeita em arquivo rastreado"
 else
   ok "sem connection string, service_role ou senha rastreada"
 fi
