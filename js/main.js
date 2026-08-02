@@ -15,7 +15,6 @@
 
   /* ================= DADOS DA FESTA ================= */
   $("#festaTitulo").textContent = C.festa.titulo;
-  $("#festaSubtitulo").textContent = C.festa.subtitulo;
   $("#festaData").textContent = C.festa.dataTexto;
   const localEl = $("#festaLocal");
   localEl.textContent = C.festa.local;

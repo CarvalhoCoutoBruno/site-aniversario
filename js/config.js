@@ -2,42 +2,49 @@
 //  CONFIGURAÇÃO DO SITE  —  edite tudo por aqui
 // =============================================================
 //
-//  1) Preencha os dados da festa abaixo.
-//  2) Cole a URL e a chave "anon" do seu projeto Supabase
-//     (Supabase > Project Settings > API).
+//  Preços, taxas de consumo e prazo de confirmação NÃO ficam aqui:
+//  moram na tabela `config` do Supabase e são editados pelo painel.
 //
 // -------------------------------------------------------------
 
 window.CONFIG = {
   // ---- Dados da festa ----------------------------------------
   festa: {
-    titulo: "Aniversário",           // título grande no topo
-    subtitulo: "Vem comemorar com a gente!",
-    data: "2026-09-12T20:00:00",     // data/hora (formato AAAA-MM-DDTHH:MM:SS)
-    dataTexto: "12 de setembro, 20h", // como aparece escrito na tela
-    local: "Salão de Festas — Rua Exemplo, 123",
-    localMapa: "https://maps.google.com/?q=Rua+Exemplo+123", // link do Google Maps (opcional)
+    titulo: "Festa dos 160 anos",
+    // offset -03:00 explícito: a contagem não muda com o fuso de quem abre
+    data: "2026-10-31T11:00:00-03:00",
+    dataTexto: "Sábado, 31 de outubro de 2026, às 11h",
+    local: "Salão 3 — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS",
+    localMapa:
+      "https://www.google.com/maps/search/?api=1&query=Av.+Cel.+Marcos%2C+627+-+Pedra+Redonda%2C+Porto+Alegre+-+RS%2C+91760-000",
   },
 
   // ---- Os 3 aniversariantes ----------------------------------
-  //  O convidado escolhe qual(is) o convidou (múltipla escolha).
+  //  ⚠️ A ORDEM É O IDENTIFICADOR: o banco grava `convidado_por` como
+  //  número (1, 2, 3) apontando para as posições desta lista.
+  //  Dá para RENOMEAR à vontade; NÃO reordene nem remova depois que
+  //  houver confirmação salva, senão os registros trocam de dono.
   aniversariantes: [
-    "Aniversariante 1",
-    "Aniversariante 2",
-    "Aniversariante 3",
+    "Bruno", // 1
+    "Braz",  // 2
+    "Bocão", // 3
   ],
-
-  // ---- Opções de bebida e comida -----------------------------
-  bebidas: ["Água", "Refrigerante", "Chopp"],
-  comidas: ["Pizza", "Sobremesa"],
 
   // ---- Relações sugeridas para acompanhantes -----------------
   relacoes: ["Esposa", "Marido", "Filho(a)", "Acompanhante"],
 
+  // ---- TEMPORÁRIO: sai na Fatia 1 ----------------------------
+  //  O formulário atual ainda monta os chips a partir daqui.
+  //  Na Fatia 1 viram colunas booleanas fixas (bebe_agua/refri/chopp,
+  //  come_pizza) e estas duas listas somem. Sobremesa já saiu.
+  bebidas: ["Água", "Refrigerante", "Chopp"],
+  comidas: ["Pizza"],
+
   // ---- Supabase (cole suas chaves aqui) ----------------------
   supabase: {
-    url: "COLE_A_URL_DO_SUPABASE_AQUI",       // ex: https://xxxx.supabase.co
-    anonKey: "COLE_A_CHAVE_ANON_AQUI",        // chave pública "anon"
-    bucketFotos: "fotos",                     // nome do bucket de fotos
+    url: "https://mbzuxkvrrtvbgkikrivh.supabase.co",
+    // chave publishable/anon — pública por design; a segurança está na RLS
+    anonKey: "sb_publishable_K86bohNhtKvfzytzszn_YA_UlNN2iDL",
+    bucketFotos: "fotos",
   },
 };
