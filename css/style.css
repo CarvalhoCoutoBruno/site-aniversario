@@ -275,3 +275,17 @@ tr:last-child td { border-bottom: none; }
 .rsvp-encerrado .big { font-size: 2.5rem; line-height: 1; }
 .rsvp-encerrado h3 { margin: .6rem 0 .35rem; font-size: 1.25rem; }
 .rsvp-encerrado p { color: var(--ink-soft); margin: 0; }
+
+/* ---- Ajustes da revisão da Fatia 1 ---- */
+.pessoa-rotulo {
+  font-size: .78rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.pessoa-card.responsavel .pessoa-rotulo { color: var(--brand); }
+
+.contador { align-self: flex-end; font-variant-numeric: tabular-nums; }
+.contador.no-limite { color: var(--err); font-weight: 600; }
+
+.prazo-aberto {
+  text-align: center; font-weight: 600; color: var(--ink-soft); margin: 0 0 .25rem;
+}

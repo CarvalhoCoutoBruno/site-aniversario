@@ -110,10 +110,22 @@
       const { data, error } = await sb.rpc("status_rsvp");
       if (error) return console.warn("status_rsvp:", error);
       const st = Array.isArray(data) ? data[0] : data;
-      if (st && st.aberto === false) fecharFormulario(st.prazo);
+      if (!st) return;
+      if (st.aberto === false) fecharFormulario(st.prazo);
+      else if (st.prazo) avisarPrazo(st.prazo);
     } catch (e) {
       console.warn("Falha ao checar o prazo:", e);
     }
+  }
+
+  // Aberto mas com data marcada: sem isto o convidado não vê prazo
+  // nenhum, e o prazo perde justamente a urgência que o justifica.
+  function avisarPrazo(prazo) {
+    const d = new Date(prazo);
+    if (isNaN(d)) return;
+    const el = $("#prazoAberto");
+    el.textContent = `⏳ Confirme até ${d.toLocaleDateString("pt-BR")}.`;
+    el.hidden = false;
   }
 
   function fecharFormulario(prazo) {
@@ -204,10 +216,20 @@
     return $$(".pessoa-card", lista).length - 1;
   }
 
+  // Numera os cards para quem adiciona 4 ou 5 pessoas se localizar.
+  // Roda de novo a cada remoção, senão sobra buraco na sequência.
+  function renumerarCards() {
+    $$(".pessoa-card", lista).forEach((card, i) => {
+      card.querySelector(".pessoa-rotulo").textContent =
+        i === 0 ? "Você" : `Acompanhante ${i}`;
+    });
+  }
+
   function atualizarBotaoAdd() {
     const cheio = contarAcompanhantes() >= MAX_ACOMPANHANTES;
     $("#addPessoa").hidden = cheio;
     $("#limiteAcompanhantes").hidden = !cheio;
+    renumerarCards();
   }
 
   // primeiro card = responsável, com o nome espelhando o campo de cima
@@ -222,6 +244,22 @@
     atualizarBotaoAdd();
   });
   atualizarBotaoAdd();
+
+  /* ================= LIMITE DO RECADO =================
+     A tabela tem CHECK (observacoes <= 500). Sem limite no cliente, o
+     convidado só descobre ao enviar, e o erro chega como violação de
+     constraint — que o mensagemDeErro degrada para o genérico. */
+  const MAX_OBS = 500;
+  const AVISA_OBS = 450;
+  const campoMensagem = $("#mensagem");
+  const contador = $("#contadorMensagem");
+
+  campoMensagem.addEventListener("input", () => {
+    const n = campoMensagem.value.length;
+    contador.hidden = n < AVISA_OBS;
+    contador.textContent = `${n}/${MAX_OBS} caracteres`;
+    contador.classList.toggle("no-limite", n >= MAX_OBS);
+  });
 
   /* ================= ENVIO ================= */
   function lerPessoa(card, indice) {
@@ -258,6 +296,10 @@
     if (!responsavel) return falha(status, "Por favor, coloque seu nome.");
     if (!contato) return falha(status, "Precisamos de um WhatsApp ou e-mail para falar com você.");
     if (!convidadoPor.length) return falha(status, "Escolha quem te convidou.");
+    // o maxlength do textarea não impede colar por script
+    if (mensagem.length > MAX_OBS) {
+      return falha(status, `O recado passou de ${MAX_OBS} caracteres (tem ${mensagem.length}). Encurte um pouco.`);
+    }
 
     const cards = $$(".pessoa-card", lista);
     const pessoas = cards.map(lerPessoa);

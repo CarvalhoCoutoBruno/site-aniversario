@@ -104,9 +104,12 @@
         <!-- Recado -->
         <div class="campo">
           <label for="mensagem">Recado ou restrição alimentar (opcional)</label>
-          <textarea id="mensagem" name="mensagem" rows="3" placeholder="Alergia, restrição, ou só um recado 💌"></textarea>
+          <textarea id="mensagem" name="mensagem" rows="3" maxlength="500"
+                    placeholder="Alergia, restrição, ou só um recado 💌"></textarea>
+          <small class="campo-dica contador" id="contadorMensagem" hidden></small>
         </div>
 
+        <p class="campo-dica prazo-aberto" id="prazoAberto" hidden></p>
         <button type="submit" class="btn btn-primary btn-lg" id="btnEnviar">Confirmar presença 🎉</button>
         <p class="form-status" id="formStatus" role="status"></p>
       </form>
@@ -120,6 +123,7 @@
   <!-- Template de card de pessoa (clonado via JS) -->
   <template id="tplPessoa">
     <div class="pessoa-card">
+      <span class="pessoa-rotulo"></span>
       <div class="pessoa-topo">
         <input type="text" class="p-nome" placeholder="Nome (opcional)" />
         <select class="p-relacao"></select>
