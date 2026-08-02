@@ -171,11 +171,16 @@ create table public.pessoas (
       (papel <> 'aniversariante' and rsvp_id is not null)
     ),
 
-  -- aniversariante_id existe se e somente se papel = 'aniversariante'
+  -- aniversariante_id existe se e somente se papel = 'aniversariante'.
+  -- CASE (e não OR de dois ramos) porque CHECK só rejeita em FALSE:
+  -- com id NULL, "papel = 'aniversariante' and id between 1 and 3"
+  -- avalia para NULL, e a linha passaria batido.
   constraint aniversariante_id_coerente
     check (
-      (papel =  'aniversariante' and aniversariante_id between 1 and 3) or
-      (papel <> 'aniversariante' and aniversariante_id is null)
+      case when papel = 'aniversariante'
+           then aniversariante_id is not null and aniversariante_id between 1 and 3
+           else aniversariante_id is null
+      end
     ),
 
   -- nome é obrigatório só para quem preencheu o formulário
