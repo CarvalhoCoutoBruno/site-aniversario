@@ -1,14 +1,14 @@
 # Regras de Negócio — Site Aniversário
 
 > Especificação para orientar o desenvolvimento (RSVP + estimativa de compra + rateio de custo).
-> Versão 4 — decisões fechadas. Rateio pela lista de confirmados; presença não afeta nada (sem `compareceu`). Serve de handoff para o Claude Code.
+> Versão 5 — rateio corrigido: **quem paga são os 3 aniversariantes**, e o consumo de cada convidado é bancado por quem o convidou (`convidado_por`). Serve de handoff para o Claude Code.
 
 ## 1. Objetivo dos dados
 
 Todo dado coletado existe para alimentar **dois cálculos**:
 
 1. **Estimativa (pré-festa)** — quanto comprar de chopp, refri, água e quantas pizzas (adulto/criança), para passar pro homem do chopp e pro homem da pizza.
-2. **Rateio (fechamento)** — quanto cada convidado deve pagar, com base no **custo real** do que foi comprado, dividido de forma **justa por consumo**.
+2. **Rateio (fechamento)** — quanto cada **aniversariante** deve pagar, com base no **custo real** do que foi comprado. Os convidados **não pagam**: o consumo de cada convidado é bancado pelo(s) aniversariante(s) que o convidou.
 
 ---
 
@@ -21,7 +21,7 @@ Todo dado coletado existe para alimentar **dois cálculos**:
 - `criado_em`
 - `nome_principal` — nome de quem preencheu (obrigatório)
 - `contato` — WhatsApp/e-mail do principal (obrigatório; é por onde o rateio vira cobrança e a chave de deduplicação)
-- `convidado_por` — quais dos 3 aniversariantes convidaram (**múltipla escolha**, 1 a 3); vale para o grupo inteiro
+- `convidado_por` — quais dos 3 aniversariantes convidaram (`smallint[]`, valores em {1,2,3}, **múltipla escolha**, 1 a 3, sem repetir); vale para o grupo inteiro. **É a CHAVE do rateio** (ver §4), não é informativo.
 - `observacoes` — texto livre opcional (ex.: alergia, restrição)
 
 ### 2.2 `pessoas` — unidade de consumo (FK para `rsvps`)
@@ -32,6 +32,7 @@ Todo dado coletado existe para alimentar **dois cálculos**:
 - `bebe_agua`, `bebe_refri`, `bebe_chopp` — booleanos (**múltipla**)
 - `come_pizza` — booleano
 - `papel` — principal | acompanhante | **aniversariante**
+- `aniversariante_id` — 1/2/3 **só** para `papel='aniversariante'` (null nos demais); liga a linha pagante ao `convidado_por` e aos nomes do `config.js` (índice+1: Bruno=1, Braz=2, Bocão=3)
 
 ### 2.3 `config` — valores únicos (linha única, editável no admin)
 **Preços:**
@@ -80,54 +81,64 @@ pizza_criancas = nº de crianças que comem pizza
 ```
 Custo estimado (referência antes de comprar): cada volume × seu preço + pizzas × preço por tipo.
 
-### 4.2 Fechamento (custo real) — para cobrar
-**População = todos os confirmados no prazo.** Presença/ausência não filtra nada: quem
-confirmou paga sua parte, tenha ido ou não (o custo já está comprometido — não há como
-devolver barril). Estimativa e fechamento usam exatamente a mesma população; diferem só
-em *litros estimados × preço* (estimativa) versus *custo real ÷ consumidores* (fechamento).
+### 4.2 Fechamento (custo real) — quem paga são os aniversariantes
+**Quem paga:** só os 3 aniversariantes. Os convidados **não pagam nada** — o consumo de
+cada convidado é bancado por quem o convidou (`convidado_por`), dividido igualmente quando
+há mais de um. Cada aniversariante paga **100% do próprio** consumo.
 
-Admin lança o custo real de cada bebida. Como a taxa de consumo é uniforme por pessoa,
-o custo real de cada bebida é dividido **igualmente entre quem a consumiu**:
-```
-custo_chopp_por_pessoa = custo_real_chopp / (nº de pessoas que bebem chopp)
-custo_refri_por_pessoa = custo_real_refri / (nº de pessoas que bebem refri)
-custo_agua_por_pessoa  = custo_real_agua  / (nº de pessoas que bebem água)
-```
-Pizza é por cabeça (sem sobra): cada pessoa que come pizza paga `preco_pizza_adulto` ou `preco_pizza_crianca`.
+**Atribuição — por pessoa que consome o item (a "unidade"):**
+- Convidado (e acompanhante, que herda o `convidado_por` do grupo): 1 unidade dividida
+  entre os aniversariantes do `convidado_por` (ex.: `[1,3]` → 0,5 pra cada um).
+- Aniversariante: 1 unidade inteira pra ele mesmo.
 
-> A sobra do barril de chopp fica embutida no custo real e é rateada só entre quem bebe chopp.
-
-### 4.3 Conta por pessoa e por grupo
+**Bebidas (chopp / refri / água)** — custo real do item dividido pelo total de consumidores dele:
 ```
-conta_da_pessoa = (chopp? custo_chopp_por_pessoa:0) + (refri? custo_refri_por_pessoa:0)
-                + (água?  custo_agua_por_pessoa:0)  + (pizza? preco_pizza_do_tipo:0)
-conta_do_grupo  = soma das pessoas do grupo   (o principal paga pelo grupo inteiro)
+C_item = custo_real_item / (total de pessoas que consomem o item)   # aniversariantes + convidados
+unidades(aniv k, item) = (1 se k consome o item)
+                       + Σ convidados que consomem o item: peso 1/|convidado_por| se k ∈ convidado_por
+conta_item(aniv k) = C_item × unidades(aniv k, item)
 ```
-**Aniversariantes pagam a própria parte**, como qualquer pessoa.
-Validação: a soma de todas as contas de grupo deve bater com o custo real total gasto.
+**Pizza** — preço por cabeça, atribuído da mesma forma (sem dividir por total):
+```
+conta_pizza(aniv k) = Σ pessoas que comem pizza atribuídas a k (mesmo peso) × preco_pizza(tipo)
+```
+Exemplo (chopp): 5 convidados só do Bruno + 1 convidado dividido Bruno/Braz + o próprio Bruno,
+todos bebem chopp → unidades do Bruno = 5 + 0,5 + 1 = **6,5**; conta = 6,5 × C_chopp. O Braz leva os 0,5 restantes daquele convidado.
 
-Divisão por zero (custo real lançado para uma bebida que nenhum confirmado marcou):
-pular aquela bebida — não atribuir a ninguém. O selo de validação fica vermelho sozinho
-(Σ contas ≠ total gasto), sinalizando o provável erro de digitação. Sem tela de aviso.
+### 4.3 Conta por aniversariante e reconciliação
+No fim existem **só 3 contas**: uma por aniversariante.
+```
+conta(aniv k) = Σ_item conta_item(aniv k) + conta_pizza(aniv k)
+```
+**Validação (selo "confere"):** a soma das 3 contas deve bater **exatamente** com o custo real total gasto.
+
+**Centavos:** distribuir cada `custo_real_item` entre os 3 aniversariantes proporcional às
+`unidades` (que podem ser fracionárias, ex. 6,5), em centavos inteiros, com **maior-resto** —
+assim Σ = custo real exato. É o algoritmo que já existe, **generalizado para pesos**
+(não mais divisão igual entre consumidores).
+
+**Divisão por zero** (custo real lançado para um item que ninguém consumiu): pular o item;
+o selo fica vermelho sozinho (Σ ≠ total gasto), sinalizando o erro de lançamento.
 
 ---
 
 ## 5. Área administrativa
 - **Login** protegido (ver segurança).
-- **Cadastro dos 3 aniversariantes** como consumidores.
+- **Cadastro dos 3 aniversariantes** como consumidores (com `aniversariante_id` 1/2/3).
 - **Config** de preços, taxas e **prazo de confirmação** (editável).
 - **Estimativa**: volumes + pizzas + custo aproximado.
-- **Fechamento**: lançar custo real → rateio final por grupo, com a validação de que a soma bate.
+- **Fechamento**: lançar custo real → rateio final **por aniversariante** (3 contas), com a validação de que a soma bate.
 - **Lista de confirmações** (grupos e pessoas).
 - **Gestão de fotos** do carrossel.
 
 ---
 
 ## 6. Segurança (Supabase) — CRÍTICO
-- RLS de leitura/exclusão amarrado ao **UID do organizador** (`auth.uid() = '<uid-admin>'`), **nunca** ao papel `authenticated`.
+- RLS de leitura/exclusão amarrado aos admins via função **`is_admin()`** (tabela `admins` com os UIDs; ver §8), **nunca** ao papel genérico `authenticated`.
 - **Desligar o cadastro público** (sign-up) no Supabase Auth.
-- `rsvps` e `pessoas`: `insert` liberado para visitante anônimo; `select`/`delete` só admin.
-- **Insert atômico**: gravar grupo + pessoas via função Postgres (RPC `security definer`) numa transação — evita RSVP meio-salvo e centraliza o RLS de insert.
+- `rsvps` e `pessoas`: o anon **não** tem policy direta — escreve **só** via RPC `criar_rsvp` (`security definer`); `select`/`delete` só admin.
+- **Insert atômico**: gravar grupo + pessoas via `criar_rsvp` numa transação — evita RSVP meio-salvo e centraliza a escrita anônima.
+- Leitura pública mínima do anon: só o RPC `status_rsvp()` (devolve `{aberto, prazo}`), pro formulário saber se ainda dá pra confirmar.
 - Storage (bucket `fotos`): **leitura pública**, **escrita só admin** (mesma regra de UID).
 - Chave anon é pública por natureza (ok no repo). Chave `service_role` **nunca** vai pro repositório.
 
@@ -137,3 +148,11 @@ pular aquela bebida — não atribuir a ninguém. O selo de validação fica ver
 - **Editar RSVP**: como o anon não lê, aceitar **reenvio** e deduplicar pelo `contato` (vale o mais recente).
 - **Countdown**: gravar a data com offset (`-03:00`) para a contagem não variar com o fuso de quem abre.
 - **README**: remover a instrução obsoleta de publicar no Netlify (hoje é GitHub Pages).
+
+---
+
+## 8. Admins (acesso à área administrativa)
+- Tabela **`admins`** (uid, nome) + função **`is_admin()`** (SECURITY DEFINER, STABLE); as policies usam `is_admin()`.
+- Admin ≠ aniversariante ≠ pagante: são eixos independentes. Adicionar admin = inserir uma linha (contas criadas manualmente no painel, sign-up público desligado).
+- Admins atuais: Bruno, Braz, Bocão (os 3 aniversariantes) e **Rosaura** (organizadora, **não** é aniversariante).
+- Rosaura é admin **e** convidada normal (RSVP pelo formulário, consumo bancado por quem a convidou). Não tem tratamento especial de pagamento — como todo convidado, ela não paga; quem convidou paga.

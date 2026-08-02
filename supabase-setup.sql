@@ -1,25 +1,93 @@
 -- =============================================================
 --  SITE ANIVERSÁRIO — schema completo
---  Rode UMA VEZ no Supabase (SQL Editor > New query > cole tudo > Run)
+--  Rode no Supabase (SQL Editor > New query > cole tudo > Run)
 --
---  UID do organizador já preenchido: 406ce6c3-f700-4393-b587-1322f04d1564
---  (usuário criado em Authentication > Users, com Auto Confirm).
+--  Este arquivo é a FONTE DA VERDADE do schema. Não existem migrations
+--  de errata: quando o modelo muda, corrige-se aqui e recria-se do zero.
+--  O bloco de RESET abaixo se recusa a rodar se já houver confirmação
+--  salva, para não apagar dado real por engano.
 --
---  ⚠️ DEPOIS DE RODAR:
+--  ⚠️ DEPOIS DE RODAR (uma vez só, no painel):
 --   Authentication > Sign In / Providers > Email
 --   > desligue "Allow new users to sign up"
 --
---  Se um dia o usuário admin for recriado, o UID muda: troque as 12
---  ocorrências nas policies abaixo, senão o painel fica inacessível.
 --  Detalhes e justificativas: docs/ESPECIFICACAO-TECNICA.md
 -- =============================================================
 
 create extension if not exists pgcrypto;
 
 -- =============================================================
+--  RESET — recria o schema do zero.
+--  Trava de segurança: aborta se a tabela rsvps já tiver dados.
+--  Se o descarte for mesmo intencional, apague as linhas antes.
+-- =============================================================
+do $$
+begin
+  if to_regclass('public.rsvps') is not null then
+    if (select count(*) from public.rsvps) > 0 then
+      raise exception
+        'ABORTADO: public.rsvps tem % confirmacao(oes). Recriar o schema apagaria dado real. Apague manualmente antes se for intencional.',
+        (select count(*) from public.rsvps);
+    end if;
+  end if;
+end $$;
+
+drop function if exists public.criar_rsvp(text, text, smallint[], text, jsonb);
+drop function if exists public.status_rsvp();
+drop table if exists public.pessoas;
+drop table if exists public.rsvps;
+drop table if exists public.config;
+-- admins e is_admin() sobrevivem ao reset: guardam os UIDs das contas
+-- do painel, que não têm nada a ver com o modelo de dados da festa.
+
+-- =============================================================
+--  ADMINS — quem entra na área administrativa
+--  Eixo independente de "aniversariante" e de "quem paga".
+--  Adicionar admin = inserir uma linha (o sign-up público é desligado,
+--  então a conta em si é criada à mão em Authentication > Users).
+-- =============================================================
+create table if not exists public.admins (
+  uid       uuid primary key,
+  nome      text not null,
+  criado_em timestamptz not null default now()
+);
+
+-- SECURITY DEFINER para ler admins sem esbarrar na RLS da própria
+-- tabela (evita recursão de policy). STABLE porque o resultado não
+-- muda dentro da mesma query.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select exists (select 1 from public.admins a where a.uid = auth.uid())
+$$;
+
+revoke all on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+
+alter table public.admins enable row level security;
+
+-- admin enxerga a lista; ninguém escreve pela API (só por SQL)
+drop policy if exists "admin le admins" on public.admins;
+create policy "admin le admins" on public.admins
+  for select to authenticated
+  using (public.is_admin());
+
+insert into public.admins (uid, nome) values
+  ('406ce6c3-f700-4393-b587-1322f04d1564', 'Bruno')
+on conflict (uid) do nothing;
+
+-- Para liberar os demais (Braz, Bocão, Rosaura): crie a conta em
+-- Authentication > Users (com Auto Confirm), copie o UID e rode:
+--   insert into public.admins (uid, nome) values ('<UID>', '<Nome>');
+
+-- =============================================================
 --  NORMALIZAÇÃO DE CONTATO (base do dedupe por reenvio)
 --  E-mail  -> minúsculo, sem espaços
---  Telefone-> só os dígitos: "(11) 99999-9999" == "11999999999"
+--  Telefone-> só os dígitos: "(51) 99999-9999" == "51999999999"
 -- =============================================================
 create or replace function public.normaliza_contato(p text)
 returns text
@@ -36,9 +104,9 @@ $$;
 
 -- =============================================================
 --  VALIDAÇÃO DE convidado_por
---  Guardamos IDs estáveis (1, 2, 3) que apontam para as posições de
---  festa.aniversariantes no config.js — não o nome. Assim dá para
---  renomear um aniversariante sem quebrar registro nem estatística.
+--  Guarda IDs estáveis (1, 2, 3) apontando para as posições de
+--  festa.aniversariantes no config.js — não o nome. É a CHAVE do
+--  rateio: define qual aniversariante banca o consumo do grupo.
 --  Regras: 1 a 3 itens, todos em {1,2,3}, sem repetição.
 --  (função auxiliar porque CHECK não aceita subconsulta direto)
 -- =============================================================
@@ -57,7 +125,7 @@ $$;
 --  TABELA: rsvps — o grupo (uma linha por envio do formulário)
 --  Aniversariantes NÃO geram linha aqui.
 -- =============================================================
-create table if not exists public.rsvps (
+create table public.rsvps (
   id             uuid primary key default gen_random_uuid(),
   criado_em      timestamptz not null default now(),
   nome_principal text not null check (length(btrim(nome_principal)) between 1 and 120),
@@ -67,25 +135,28 @@ create table if not exists public.rsvps (
   observacoes    text check (observacoes is null or length(observacoes) <= 500)
 );
 
-create index if not exists rsvps_criado_em_idx    on public.rsvps (criado_em desc);
-create index if not exists rsvps_contato_norm_idx on public.rsvps (contato_norm);
+create index rsvps_criado_em_idx    on public.rsvps (criado_em desc);
+create index rsvps_contato_norm_idx on public.rsvps (contato_norm);
 
 -- =============================================================
 --  TABELA: pessoas — unidade de consumo
 --  Principal, acompanhante e aniversariante são todos linhas aqui.
 -- =============================================================
-create table if not exists public.pessoas (
-  id         uuid primary key default gen_random_uuid(),
-  rsvp_id    uuid references public.rsvps(id) on delete cascade,
-  nome       text,
-  tipo       text not null check (tipo in ('adulto', 'crianca')),
-  bebe_agua  boolean not null default false,
-  bebe_refri boolean not null default false,
-  bebe_chopp boolean not null default false,
-  come_pizza boolean not null default false,
-  papel      text not null check (papel in ('principal', 'acompanhante', 'aniversariante')),
-  ordem      smallint not null default 0,
-  criado_em  timestamptz not null default now(),
+create table public.pessoas (
+  id                uuid primary key default gen_random_uuid(),
+  rsvp_id           uuid references public.rsvps(id) on delete cascade,
+  nome              text,
+  tipo              text not null check (tipo in ('adulto', 'crianca')),
+  bebe_agua         boolean not null default false,
+  bebe_refri        boolean not null default false,
+  bebe_chopp        boolean not null default false,
+  come_pizza        boolean not null default false,
+  papel             text not null check (papel in ('principal', 'acompanhante', 'aniversariante')),
+  -- 1/2/3 só para aniversariante: é o elo entre convidado_por e a
+  -- linha pagante. Mesmos valores que convidado_por usa.
+  aniversariante_id smallint,
+  ordem             smallint not null default 0,
+  criado_em         timestamptz not null default now(),
 
   -- regra dura: criança não bebe chopp
   constraint chopp_nao_para_crianca
@@ -100,23 +171,34 @@ create table if not exists public.pessoas (
       (papel <> 'aniversariante' and rsvp_id is not null)
     ),
 
+  -- aniversariante_id existe se e somente se papel = 'aniversariante'
+  constraint aniversariante_id_coerente
+    check (
+      (papel =  'aniversariante' and aniversariante_id between 1 and 3) or
+      (papel <> 'aniversariante' and aniversariante_id is null)
+    ),
+
   -- nome é obrigatório só para quem preencheu o formulário
   constraint principal_tem_nome
     check (papel <> 'principal' or length(btrim(coalesce(nome, ''))) > 0)
 );
 
-create index if not exists pessoas_rsvp_idx on public.pessoas (rsvp_id);
+create index pessoas_rsvp_idx on public.pessoas (rsvp_id);
 
 -- no máximo um principal por grupo
-create unique index if not exists pessoas_um_principal_por_grupo
+create unique index pessoas_um_principal_por_grupo
   on public.pessoas (rsvp_id) where papel = 'principal';
+
+-- cada aniversariante cadastrado uma única vez
+create unique index pessoas_aniversariante_id_unico
+  on public.pessoas (aniversariante_id) where papel = 'aniversariante';
 
 -- =============================================================
 --  TABELA: config — linha única, editável pelo painel
 --  custo_real_* nasce NULL de propósito:
 --  NULL = "ainda não fechei"; 0 = "não gastei nada".
 -- =============================================================
-create table if not exists public.config (
+create table public.config (
   id smallint primary key default 1 check (id = 1),
 
   -- preços de referência (estimativa)
@@ -225,6 +307,8 @@ begin
   )
   returning id into v_id;
 
+  -- aniversariante_id fica NULL: a constraint aniversariante_id_coerente
+  -- garante que ninguém vindo do formulário público é pagante.
   insert into public.pessoas
     (rsvp_id, nome, tipo, bebe_agua, bebe_refri, bebe_chopp, come_pizza, papel, ordem)
   select
@@ -268,19 +352,17 @@ grant execute on function public.status_rsvp() to anon, authenticated;
 
 -- =============================================================
 --  HIGIENE: o anon só deve executar criar_rsvp e status_rsvp.
---  As duas funções auxiliares ganham EXECUTE para PUBLIC por default
---  do Postgres. Não são brecha (são validadores puros, sem acesso a
---  dado), mas nada as chama a partir do anon:
---   - normaliza_contato roda na coluna gerada, com o privilégio do dono
---   - convidado_por_valido roda no CHECK da tabela
---   - ambas são chamadas por criar_rsvp, que é security definer
+--  As auxiliares ganham EXECUTE para PUBLIC por default do Postgres.
+--  Não são brecha (validadores puros, sem acesso a dado), mas nada as
+--  chama a partir do anon: rodam na coluna gerada, no CHECK da tabela
+--  e dentro do criar_rsvp, sempre com o privilégio do dono.
 -- =============================================================
 revoke all on function public.normaliza_contato(text) from public, anon, authenticated;
 revoke all on function public.convidado_por_valido(smallint[]) from public, anon, authenticated;
 
 -- =============================================================
---  RLS — leitura/escrita administrativa amarrada ao UID do organizador.
---  NUNCA use o papel genérico "authenticated" aqui.
+--  RLS — acesso administrativo via is_admin().
+--  NUNCA use o papel genérico "authenticated" como autorização.
 -- =============================================================
 alter table public.rsvps   enable row level security;
 alter table public.pessoas enable row level security;
@@ -290,47 +372,47 @@ alter table public.config  enable row level security;
 drop policy if exists "admin le rsvps" on public.rsvps;
 create policy "admin le rsvps" on public.rsvps
   for select to authenticated
-  using (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (public.is_admin());
 
 drop policy if exists "admin apaga rsvps" on public.rsvps;
 create policy "admin apaga rsvps" on public.rsvps
   for delete to authenticated
-  using (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (public.is_admin());
 
 -- ---- pessoas ----
 drop policy if exists "admin le pessoas" on public.pessoas;
 create policy "admin le pessoas" on public.pessoas
   for select to authenticated
-  using (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (public.is_admin());
 
 -- insert direto serve para cadastrar os 3 aniversariantes pelo painel
 drop policy if exists "admin cadastra pessoas" on public.pessoas;
 create policy "admin cadastra pessoas" on public.pessoas
   for insert to authenticated
-  with check (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  with check (public.is_admin());
 
 drop policy if exists "admin edita pessoas" on public.pessoas;
 create policy "admin edita pessoas" on public.pessoas
   for update to authenticated
-  using (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid)
-  with check (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (public.is_admin())
+  with check (public.is_admin());
 
 drop policy if exists "admin apaga pessoas" on public.pessoas;
 create policy "admin apaga pessoas" on public.pessoas
   for delete to authenticated
-  using (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (public.is_admin());
 
 -- ---- config ----
 drop policy if exists "admin le config" on public.config;
 create policy "admin le config" on public.config
   for select to authenticated
-  using (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (public.is_admin());
 
 drop policy if exists "admin edita config" on public.config;
 create policy "admin edita config" on public.config
   for update to authenticated
-  using (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid)
-  with check (auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- =============================================================
 --  STORAGE — bucket "fotos": leitura pública, escrita só admin
@@ -347,9 +429,9 @@ create policy "fotos leitura publica" on storage.objects
 drop policy if exists "admin sobe fotos" on storage.objects;
 create policy "admin sobe fotos" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'fotos' and auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  with check (bucket_id = 'fotos' and public.is_admin());
 
 drop policy if exists "admin apaga fotos" on storage.objects;
 create policy "admin apaga fotos" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'fotos' and auth.uid() = '406ce6c3-f700-4393-b587-1322f04d1564'::uuid);
+  using (bucket_id = 'fotos' and public.is_admin());

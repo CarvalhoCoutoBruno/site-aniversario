@@ -5,23 +5,29 @@
    window.CONFIG. Recebe dados, devolve números. É o que permite
    testá-lo sem navegador e sem banco (ver tests/calculo.test.js).
 
-   ⚠️ DINHEIRO SEMPRE EM CENTAVOS (inteiro).
-   Divisão de custo entre pessoas gera dízima; em float as contas não
-   fecham com o gasto real. Aqui tudo é inteiro e a sobra é distribuída
-   pelo método do maior resto (ver ratearCentavos).
+   QUEM PAGA: só os 3 aniversariantes. Convidado não paga nada — o
+   consumo dele é bancado por quem o convidou (convidado_por do grupo),
+   dividido igualmente quando há mais de um. Cada aniversariante paga
+   100% do próprio consumo. No fim existem só 3 contas.
 
-   População: a LISTA DE CONFIRMADOS no prazo, e só. Presença na festa
-   não filtra nada — quem confirmou paga a parte dele, tendo ido ou
-   não (o custo já está comprometido; não se devolve barril).
-   Estimativa e fechamento usam exatamente a mesma população.
+   ⚠️ DINHEIRO SEMPRE EM CENTAVOS (inteiro).
+   Divisão de custo gera dízima; em float as contas não fecham com o
+   gasto real. Aqui tudo é inteiro e a sobra é distribuída pelo método
+   do maior resto (ver ratearCentavos).
 
    Entradas:
      pessoas[] — { id, rsvp_id, nome, tipo, bebe_agua, bebe_refri,
-                   bebe_chopp, come_pizza, papel }
+                   bebe_chopp, come_pizza, papel, aniversariante_id }
+     grupos[]  — { id, convidado_por: [1..3], nome_principal, contato }
      config    — mesma forma da tabela `config` (reais, não centavos)
    ============================================================= */
 (function (raiz) {
   "use strict";
+
+  // Peso interno em SEXTOS de pessoa. |convidado_por| ∈ {1,2,3}, então
+  // 6/n é sempre inteiro (6, 3 ou 2) — o rateio roda em aritmética
+  // inteira do começo ao fim, sem erro de ponto flutuante.
+  const SEXTOS = 6;
 
   /* ---------- conversão reais <-> centavos ---------- */
 
@@ -42,15 +48,18 @@
       .format(paraReais(centavos));
   }
 
-  /* ---------- seleção de pessoas ---------- */
+  /* ---------- predicados ---------- */
 
   const confirmados = (pessoas) => (pessoas || []).filter(Boolean);
 
   const ehAdulto = (p) => p.tipo === "adulto";
+  const ehAniversariante = (p) => p.papel === "aniversariante";
   const bebeChopp = (p) => !!p.bebe_chopp && ehAdulto(p); // criança nunca conta
   const bebeRefri = (p) => !!p.bebe_refri;
   const bebeAgua = (p) => !!p.bebe_agua;
   const comePizza = (p) => !!p.come_pizza;
+
+  const CONSOME = { chopp: bebeChopp, refri: bebeRefri, agua: bebeAgua };
 
   /* ---------- contagens ---------- */
 
@@ -76,7 +85,10 @@
     return c;
   }
 
-  /* ---------- estimativa (pré-festa) ---------- */
+  /* ---------- estimativa (pré-festa) ----------
+     NÃO muda com o modelo de rateio: conta todas as pessoas
+     confirmadas, aniversariantes inclusive. Serve para saber quanto
+     comprar, não quem paga. */
 
   function estimativa(pessoas, config) {
     const c = contagens(pessoas);
@@ -110,26 +122,72 @@
     return Math.round(n * 1000) / 1000;
   }
 
-  /* ---------- rateio: o coração do arredondamento ----------
-     Divide `totalCentavos` entre `ids` de forma que a soma das partes
-     seja EXATAMENTE o total. Método do maior resto:
-       base  = piso da divisão
-       resto = o que sobrou (0 <= resto < n)
-       os `resto` primeiros ids (ordenados) pagam 1 centavo a mais.
-     A ordenação por id torna o resultado determinístico: recarregar a
-     tela não muda quem pagou o centavo extra.
+  /* ---------- rateio ponderado: o coração do arredondamento ----------
+     Divide `totalCentavos` entre itens com PESOS (inteiros), de forma
+     que a soma das partes seja EXATAMENTE o total. Maior resto:
+       exato_i = total × peso_i / somaPesos
+       base_i  = piso(exato_i)
+       sobra   = total - Σ base_i
+       os `sobra` itens com maior resto fracionário pagam 1 centavo a mais
+     Empate e ordenação resolvidos por `id` crescente, então o resultado
+     é determinístico: recarregar a tela não muda quem levou o centavo.
+
+     Tudo em inteiros: `num` cabe folgado em Number (total ≤ ~1e8
+     centavos × peso ≤ ~1e5 = 1e13 < 2^53), então piso e resto são
+     exatos, sem depender de tolerância de float.
   --------------------------------------------------------- */
-  function ratearCentavos(totalCentavos, ids) {
+  function ratearCentavos(totalCentavos, itens) {
     const out = new Map();
-    const n = ids.length;
-    if (n === 0) return out;
+    const lista = (itens || []).filter((i) => i.peso > 0);
+    const somaPesos = lista.reduce((s, i) => s + i.peso, 0);
+    if (somaPesos <= 0 || totalCentavos === 0) return out;
 
-    const ordenados = [...ids].sort((a, b) => String(a).localeCompare(String(b)));
-    const base = Math.floor(totalCentavos / n);
-    const resto = totalCentavos - base * n;
+    const calc = lista.map((i) => {
+      const num = totalCentavos * i.peso;
+      let base = Math.floor(num / somaPesos);
+      // correção de borda: garante piso exato mesmo se a divisão em
+      // ponto flutuante cair do lado errado de um inteiro
+      while (base * somaPesos > num) base--;
+      while ((base + 1) * somaPesos <= num) base++;
+      return { id: i.id, base, resto: num - base * somaPesos };
+    });
 
-    ordenados.forEach((id, i) => out.set(id, base + (i < resto ? 1 : 0)));
+    let sobra = totalCentavos - calc.reduce((s, x) => s + x.base, 0);
+
+    // maior resto primeiro; empate pelo id, para ser determinístico
+    const ordem = [...calc].sort(
+      (a, b) => b.resto - a.resto || String(a.id).localeCompare(String(b.id))
+    );
+    for (let i = 0; i < ordem.length; i++) {
+      out.set(ordem[i].id, ordem[i].base + (i < sobra ? 1 : 0));
+    }
     return out;
+  }
+
+  /* ---------- atribuição: quem banca o consumo de quem ---------- */
+
+  // Devolve [{ id: aniversariante_id, peso }] em sextos de pessoa.
+  // Aniversariante: 6 sextos (1 pessoa inteira) para si mesmo.
+  // Convidado/acompanhante: 6/n para cada um dos n do convidado_por.
+  // A chave `null` acumula consumo sem dono (grupo sem convidado_por
+  // válido) — não deveria existir, mas se existir é preciso que o
+  // dinheiro NÃO seja redistribuído: ele some do rateio e derruba o selo.
+  function pesosDaPessoa(p, grupos) {
+    if (ehAniversariante(p)) {
+      return p.aniversariante_id ? [{ id: p.aniversariante_id, peso: SEXTOS }] : [{ id: null, peso: SEXTOS }];
+    }
+    const g = grupos.get(p.rsvp_id);
+    const donos = g && Array.isArray(g.convidado_por) ? g.convidado_por : [];
+    if (!donos.length) return [{ id: null, peso: SEXTOS }];
+    const fatia = SEXTOS / donos.length; // 6, 3 ou 2 — sempre inteiro
+    return donos.map((k) => ({ id: k, peso: fatia }));
+  }
+
+  function acumular(mapa, pesos) {
+    for (const { id, peso } of pesos) {
+      const chave = id === null ? "__sem_dono__" : id;
+      mapa.set(chave, (mapa.get(chave) || 0) + peso);
+    }
   }
 
   /* ---------- fechamento / rateio ---------- */
@@ -145,6 +203,7 @@
   function rateio(pessoas, config, grupos) {
     const cfg = config || {};
     const lista = confirmados(pessoas);
+    const mapaGrupos = new Map((grupos || []).map((g) => [g.id, g]));
 
     const custos = {
       chopp: paraCentavos(cfg.custo_real_chopp),
@@ -157,72 +216,71 @@
       preenchido(cfg.custo_real_refri) &&
       preenchido(cfg.custo_real_agua);
 
-    const consumidores = {
-      chopp: lista.filter(bebeChopp),
-      refri: lista.filter(bebeRefri),
-      agua: lista.filter(bebeAgua),
+    // conta de cada aniversariante, por item
+    const contas = new Map(); // aniversariante_id -> { chopp, refri, agua, pizza }
+    const zera = (k) => {
+      if (!contas.has(k)) contas.set(k, { chopp: 0, refri: 0, agua: 0, pizza: 0 });
+      return contas.get(k);
     };
+    for (const p of lista) if (ehAniversariante(p) && p.aniversariante_id) zera(p.aniversariante_id);
 
-    // Bebida com custo lançado mas sem nenhum confirmado consumindo:
-    // pula, sem dividir por zero. Não some silenciosamente — o custo
-    // continua em custoRealTotal, então Σ contas ≠ total e o selo
-    // `confere` já acusa o erro de digitação sozinho.
-    const partes = {};
-    for (const bebida of ["chopp", "refri", "agua"]) {
-      partes[bebida] = ratearCentavos(
-        custos[bebida],
-        consumidores[bebida].map((p) => p.id)
+    /* --- bebidas: custo real do item distribuído por unidades --- */
+    for (const item of ["chopp", "refri", "agua"]) {
+      const consumidores = lista.filter(CONSOME[item]);
+      // Item com custo lançado e nenhum consumidor: pulado, sem dividir
+      // por zero. O custo segue em custoRealTotal, então Σ ≠ total e o
+      // selo `confere` acusa o erro de lançamento sozinho.
+      if (!consumidores.length) continue;
+
+      const pesos = new Map();
+      for (const p of consumidores) acumular(pesos, pesosDaPessoa(p, mapaGrupos));
+
+      const partes = ratearCentavos(
+        custos[item],
+        [...pesos.entries()].map(([id, peso]) => ({ id, peso }))
       );
+      for (const [id, centavos] of partes) {
+        if (id === "__sem_dono__") continue; // dinheiro sem pagante: some
+        zera(id)[item] += centavos;
+      }
     }
 
-    const porPessoa = new Map();
+    /* --- pizza: preço por cabeça, atribuído com o mesmo peso --- */
+    for (const p of lista) {
+      if (!comePizza(p)) continue;
+      const preco = precoPizza(cfg, p.tipo);
+      if (!preco) continue;
+      const partes = ratearCentavos(preco, pesosDaPessoa(p, mapaGrupos));
+      for (const [id, centavos] of partes) {
+        if (id === "__sem_dono__" || id === null) continue;
+        zera(id).pizza += centavos;
+      }
+    }
+
+    /* --- monta o resultado --- */
+    const nomes = new Map();
+    for (const p of lista) {
+      if (ehAniversariante(p) && p.aniversariante_id) nomes.set(p.aniversariante_id, p.nome || null);
+    }
+
+    const porAniversariante = [...contas.entries()]
+      .map(([id, det]) => ({
+        aniversarianteId: id,
+        nome: nomes.get(id) || `Aniversariante ${id}`,
+        detalhe: det,
+        total: det.chopp + det.refri + det.agua + det.pizza,
+      }))
+      .sort((a, b) => a.aniversarianteId - b.aniversarianteId);
+
+    const totalRateado = porAniversariante.reduce((s, a) => s + a.total, 0);
+
+    // total gasto: bebidas pelo custo real + pizzas pelo preço por cabeça
     let totalPizza = 0;
-    for (const p of lista) {
-      let conta = 0;
-      conta += partes.chopp.get(p.id) || 0;
-      conta += partes.refri.get(p.id) || 0;
-      conta += partes.agua.get(p.id) || 0;
-      if (comePizza(p)) {
-        const pz = precoPizza(cfg, p.tipo);
-        conta += pz;
-        totalPizza += pz;
-      }
-      porPessoa.set(p.id, conta);
-    }
-
-    // agrupa: cada rsvp_id é um grupo; aniversariante (rsvp_id null)
-    // vira grupo de uma pessoa só, pagando a própria parte
-    const infoGrupo = new Map((grupos || []).map((g) => [g.id, g]));
-    const mapa = new Map();
-    for (const p of lista) {
-      const chave = p.rsvp_id || `aniv:${p.id}`;
-      if (!mapa.has(chave)) {
-        const g = p.rsvp_id ? infoGrupo.get(p.rsvp_id) : null;
-        mapa.set(chave, {
-          chave,
-          rsvpId: p.rsvp_id || null,
-          ehAniversariante: !p.rsvp_id,
-          nomePrincipal: g ? g.nome_principal : p.nome || "Aniversariante",
-          contato: g ? g.contato : null,
-          pessoas: [],
-          total: 0,
-        });
-      }
-      const grupo = mapa.get(chave);
-      grupo.pessoas.push({ ...p, conta: porPessoa.get(p.id) || 0 });
-      grupo.total += porPessoa.get(p.id) || 0;
-    }
-
-    const porGrupo = [...mapa.values()].sort((a, b) =>
-      a.nomePrincipal.localeCompare(b.nomePrincipal, "pt-BR")
-    );
-
-    const totalRateado = [...porPessoa.values()].reduce((s, v) => s + v, 0);
+    for (const p of lista) if (comePizza(p)) totalPizza += precoPizza(cfg, p.tipo);
     const custoRealTotal = custos.chopp + custos.refri + custos.agua + totalPizza;
 
     return {
-      porPessoa,
-      porGrupo,
+      porAniversariante,
       totalRateado,
       custoRealTotal,
       fechamentoCompleto,
@@ -235,7 +293,8 @@
   const API = {
     paraCentavos, paraReais, formatarBRL,
     confirmados, contagens, estimativa,
-    ratearCentavos, precoPizza, rateio,
+    ratearCentavos, pesosDaPessoa, precoPizza, rateio,
+    SEXTOS,
   };
 
   if (typeof module === "object" && module.exports) module.exports = API;
