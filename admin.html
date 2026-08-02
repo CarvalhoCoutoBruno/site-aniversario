@@ -39,6 +39,50 @@
       </div>
     </div>
 
+    <!-- Config: preços, taxas e prazo -->
+    <details class="admin-secao config-secao" id="configSecao">
+      <summary><h2>Preços, taxas e prazo ⚙️</h2></summary>
+
+      <form id="configForm" novalidate>
+        <fieldset class="config-bloco">
+          <legend>Preços de referência (R$)</legend>
+          <p class="campo-dica">
+            Servem para a estimativa de custo. Use vírgula para os centavos: <code>18,00</code>.
+          </p>
+          <div class="config-grid" id="configPrecos"></div>
+        </fieldset>
+
+        <fieldset class="config-bloco">
+          <legend>Consumo estimado por pessoa (litros)</legend>
+          <p class="campo-dica">
+            Transformam o "quem bebe o quê" em litros a comprar. Taxa zerada faz a estimativa
+            daquela bebida dar zero.
+          </p>
+          <div class="config-grid" id="configTaxas"></div>
+        </fieldset>
+
+        <fieldset class="config-bloco">
+          <legend>Prazo de confirmação</legend>
+          <div class="config-grid">
+            <label class="config-campo">
+              <span>Confirmações até o fim do dia</span>
+              <input type="date" id="cfgPrazo" />
+            </label>
+          </div>
+          <p class="campo-dica">
+            Vazio = sem limite. Depois dessa data o formulário público fecha e o envio é
+            recusado pelo banco.
+          </p>
+        </fieldset>
+
+        <div class="config-acoes">
+          <button type="submit" class="btn btn-primary" id="btnSalvarConfig">Salvar configuração</button>
+          <small class="campo-dica" id="configAtualizado"></small>
+        </div>
+        <p class="msg-toast" id="configMsg"></p>
+      </form>
+    </details>
+
     <!-- Estatísticas -->
     <div class="stats" id="stats"></div>
 
@@ -76,6 +120,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
+  <script src="js/calculo.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

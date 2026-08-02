@@ -289,3 +289,22 @@ tr:last-child td { border-bottom: none; }
 .prazo-aberto {
   text-align: center; font-weight: 600; color: var(--ink-soft); margin: 0 0 .25rem;
 }
+
+/* ---- Fatia 2: tela de config ---- */
+.config-secao > summary { cursor: pointer; list-style: none; }
+.config-secao > summary::-webkit-details-marker { display: none; }
+.config-secao > summary h2 { display: inline; }
+.config-secao > summary::before { content: "▸ "; color: var(--brand); font-weight: 700; }
+.config-secao[open] > summary::before { content: "▾ "; }
+
+.config-bloco { border: 1.5px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; margin: 1rem 0 0; }
+.config-bloco legend { font-weight: 700; padding: 0 .4rem; }
+
+.config-grid {
+  display: grid; gap: .8rem; margin-top: .6rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.config-campo { display: flex; flex-direction: column; gap: .3rem; }
+.config-campo span { font-size: .85rem; font-weight: 600; }
+
+.config-acoes { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1.2rem; }
