@@ -28,7 +28,7 @@
   });
 
   $("#btnSair").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
-  $("#btnAtualizar").addEventListener("click", () => { carregarConfig(); carregarRSVPs(); carregarFotos(); });
+  $("#btnAtualizar").addEventListener("click", () => { carregarConfig(); carregarAniversariantes(); carregarRSVPs(); carregarFotos(); });
 
   // já logado?
   sb.auth.getSession().then(({ data }) => { if (data.session) mostrarPainel(); });
@@ -37,6 +37,7 @@
     $("#loginBox").hidden = true;
     $("#painel").hidden = false;
     carregarConfig();
+    carregarAniversariantes();
     carregarRSVPs();
     carregarFotos();
     prepararUpload();
@@ -198,6 +199,181 @@
     if (el) el.focus();
   }
 
+  /* ================= ANIVERSARIANTES como consumidores =================
+     Linhas de `pessoas` com papel='aniversariante', rsvp_id NULL e
+     aniversariante_id 1/2/3. É o que dá ao rateio o consumo próprio de
+     cada um — sem elas, a Fatia 4 estima sem eles e a 5 fica sem pagante.
+
+     ⚠️ NÃO usar .upsert(): o índice único de aniversariante_id é PARCIAL
+     (where papel='aniversariante'), e o ON CONFLICT precisa repetir o
+     predicado para inferir um índice parcial. O supabase-js só emite
+     "on conflict (coluna)", forma que o Postgres rejeita com
+     "no unique or exclusion constraint matching". Por isso o caminho é
+     ler as linhas e decidir update ou insert.                         */
+
+  const BEBIDAS_ANIV = [
+    ["bebe_agua", "Água"],
+    ["bebe_refri", "Refrigerante"],
+    ["bebe_chopp", "Chopp"],
+  ];
+
+  // aniversariante_id -> id da linha em `pessoas` (ausente = ainda não cadastrado)
+  const linhaDoAniversariante = new Map();
+
+  function montarBlocosAniversariantes() {
+    $("#anivBlocos").innerHTML = C.aniversariantes
+      .map((nome, i) => {
+        const k = i + 1;
+        return `
+        <fieldset class="config-bloco aniv-bloco" data-aniv="${k}">
+          <legend>${esc(nome)} <small>(id ${k})</small></legend>
+          <div class="pessoa-prefs">
+            <div class="pref-grupo">
+              <span class="pref-titulo">🎂 Idade</span>
+              <div class="pref-chips a-tipo">
+                <label class="chip marcado">
+                  <input type="radio" name="aniv-tipo-${k}" value="adulto" checked /><span>Adulto</span>
+                </label>
+                <label class="chip">
+                  <input type="radio" name="aniv-tipo-${k}" value="crianca" /><span>Criança</span>
+                </label>
+              </div>
+            </div>
+            <div class="pref-grupo">
+              <span class="pref-titulo">🥤 Bebidas</span>
+              <div class="pref-chips a-bebidas">
+                ${BEBIDAS_ANIV.map(([col, rotulo]) => `
+                  <label class="chip${col === "bebe_chopp" ? " a-chip-chopp" : ""}">
+                    <input type="checkbox" data-col="${col}" /><span>${esc(rotulo)}</span>
+                  </label>`).join("")}
+              </div>
+              <small class="campo-dica a-aviso-chopp" hidden>Chopp só para adultos.</small>
+            </div>
+            <div class="pref-grupo">
+              <span class="pref-titulo">🍕 Comida</span>
+              <div class="pref-chips a-comida">
+                <label class="chip"><input type="checkbox" data-col="come_pizza" /><span>Pizza</span></label>
+              </div>
+            </div>
+          </div>
+        </fieldset>`;
+      })
+      .join("");
+
+    $$(".aniv-bloco").forEach((bloco) => {
+      ativarChips(bloco);
+      ligarRegraChoppAniv(bloco);
+    });
+  }
+
+  /* Espelho de UX da constraint chopp_nao_para_crianca. A fonte da
+     verdade da regra é o banco; isto só evita o erro cru na tela. */
+  function ligarRegraChoppAniv(bloco) {
+    const chopp = bloco.querySelector('[data-col="bebe_chopp"]');
+    const chip = bloco.querySelector(".a-chip-chopp");
+    const aviso = bloco.querySelector(".a-aviso-chopp");
+    function aplicar() {
+      const ehCrianca = bloco.querySelector('.a-tipo input[value="crianca"]').checked;
+      chopp.disabled = ehCrianca;
+      chip.classList.toggle("desabilitado", ehCrianca);
+      aviso.hidden = !ehCrianca;
+      if (ehCrianca && chopp.checked) {
+        chopp.checked = false;
+        chip.classList.remove("marcado");
+      }
+    }
+    $$(".a-tipo input", bloco).forEach((r) => r.addEventListener("change", aplicar));
+    aplicar();
+  }
+
+  function marcarChip(input, ligado) {
+    input.checked = ligado;
+    input.closest(".chip").classList.toggle("marcado", ligado);
+  }
+
+  async function carregarAniversariantes() {
+    montarBlocosAniversariantes();
+    linhaDoAniversariante.clear();
+
+    const { data, error } = await sb.from("pessoas").select("*").eq("papel", "aniversariante");
+    if (error) {
+      console.error(error);
+      return toastAniv("Não consegui carregar os aniversariantes.", "err");
+    }
+
+    for (const p of data || []) {
+      if (!p.aniversariante_id) continue;
+      linhaDoAniversariante.set(p.aniversariante_id, p.id);
+      const bloco = $(`.aniv-bloco[data-aniv="${p.aniversariante_id}"]`);
+      if (!bloco) continue; // linha órfã: id sem nome correspondente no config.js
+
+      const radio = bloco.querySelector(`.a-tipo input[value="${p.tipo}"]`);
+      if (radio) { radio.checked = true; $$(".a-tipo .chip", bloco).forEach((c) => c.classList.remove("marcado")); radio.closest(".chip").classList.add("marcado"); }
+      for (const [col] of BEBIDAS_ANIV) marcarChip(bloco.querySelector(`[data-col="${col}"]`), !!p[col]);
+      marcarChip(bloco.querySelector('[data-col="come_pizza"]'), !!p.come_pizza);
+      ligarRegraChoppAniv(bloco); // reaplica: se veio criança, o chopp precisa travar
+    }
+  }
+
+  function toastAniv(msg, classe) {
+    const el = $("#anivMsg");
+    el.className = "msg-toast" + (classe ? " " + classe : "");
+    el.textContent = msg;
+  }
+
+  $("#anivForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("#btnSalvarAniv");
+    toastAniv("");
+    btn.disabled = true;
+    const rotulo = btn.textContent;
+    btn.textContent = "Salvando...";
+
+    let erro = null;
+    for (const bloco of $$(".aniv-bloco")) {
+      const k = Number(bloco.dataset.aniv);
+      const tipo = bloco.querySelector('.a-tipo input[value="crianca"]').checked ? "crianca" : "adulto";
+      const registro = {
+        // nome sempre do config.js: renomear lá propaga aqui no próximo save
+        nome: C.aniversariantes[k - 1],
+        tipo,
+        papel: "aniversariante",
+        aniversariante_id: k,
+        come_pizza: bloco.querySelector('[data-col="come_pizza"]').checked,
+      };
+      for (const [col] of BEBIDAS_ANIV) registro[col] = bloco.querySelector(`[data-col="${col}"]`).checked;
+      if (tipo === "crianca") registro.bebe_chopp = false; // cinto e suspensório
+      // rsvp_id fica de fora de propósito: aniversariante vive sem grupo
+      // (constraint aniversariante_sem_grupo).
+
+      const existente = linhaDoAniversariante.get(k);
+      const r = existente
+        ? await sb.from("pessoas").update(registro).eq("id", existente)
+        : await sb.from("pessoas").insert(registro);
+      if (r.error) { erro = r.error; break; }
+    }
+
+    btn.disabled = false;
+    btn.textContent = rotulo;
+
+    if (erro) {
+      console.error(erro);
+      const m = String(erro.message || "");
+      if (/pessoas_aniversariante_id_unico|duplicate key/i.test(m)) {
+        toastAniv("Alguém acabou de cadastrar por outra tela. Recarregue e tente de novo.", "err");
+      } else if (/chopp_nao_para_crianca/.test(m)) {
+        toastAniv("Chopp não é liberado para criança.", "err");
+      } else {
+        toastAniv("Não consegui salvar. Tente de novo.", "err");
+      }
+      return;
+    }
+
+    toastAniv("Aniversariantes salvos. ✅", "ok");
+    await carregarAniversariantes();
+    carregarRSVPs(); // a contagem "cadastrados: N/3" vive nas estatísticas
+  });
+
   /* ================= CONFIRMAÇÕES =================
      Lê o schema novo: rsvps + pessoas por FK. As telas de config,
      aniversariantes, estimativa e fechamento são as Fatias 2 a 5 —
@@ -336,6 +512,24 @@
   }
 
   /* ================= HELPERS ================= */
+  // Espelha o comportamento visual dos chips do convite. Vive aqui e no
+  // main.js: são dois IIFEs sem módulo compartilhado, e a alternativa
+  // seria um quarto arquivo só para isto.
+  function ativarChips(root) {
+    $$(".chip input", root).forEach((inp) => {
+      inp.addEventListener("change", () => {
+        if (inp.type === "radio" && inp.name) {
+          $$(`input[name="${inp.name}"]`, document).forEach((outro) => {
+            const chip = outro.closest(".chip");
+            if (chip) chip.classList.toggle("marcado", outro.checked);
+          });
+          return;
+        }
+        inp.closest(".chip").classList.toggle("marcado", inp.checked);
+      });
+    });
+  }
+
   function limparNome(n) {
     return n.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
   }

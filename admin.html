@@ -83,6 +83,26 @@
       </form>
     </details>
 
+    <!-- Aniversariantes como consumidores -->
+    <details class="admin-secao config-secao" id="anivSecao">
+      <summary><h2>Aniversariantes 🎂</h2></summary>
+
+      <form id="anivForm" novalidate>
+        <p class="campo-dica">
+          O que cada aniversariante consome. Eles pagam 100% do próprio consumo e entram na
+          estimativa como qualquer pessoa. Os nomes vêm do <code>config.js</code> — para
+          renomear, é lá.
+        </p>
+
+        <div id="anivBlocos"></div>
+
+        <div class="config-acoes">
+          <button type="submit" class="btn btn-primary" id="btnSalvarAniv">Salvar aniversariantes</button>
+        </div>
+        <p class="msg-toast" id="anivMsg"></p>
+      </form>
+    </details>
+
     <!-- Estatísticas -->
     <div class="stats" id="stats"></div>
 

@@ -308,3 +308,7 @@ tr:last-child td { border-bottom: none; }
 .config-campo span { font-size: .85rem; font-weight: 600; }
 
 .config-acoes { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1.2rem; }
+
+/* ---- Fatia 3: aniversariantes ---- */
+.aniv-bloco legend small { font-weight: 400; color: var(--ink-soft); }
+.aniv-bloco .pessoa-prefs { margin-top: .4rem; }
