@@ -60,6 +60,23 @@ GitHub Pages atualiza o site em 1-2 min a cada push na `main`. O `executa` termi
 
 Já aconteceu entre a Fatia 0 e a 1: o schema novo estava no ar mas o `main.js` ainda mandava o payload antigo, e publicar naquele momento teria quebrado o RSVP para todo convidado.
 
+## Os arquivos de handoff sobem a cada gatilho, não só no `executa`
+
+O protocolo só prevê git no `executa` (pull no início, push no fim). Isso deixa `prompt.md`, `plano.md` e `review.md` **não commitados** entre um gatilho e outro — e a ponta que lê pelo git continua vendo a fatia anterior.
+
+Aconteceu na Fatia 2: o `plano.md` no disco já era da Fatia 2, mas `origin/main` ainda tinha o da Fatia 1, e o Cowork recusou o `revisa` por estar lendo um plano velho. Recusou **certo** — o conteúdo que ele via era mesmo o antigo.
+
+Portanto, **o Claude Code commita e faz push do arquivo de handoff assim que ele muda**:
+
+| Gatilho | O que sobe |
+|---|---|
+| `planeja` | `plano.md`, mais o `prompt.md` do Cowork se ainda não estiver commitado |
+| `executa` | código, `status.md` e o `review.md` |
+
+Como só o Claude Code faz git de escrita, subir o arquivo escrito pelo Cowork faz parte — não é invadir a caneta dele, é publicar o que ele escreveu.
+
+**Antes de revisar, confira de que fatia é o arquivo** — a primeira linha diz. `prompt.md` e `plano.md` são sobrescritos a cada rodada, então ler o arquivo errado é uma falha silenciosa.
+
 ## Convenções deste repo
 
 - Branch por rodada: `feat/`, `fix/` ou `chore/` + a fatia (ex.: `feat/fatia-2-config`), apagada após o merge.

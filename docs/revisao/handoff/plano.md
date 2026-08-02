@@ -1,115 +1,131 @@
-# Plano — Fatia 1
+# Plano — Fatia 2: config de preços, taxas e prazo
 
-> ⚠️ **A Fatia 1 já está entregue, mergeada e no ar.** O `prompt.md` foi escrito a partir de um
-> `CONTINUIDADE.md` desatualizado (que diz "Próxima: Fatia 1" e branch por mergear).
->
-> Este plano, então, não é "como fazer" — é a **conferência item a item** do que está no ar
-> contra o que o prompt pediu, mais o **delta real** que sobrou. São 3 itens, dois deles
-> legítimos.
+Branch: `feat/fatia-2-config-admin`
 
-## Situação
+## Ponto de partida
 
-| | |
-|---|---|
-| Commit da Fatia 1 | `13c75c6` |
-| `main` == `origin/main` | `801532c` ✅ |
-| No ar | https://carvalhocoutobruno.github.io/site-aniversario/ |
-| `./verify.sh` | VERDE (41/41 asserções) |
+`admin.html` tem login + confirmações + fotos. A tabela `config` já existe com a linha única,
+as sementes (2,0 / 0,6 / 0,5) e as policies `admin le config` / `admin edita config` via
+`is_admin()`. Falta só a tela.
 
-A Fatia 1 foi verificada ponta a ponta contra o Supabase real antes do push: envio com
-acompanhante sem nome, prazo vencido fechando a tela, RPC recusando com mensagem legível,
-e dedupe substituindo o grupo. O painel foi adaptado junto porque `admin.js` lia
-`C.bebidas`/`C.comidas` (removidos) e o rodapé do convite linka `admin.html` publicamente —
-publicar quebraria a página.
+## Dois riscos que medi antes de planejar
 
-## Conferência do escopo
+### 1. O fuso faz a data andar — em 100% dos casos, não em borda
 
-| # | Item do prompt | Estado | Onde |
-|---|---|---|---|
-| 1 | Cards de pessoa, tipo + 4 checkboxes | ✅ | `index.html` template, `main.js:novoCard` |
-| 2 | Chopp × criança desmarca/desabilita/reabilita | ✅ | `main.js:ligarRegraChopp` |
-| 3 | `convidado_por` envia ids 1/2/3 | ✅ | `main.js` — `value="${i + 1}"` |
-| 4 | Teto 5; nome opcional entra no payload | ⚠️ parcial | payload ✅; rótulo — ver A3 |
-| 5 | Contato e nome obrigatórios; **`observacoes` ≤ 500 no cliente** | ❌ | ver **A1** |
-| 6 | Botão desabilita, não reabilita no sucesso | ✅ | `main.js` submit |
-| 7 | Envio só por `sb.rpc('criar_rsvp')` | ✅ | invariante travado no `verify.sh` |
-| 8 | Erro real, sem fingir sucesso | ✅ | `main.js:mensagemDeErro` |
-| 9 | Prazo: fecha se `aberto=false`; **"confirme até DD/MM" se aberto** | ❌ metade | ver **A2** |
-| 10 | Aviso de que reenvio substitui | ✅ | `index.html` campo-dica |
-| 11 | Limpeza de bebidas/comidas por config e do "modo teste" | ✅ | `config.js`, `main.js` |
+Como o prazo é gravado às `23:59:59-03:00`, em UTC ele **sempre** cai no dia seguinte. Ler de
+volta com o caminho ingênuo (`new Date(x).toISOString().slice(0,10)`) erra sempre:
 
-Também saíram nesta fatia dois bugs que o prompt pedia (o `.filter(p => p.nome)`) ou não
-previa: `uid()` era chamado antes do `let _n = 0` no fim do arquivo — zona morta temporal
-que **derrubava o script inteiro**, de modo que nenhum card de pessoa era criado e o submit
-nunca era registrado. Pré-existente; o formulário no ar nunca funcionou de verdade.
+```
+armazenado (UTC)          | ingênuo    | com fuso   | anda?
+2026-10-21T02:59:59+00:00 | 2026-10-21 | 2026-10-20 | SIM (bug)
+2026-07-16T02:59:59+00:00 | 2026-07-16 | 2026-07-15 | SIM (bug)
+2026-01-01T02:59:59+00:00 | 2026-01-01 | 2025-12-31 | SIM (bug)  ← muda o ANO
+2026-03-01T02:59:59+00:00 | 2026-03-01 | 2026-02-28 | SIM (bug)
+```
 
-## Delta a executar
+O sintoma seria cruel: o organizador abre a tela, vê a data um dia à frente, salva sem mexer,
+e o prazo **anda um dia a cada visita**.
 
-### A1 — limitar `observacoes` a 500 caracteres no cliente *(real)*
-`index.html:107` — o `<textarea>` não tem `maxlength`, e o submit não valida. Passar de 500
-bate no `CHECK` da tabela e devolve erro cru de constraint, que o `mensagemDeErro` traduz
-para o genérico "Alguma informação ficou inválida" — mensagem ruim para um caso previsível.
+**Solução:** ler com `Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" })` e montar
+`AAAA-MM-DD` via `formatToParts` — sem depender do formato de saída do locale nem do fuso do
+navegador (o organizador pode estar viajando). Gravar como `${data}T23:59:59-03:00`, literal.
 
-- `maxlength="500"` no textarea (corta na digitação);
-- contador discreto "N/500" a partir de ~450, para não ser corte silencioso;
-- guarda no submit com mensagem própria, já que `maxlength` não impede colar via script.
+> Uso a zona IANA na leitura e o offset fixo na escrita, que é o que o prompt pede e o que a
+> mensagem de erro do `criar_rsvp` já faz (`at time zone 'America/Sao_Paulo'`). Bate enquanto o
+> Brasil ficar sem horário de verão; se voltar, os dois lados mudam juntos.
 
-### A2 — avisar o prazo quando o formulário está **aberto** *(real)*
-`main.js:checarPrazo` só trata `aberto === false`. Com prazo definido e ainda aberto, o
-convidado não vê data nenhuma — perde a urgência, que é justamente o ponto de ter prazo.
+### 2. `paraCentavos` **não** serve para entrada digitada
 
-- quando `aberto === true` **e** `prazo != null`, exibir "Confirme até DD/MM" perto do botão;
-- reaproveitar o `.campo-dica`; sem prazo, nada muda.
+```
+"18,00"     -> 1800     ✓
+"1.234,56"  -> 0        ✗  silenciosamente zero
+"1234,5"    -> 123450   ✓
+"-5"        -> -500     ✗  aceita negativo
+"abc"       -> 0        ✗  silenciosamente zero
+```
 
-### A3 — rótulo "Acompanhante N" no próprio formulário *(discutível)*
-Hoje o fallback existe no painel (`admin.js:107,112`), não no convite: o card sem nome fica
-com o placeholder "Nome (opcional)". Dá para ler o prompt das duas formas — "exibir" pode
-ser no admin, que é onde o organizador lê.
+Ele só troca a **primeira** vírgula por ponto — o que basta para valores vindos do banco
+(`"18.00"`), que é o único uso hoje. Para entrada de usuário, um preço de R$ 1.234,56 viraria
+R$ 0,00 sem avisar.
 
-Proponho **numerar o card no formulário** ("Acompanhante 2" no topo), que ajuda quem
-adiciona 4 ou 5 pessoas a se localizar. Baixo risco. **Se o Cowork achar fora de escopo,
-deixo de fora** — não muda payload nem cálculo.
+**Solução:** parser próprio no `admin.js` (`parseNumeroBR`), que remove separador de milhar,
+troca a vírgula decimal e **devolve `null` em vez de `0`** quando não é número — para o
+chamador distinguir "vazio" de "inválido". **Não** vou mexer no `paraCentavos`: ele está certo
+para o que faz, e alterá-lo arrisca o cálculo, que tem 41 asserções em cima.
 
-### A4 — higiene
-- apagar a branch `fatia-0-rateio-por-aniversariante`, já mergeada (o protocolo pede).
+A paridade que o prompt pede se mantém no banco: gravo `1234.56`, o `calculo.js` lê `"1234.56"`
+e converte igual.
 
-## Estado real (o `CONTINUIDADE.md` foi removido)
+## Implementação
 
-O `CONTINUIDADE.md` não estava na tabela de arquivos do handoff, então não tinha dono: foi
-sobrescrito pelas duas pontas e perdeu conteúdo. **Decisão do Bruno: cai fora.** O estado da
-fatia passa a vir pelo `status.md`; o que é durável (gotchas, receita de verificação,
-convenções) ficou no [FLUXO.md](FLUXO.md), que não roda a cada fatia.
+### `admin.html`
+Seção nova, antes das confirmações (ordem da ET §7.2: config vem primeiro), dentro de um
+`<details>` **fechado por padrão** — config é set-once, consultada raramente, e aberta por
+padrão empurraria as confirmações para baixo da dobra.
 
-Para o Cowork se situar, o que o arquivo dizia e o que de fato vale:
+Campos: 5 preços (`text`, aceita vírgula), 3 taxas (`text`), 1 `<input type="date">` para o
+prazo, botão salvar e um `.msg-toast` de feedback.
 
-| Dizia | Realidade |
-|---|---|
-| "Próxima: Fatia 1" | Fatia 1 fechada e no ar (`13c75c6`) |
-| Branch `fatia-0-...` "mergear na main + push" | já mergeada; `main == origin/main == 801532c` |
-| "`admins` só tem o Bruno" | os 4 já inseridos (Bruno, Braz, Bocão, Rosaura), `is_admin()` conferido para cada |
-| "`js/main.js` ainda manda o payload antigo → não publicar" | resolvido na Fatia 1 |
-| "Sign-up público: desligado" | **correto** — refiz o teste, voltou `signup_disabled` |
+### `js/admin.js`
+- `carregarConfig()` — `select` na `config` id=1, popula o form; prazo pelo conversor de fuso.
+- `salvarConfig()` — valida, monta o objeto e dá `update`.
+- `parseNumeroBR(txt)` → número ou `null`.
+- `fmtNumeroBR(n, casas)` → exibição com vírgula.
+- `dataDoPrazo(iso)` / `prazoDaData(data)` → a ida e a volta do fuso.
+- Chamar `carregarConfig()` no `mostrarPainel()` e no botão "↻ Atualizar".
 
-Nesse último ponto o arquivo estava certo e eu desatualizado: eu havia medido o sign-up
-ligado duas vezes, e ele foi fechado no intervalo.
+**O `update` envia só os 9 campos em escopo + `atualizado_em`.** Nunca um objeto amplo: assim
+um bug aqui não tem como zerar `custo_real_*` nem `preco_real_pizza_*`, que são da Fatia 5.
 
-Backlog vigente (fatias 2 a 6) segue com o Cowork, materializado a cada `prompt.md`.
+### Validação no cliente
+- número inválido → mensagem apontando o campo;
+- negativo → recusado (o `numeric` do banco aceitaria, então a trava é só aqui);
+- estouro de faixa: preço > 99.999.999,99 (`numeric(10,2)`) e taxa > 999,999 (`numeric(6,3)`) —
+  senão o overflow volta como erro cru de tipo;
+- prazo vazio → `NULL` (sem limite), que é o comportamento documentado.
 
-## Verify desta rodada
+Zero é aceito em taxa e preço (config recém-criada tem preço 0), mas aviso na tela que taxa
+zerada faz a estimativa daquele item dar zero.
 
-1. `./verify.sh` verde (nenhuma das mudanças toca em cálculo — espera-se 41/41 sem alteração).
-2. Integrada, com saída crua no `status.md`:
-   - observação com 600 caracteres → **barrada no cliente**, sem erro cru de constraint;
-   - `prazo_confirmacao` no futuro → "Confirme até DD/MM" visível com o formulário aberto;
-   - `prazo_confirmacao` no passado → formulário escondido (não regrediu);
-   - um envio completo gravando no banco, conferido por SELECT e **apagado** depois.
-3. Base restaurada: `rsvps = 0`, `pessoas = 0`, `prazo_confirmacao = NULL`.
+### `css/style.css`
+Grade dos campos e estilo do `<details>`. Nada estrutural.
 
-Branch: `fix/fatia-1-ajustes-prazo-e-limite`.
+## Fora de escopo (não encosto)
+`custo_real_*` e `preco_real_pizza_*` (Fatia 5), estimativa (4), cadastro de aniversariantes
+(3), listagem de confirmações (já existe).
 
-## Aguardando
+> Nota: `admin.html` **não** carrega `js/calculo.js`. Não faz falta nesta fatia (não há cálculo
+> na tela de config), mas a Fatia 4 vai precisar. Posso incluir a tag agora, se o review achar
+> melhor — é uma linha e evita esquecer depois.
 
-Parado, sem implementar. Preciso do `review.md` para saber:
+## Verify
 
-1. se A1 e A2 entram (minha recomendação: **sim**, os dois são falhas reais de UX previsível);
-2. se A3 entra ou fica fora de escopo.
+`./verify.sh` verde (o cálculo não muda; espero 41/41 sem alteração).
+
+Integrada, com saída crua no `status.md`:
+
+1. logar como admin → config carrega mostrando as sementes 2,0 / 0,6 / 0,5;
+2. editar um preço (com vírgula), uma taxa e definir um prazo → salvar → `SELECT` cru provando
+   os valores e o prazo gravado como `23:59:59-03:00` **da data escolhida**;
+3. **recarregar a tela** e conferir que a data volta igual — é o teste que pega o bug de fuso,
+   que só aparece na ida e volta;
+4. ponta a ponta: com o prazo definido, o formulário público mostra "Confirme até DD/MM"; com
+   data passada, fecha;
+5. limpar o prazo → `NULL` → formulário público sem aviso de prazo;
+6. **negativo:** anon tenta `select` e `update` em `config` → bloqueado pela RLS, saída crua;
+7. **defensivo:** setar `custo_real_*` na mão, salvar a config pela tela, e provar por `SELECT`
+   que continuam intactos;
+8. `"1.234,56"` grava `1234.56` (o caso que o `paraCentavos` erraria);
+9. valor negativo recusado no cliente, sem chegar ao banco;
+10. restaurar as sementes e zerar o prazo ao fim.
+
+## Para o review
+
+1. **`<details>` fechado por padrão** para a config, ou seção sempre aberta?
+2. **Incluir `calculo.js` no `admin.html` agora** ou deixar para a Fatia 4?
+3. **`atualizado_em`** vai pelo cliente (`new Date().toISOString()`). Funciona e atende o
+   prompt, mas depende do relógio do navegador. A alternativa robusta é um trigger
+   `before update` no Postgres — mexe no schema, que hoje está estável e verificado. Minha
+   recomendação: **cliente agora**, trigger se algum dia o campo virar dado de auditoria.
+
+Parado, sem implementar, aguardando `review.md`.
