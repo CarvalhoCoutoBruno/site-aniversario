@@ -1,32 +1,34 @@
-# Status — Fatia 1 (ajustes da revisão)
+# Status — Fatia 2: config de preços, taxas e prazo
 
-**Fatia fechada.** Os 4 ajustes do `review.md` entraram, com verificação integrada contra o
-Supabase real. O item de parking (XSS no painel) **já estava resolvido** — provado abaixo.
+**Fatia fechada.** Aprovada sem ajustes; as 3 respostas do review foram seguidas e a nota leve
+(vazio vs inválido) virou mensagem distinta para cada caso.
 
 | | |
 |---|---|
-| Branch | `fix/fatia-1-ajustes-prazo-e-limite` → merge `--ff-only` → apagada |
-| Commits | 1 (`A1+A2+A3` são o mesmo concern: ajustes de UX do formulário) |
+| Branch | `feat/fatia-2-config-admin` → merge `--ff-only` → apagada |
+| Commit da fatia | `a2aa4ff164645ce9233d2b166712ad09a3ca8b2e` |
 | `./verify.sh` | **VERDE** — 41/41, sem regressão |
-| Commit da fatia | `dfc4aa6` (ver *Hashes*, no fim) |
+
+## Decisões do review, aplicadas
+
+1. **`<details>` fechado por padrão** — confirmado na tela: `configFechadaPorPadrao: true`.
+2. **`calculo.js` no `admin.html`** — incluído; `calculoCarregado: true`.
+3. **`atualizado_em` pelo cliente** — `new Date().toISOString()` no `update`.
+4. **Nota leve:** vazio e inválido agora dão mensagens diferentes (saída abaixo). Decidi
+   **recusar campo vazio** em preço e taxa, em vez de virar `0` — um campo em branco é mais
+   provavelmente esquecimento do que intenção de zerar, e a mensagem diz como zerar de fato.
+   O prazo é a exceção: vazio = `NULL` = sem limite, que é o comportamento documentado.
 
 ## `./verify.sh`
 
 ```
 Sintaxe
-  ✓ js/admin.js
-  ✓ js/calculo.js
-  ✓ js/config.js
-  ✓ js/main.js
-  ✓ tests/calculo.test.js
-
+  ✓ js/admin.js   ✓ js/calculo.js   ✓ js/config.js   ✓ js/main.js   ✓ tests/calculo.test.js
 Testes de cálculo
   ✓ ✓ 41 passaram, 0 falharam
-
 Higiene
   ✓ sem connection string, service_role ou senha rastreada
   ✓ js/config.js preenchido
-
 Coerência
   ✓ supabase-setup.sql sem placeholder
   ✓ js/main.js escreve só pelo RPC
@@ -36,115 +38,147 @@ VERDE — verificação estática ok. Falta a integrada (navegador + banco).
 
 ## Verificação integrada — saída crua
 
-### A2 — "Confirme até DD/MM" com o formulário aberto
-`config.prazo_confirmacao = '2026-10-20 23:59:59-03'`, formulário carregado:
-
+### 1. Config carrega com as sementes
 ```json
-{ "A2_prazoAbertoVisivel": true,
-  "A2_texto": "⏳ Confirme até 20/10/2026.",
-  "A2_formAberto": true }
+{ "painelVisivel": true,
+  "configFechadaPorPadrao": true,
+  "taxas":  { "chopp": "2", "refri": "0,6", "agua": "0,5" },
+  "precos": { "chopp": "0,00", "pizzaAdulto": "0,00" },
+  "prazo": "",
+  "atualizadoEm": "Última alteração: 02/08 17:08",
+  "calculoCarregado": true }
 ```
 
-### A3 — numeração dos cards, inclusive após remoção
+### 2. Validação no cliente — cinco casos, cinco mensagens distintas
 ```json
-{ "A3_inicial":  ["Você"],
-  "A3_com3":     ["Você", "Acompanhante 1", "Acompanhante 2", "Acompanhante 3"],
-  "A3_aposRemoverDoMeio": ["Você", "Acompanhante 1", "Acompanhante 2"] }
+{ "vazio":          "Preencha \"Chopp (por litro)\". Use 0 se for zero mesmo.",
+  "invalido":       "\"Chopp (por litro)\" não é um número válido.",
+  "negativo":       "\"Chopp (por litro)\" não pode ser negativo.",
+  "taxaEstourada":  "\"Chopp por adulto\" passou do máximo aceito para taxa (999,999).",
+  "precoEstourado": "\"Chopp (por litro)\" passou do máximo aceito para preço (99.999.999,99).",
+  "nenhumSalvouAinda": true }
 ```
-Removi o card **do meio** de propósito: a renumeração não deixa buraco na sequência.
+Os dois últimos são as faixas de `numeric(6,3)` e `numeric(10,2)` — sem isso, o overflow
+voltaria como erro cru de tipo.
 
-### A1 — limite de 500 no cliente, incluindo o bypass por script
+### 3. Salvamento real, com `1.234,56` e prazo
+Tela: `{"msg": "Configuração salva. ✅", "classe": "msg-toast ok"}`
+
+`SELECT` cru:
+```
+SALVO (precos + taxas):
+  [Decimal('18.50'), Decimal('1234.56'), Decimal('3.00'), Decimal('45.90'),
+   Decimal('24.50'), Decimal('2.250'), Decimal('0.600'), Decimal('0.500')]
+PRAZO:
+  armazenado (UTC): 2026-10-21 02:59:59+00:00
+  em Sao Paulo    : 2026-10-20 23:59:59
+```
+`1.234,56` → `1234.56`. É o caso que o `paraCentavos` transformaria em `0` silenciosamente.
+
+### 4. Teste defensivo — campos da Fatia 5 intactos
+Antes de salvar, populei `custo_real_*` e `preco_real_pizza_*` na mão. Depois de salvar a
+config pela tela:
+```
+DEFENSIVO — campos da Fatia 5 continuam intactos?
+  [Decimal('777.77'), Decimal('88.88'), Decimal('9.99'), Decimal('55.55'), Decimal('33.33')]
+```
+O `update` estreito faz o que prometia.
+
+### 5. Ida e volta do fuso — o teste que pega o bug
+Recarregando a tela depois de salvar:
 ```json
-{ "aos440_contadorOculto": true,
-  "aos460_contador": "460/500 caracteres",
-  "aos500_contador": "500/500 caracteres",
-  "aos500_classeLimite": true,
-  "bypass_valorAceito": 600,
-  "bypass_erro": "O recado passou de 500 caracteres (tem 600). Encurte um pouco.",
-  "bypass_naoEnviou": true }
-```
-O `maxlength` corta a digitação mas **não** a atribuição por script — daí o guard no submit.
-Com 600 caracteres o envio é barrado no cliente, sem chegar ao `CHECK` da tabela.
-
-### Envio real gravado no banco
-Enviado pelo formulário; conferido por `SELECT` como dono:
-
-```
-GRUPO : ['<img src=x onerror=alert(1)>Chico', '51 93333-2222', '51933332222', [2], 'recado curto <b>com tag</b>', 27]
-PESSOAS (ordem, nome, tipo, papel, agua, refri, chopp, pizza, aniv_id):
-   [0, '<img src=x onerror=alert(1)>Chico', 'adulto', 'principal', False, False, True, True, None]
-   [1, '(NULL)', 'adulto', 'acompanhante', False, True, False, False, None]
-   [2, '(NULL)', 'crianca', 'acompanhante', True, False, False, False, None]
+{ "prazoNaTela": "2026-10-20",
+  "esperado": "2026-10-20",
+  "oQueOIngenuoDaria": "2026-10-21",
+  "dataVoltouIgual": true,
+  "precoRefri": "1.234,56",
+  "precoChopp": "18,50",
+  "taxaChopp": "2,25",
+  "fusoDoNavegador": "America/Sao_Paulo" }
 ```
 
-Confirma: **acompanhante sem nome preservado** (`NULL`, não descartado), `papel` correto,
-criança sem chopp, `aniversariante_id` nulo em todos, `contato_norm` só dígitos.
+O navegador estava em São Paulo, o que **não** provaria independência de fuso. Rodei a função
+sob cinco fusos diferentes:
 
-### Múltipla escolha de `convidado_por`
 ```
-grupos:
-   ['<img src=x onerror=alert(1)>Chico', [2]]
-   ['Multi Escolha', [1, 3]]
+fuso local do runtime: America/Sao_Paulo
+  2026-10-21T02:59:59+00:00 -> com fuso: 2026-10-20 (OK) | ingenuo: 2026-10-21
+  2026-01-01T02:59:59+00:00 -> com fuso: 2025-12-31 (OK) | ingenuo: 2026-01-01
+fuso local do runtime: America/New_York        (mesmos dois resultados OK)
+fuso local do runtime: Asia/Tokyo              (mesmos dois resultados OK)
+fuso local do runtime: Europe/Lisbon           (mesmos dois resultados OK)
+fuso local do runtime: Pacific/Kiritimati      (mesmos dois resultados OK)
 ```
-Marcados na tela: `["1","3"]` → gravado `[1, 3]`. **IDs, nunca nome.**
+Kiritimati é +14; o ingênuo erra em todos, o nosso acerta em todos.
 
-> O `[2]` do primeiro grupo é artefato do meu script de teste, não defeito: o chip do Bruno
-> já estava marcado de um passo anterior e meu clique o desmarcou. Refiz limpo no segundo.
-
-### Parking do review — XSS no painel: **já resolvido**
-O nome acima carrega `<img src=x onerror=alert(1)>`. No painel, com `window.alert` instrumentado:
-
+### 6. Ponta a ponta — a config dirige o formulário público
+Com o prazo em 20/10/2026:
 ```json
-{ "imgInjetadas": 0,
-  "alertDisparou": false,
-  "htmlDaCelula": "<b>&lt;img src=x onerror=alert(1)&gt;Chico</b><br><small>51 93333-2222</small>",
-  "recadoRenderizado": "recado curto &lt;b&gt;com tag&lt;/b&gt;",
-  "convidouMulti": ["BrunoBocão", "Braz"] }
+{ "formAberto": true, "avisoPrazo": "⏳ Confirme até 20/10/2026.", "encerradoOculto": true }
 ```
 
-O `admin.js` já passa por `esc()` tudo que vem do convidado. Auditei as interpolações sem
-`esc()`: são índice numérico, data formatada por `toLocaleDateString`, uuid e literais —
-nenhuma controlada pelo convidado. **Sugiro tirar o item do backlog do admin.**
-
-### Prazo vencido — sem regressão
-`prazo_confirmacao = '2026-07-15'`:
+### 7. Limpar o prazo → `NULL` → convite sem aviso
+```
+prazo apos limpar = None | preco preservado = 18.50
+status_rsvp (anon): [{"aberto":true,"prazo":null}]
+```
 ```json
-{ "formEscondido": true,
-  "avisoEncerradoVisivel": true,
-  "textoEncerrado": "O prazo para confirmar presença terminou em 15/07/2026.",
-  "prazoAbertoOculto": true }
+{ "formAberto": true, "avisoPrazoOculto": true, "encerradoOculto": true }
 ```
-Os dois avisos são mutuamente exclusivos.
 
-### Base restaurada
+### 8. Negativo — anon não lê nem grava `config`
 ```
+anon SELECT em config:
+  HTTP 200  body=[]
+anon UPDATE em config (tentando zerar preço e abrir o prazo):
+  HTTP 204
+anon SELECT em admins:
+  []
+```
+
+> **Atenção ao 204.** O `UPDATE` do anon devolve `204 No Content`, que **parece sucesso**: a RLS
+> não rejeita, ela simplesmente não deixa nenhuma linha visível para atualizar. Só o `SELECT`
+> como dono prova o que aconteceu:
+> ```
+> depois da tentativa do anon:
+>   preco_litro_chopp = 18.50 (o anon tentou zerar)
+>   prazo_confirmacao = 2026-10-21 02:59:59+00:00 (o anon tentou anular)
+>   -> INTACTO ✅
+> ```
+> Fica registrado para as próximas fatias: em teste negativo de RLS, código HTTP não é
+> evidência — só o estado do banco é.
+
+### 9. Base restaurada
+```
+config (taxas, preco, prazo, custo_real): [2.000, 0.600, 0.500, 0.00, None, None]
 rsvps = 0
 pessoas = 0
 admins = 4
-prazo_confirmacao = None
-auth.users = ['bruno.carvalho@gmail.com', 'brazrs@gmail.com', 'rscouto47@hotmail.com', 'jhboca@hotmail.com']
-admins = ['Bocão', 'Braz', 'Bruno', 'Rosaura']
+auth.users = ['bruno.carvalho@gmail.com','brazrs@gmail.com','rscouto47@hotmail.com','jhboca@hotmail.com']
 ```
-Usuário temporário de verificação apagado; nenhum `cc-temp-*` restante.
+Usuário temporário apagado.
 
 ## Notas para a próxima fatia
 
-- **`admins` está completo** (4 linhas), `is_admin()` conferido para cada UID. A pendência que
-  o antigo doc de estado listava não existe mais.
-- **Sign-up público está desligado** — refiz o teste: `{"code":422,"error_code":"signup_disabled"}`.
-- **Fatia 3 (cadastro de aniversariantes) é pré-requisito da 4 e da 5.** Sem linha com
-  `aniversariante_id`, o rateio não tem pagante e a estimativa nasce sem o consumo deles.
-- Ainda pendente do Bruno: rotacionar a senha do Postgres quando o desenvolvimento avançar.
+- **`calculo.js` já está carregado no `admin.html`** — a Fatia 4 não precisa mexer nisso.
+- **`parseNumeroBR` e `fmtNumeroBR` estão prontos** no `admin.js` e servem para a Fatia 5, que
+  também recebe dinheiro digitado (`custo_real_*`). Mesma regra: vírgula manda como decimal.
+- **Fatia 3 (cadastro de aniversariantes) segue como pré-requisito da 4 e da 5.**
+- Ainda pendente do Bruno: rotacionar a senha do Postgres.
 
-## Processo
+## Processo — o sync do handoff
 
-Concordo com a nota do review: A1 e A2 são exatamente o tipo de coisa que escapa quando se
-publica antes da conferência. Daqui em diante, plano → review → push.
+Esta rodada travou duas vezes antes do `revisa` porque `prompt.md` e `plano.md` estavam
+gravados no disco mas **não commitados**, e a outra ponta lê pelo git. O Cowork recusou o
+`revisa` — corretamente, pelo conteúdo que via.
 
-Uma consequência do fluxo que vale registrar: o `prompt.md` desta rodada descrevia trabalho já
-entregue, porque o doc de estado que o alimentava estava defasado. Com o `CONTINUIDADE.md`
-removido, o `status.md` passa a ser a única fonte do estado — e é escrito **depois** do push,
-com o hash, então não tem como descrever um mundo que não existe.
+Corrigido no commit `8a0eecd`, e a regra está no `FLUXO.md`: **o arquivo de handoff é commitado
+e enviado no gatilho em que muda**, não só no `executa`. No `planeja` isso inclui subir o
+`prompt.md` do Cowork, que não faz git de escrita.
+
+Uma assimetria que fica: eu leio o disco, então enxergo o que o Cowork escreve mesmo sem
+commit; ele não enxerga o meu. Por isso o `review.md` desta rodada estava no disco e só agora
+sobe, junto deste commit.
 
 ---
 
@@ -152,13 +186,9 @@ com o hash, então não tem como descrever um mundo que não existe.
 
 | | |
 |---|---|
-| Commit da fatia (o código) | `dfc4aa686eeef4d2bb6bf8d79e41745a38515acf` |
+| Commit da fatia (o código) | `a2aa4ff164645ce9233d2b166712ad09a3ca8b2e` |
 | Commit deste `status.md` | logo em seguida, na `main` |
 
-> **Por que não há um único "hash de `origin/main` pós-push":** gravar o hash dentro de um
-> arquivo versionado muda o hash. O commit da fatia é `dfc4aa6`; este arquivo é o commit
-> seguinte, e o push dele move `origin/main` mais uma vez.
->
-> O que o `fechou` deve conferir é **`origin/main == main`**, que vale em qualquer um dos dois
-> pontos — e não a igualdade com um hash literal escrito aqui, que é impossível por construção.
-> Conferido agora: `origin/main == main`, working tree limpa.
+> Gravar o hash pós-push dentro de um arquivo versionado muda o hash — por isso os dois são
+> distintos. O `fechou` deve conferir **`origin/main == main`**, não a igualdade com um hash
+> literal escrito aqui.
