@@ -8,7 +8,7 @@ Supabase real. O item de parking (XSS no painel) **já estava resolvido** — pr
 | Branch | `fix/fatia-1-ajustes-prazo-e-limite` → merge `--ff-only` → apagada |
 | Commits | 1 (`A1+A2+A3` são o mesmo concern: ajustes de UX do formulário) |
 | `./verify.sh` | **VERDE** — 41/41, sem regressão |
-| **`origin/main` pós-push** | preenchido no fim deste arquivo |
+| Commit da fatia | `dfc4aa6` (ver *Hashes*, no fim) |
 
 ## `./verify.sh`
 
@@ -148,4 +148,17 @@ com o hash, então não tem como descrever um mundo que não existe.
 
 ---
 
-**`origin/main` após o push:** ``dfc4aa686eeef4d2bb6bf8d79e41745a38515acf``
+## Hashes
+
+| | |
+|---|---|
+| Commit da fatia (o código) | `dfc4aa686eeef4d2bb6bf8d79e41745a38515acf` |
+| Commit deste `status.md` | logo em seguida, na `main` |
+
+> **Por que não há um único "hash de `origin/main` pós-push":** gravar o hash dentro de um
+> arquivo versionado muda o hash. O commit da fatia é `dfc4aa6`; este arquivo é o commit
+> seguinte, e o push dele move `origin/main` mais uma vez.
+>
+> O que o `fechou` deve conferir é **`origin/main == main`**, que vale em qualquer um dos dois
+> pontos — e não a igualdade com um hash literal escrito aqui, que é impossível por construção.
+> Conferido agora: `origin/main == main`, working tree limpa.
