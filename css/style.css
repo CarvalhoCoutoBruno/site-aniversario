@@ -253,3 +253,25 @@ tr:last-child td { border-bottom: none; }
 .msg-toast.ok { color: var(--ok); }
 .msg-toast.err { color: var(--err); }
 .vazio { text-align: center; color: var(--ink-soft); padding: 2rem; }
+
+/* ---- Fatia 1: tipo de pessoa, chopp bloqueado, prazo encerrado ---- */
+.campo-dica { color: var(--ink-soft); font-size: .85rem; line-height: 1.45; }
+
+.chip.desabilitado {
+  opacity: .45;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.chip.desabilitado:hover { border-color: var(--line); }
+
+.pref-grupo .p-aviso-chopp { display: block; margin-top: .35rem; }
+
+.rsvp-encerrado {
+  text-align: center;
+  border: 1.5px dashed var(--line);
+  border-radius: 16px;
+  padding: 2rem 1.25rem;
+}
+.rsvp-encerrado .big { font-size: 2.5rem; line-height: 1; }
+.rsvp-encerrado h3 { margin: .6rem 0 .35rem; font-size: 1.25rem; }
+.rsvp-encerrado p { color: var(--ink-soft); margin: 0; }

@@ -41,58 +41,89 @@
     prepararUpload();
   }
 
-  /* ================= CONFIRMAÇÕES ================= */
+  /* ================= CONFIRMAÇÕES =================
+     Lê o schema novo: rsvps + pessoas por FK. As telas de config,
+     aniversariantes, estimativa e fechamento são as Fatias 2 a 5 —
+     aqui só a lista e as contagens.                                */
   async function carregarRSVPs() {
-    const { data, error } = await sb.from("rsvps").select("*").order("created_at", { ascending: false });
-    if (error) { console.error(error); return; }
-    render(data || []);
+    const [g, p] = await Promise.all([
+      sb.from("rsvps").select("*").order("criado_em", { ascending: false }),
+      sb.from("pessoas").select("*").order("ordem", { ascending: true }),
+    ]);
+    if (g.error || p.error) { console.error(g.error || p.error); return; }
+
+    const porGrupo = new Map();
+    const aniversariantes = [];
+    for (const pessoa of p.data || []) {
+      if (pessoa.papel === "aniversariante") { aniversariantes.push(pessoa); continue; }
+      if (!porGrupo.has(pessoa.rsvp_id)) porGrupo.set(pessoa.rsvp_id, []);
+      porGrupo.get(pessoa.rsvp_id).push(pessoa);
+    }
+    render(g.data || [], porGrupo, aniversariantes);
   }
 
-  function render(rows) {
-    // estatísticas
-    let totalPessoas = 0;
-    const cont = { bebidas: {}, comidas: {}, aniversariantes: {} };
-    C.bebidas.forEach((b) => (cont.bebidas[b] = 0));
-    C.comidas.forEach((c) => (cont.comidas[c] = 0));
-    C.aniversariantes.forEach((a) => (cont.aniversariantes[a] = 0));
+  const NOMES_BEBIDA = { bebe_agua: "Água", bebe_refri: "Refri", bebe_chopp: "Chopp" };
 
-    rows.forEach((r) => {
-      const pessoas = Array.isArray(r.pessoas) ? r.pessoas : [];
-      totalPessoas += pessoas.length || r.total_pessoas || 0;
-      (r.aniversariantes || []).forEach((a) => { cont.aniversariantes[a] = (cont.aniversariantes[a] || 0) + 1; });
-      pessoas.forEach((p) => {
-        (p.bebidas || []).forEach((b) => { cont.bebidas[b] = (cont.bebidas[b] || 0) + 1; });
-        (p.comidas || []).forEach((c) => { cont.comidas[c] = (cont.comidas[c] || 0) + 1; });
-      });
-    });
+  function preferencias(pessoa) {
+    const t = Object.keys(NOMES_BEBIDA).filter((k) => pessoa[k]).map((k) => NOMES_BEBIDA[k]);
+    if (pessoa.come_pizza) t.push("Pizza");
+    return t;
+  }
+
+  function render(grupos, porGrupo, aniversariantes) {
+    // contagens sobre TODAS as pessoas confirmadas, aniversariantes incluídos
+    const todas = [...aniversariantes];
+    for (const lista of porGrupo.values()) todas.push(...lista);
+
+    const cont = { agua: 0, refri: 0, chopp: 0, pizza: 0, adultos: 0, criancas: 0 };
+    for (const p of todas) {
+      if (p.tipo === "adulto") cont.adultos++; else cont.criancas++;
+      if (p.bebe_agua) cont.agua++;
+      if (p.bebe_refri) cont.refri++;
+      if (p.bebe_chopp && p.tipo === "adulto") cont.chopp++;
+      if (p.come_pizza) cont.pizza++;
+    }
 
     const stats = [
-      { n: rows.length, l: "Confirmações" },
-      { n: totalPessoas, l: "Total de pessoas" },
-      ...Object.entries(cont.bebidas).map(([k, v]) => ({ n: v, l: k })),
-      ...Object.entries(cont.comidas).map(([k, v]) => ({ n: v, l: k })),
+      { n: grupos.length, l: "Confirmações" },
+      { n: todas.length, l: "Total de pessoas" },
+      { n: cont.adultos, l: "Adultos" },
+      { n: cont.criancas, l: "Crianças" },
+      { n: cont.chopp, l: "Chopp" },
+      { n: cont.refri, l: "Refrigerante" },
+      { n: cont.agua, l: "Água" },
+      { n: cont.pizza, l: "Pizza" },
+      { n: aniversariantes.length + "/3", l: "Aniversariantes cadastrados" },
     ];
-    $("#stats").innerHTML = stats.map((s) => `<div class="stat"><b>${s.n}</b><span>${esc(s.l)}</span></div>`).join("");
+    $("#stats").innerHTML = stats
+      .map((s) => `<div class="stat"><b>${s.n}</b><span>${esc(s.l)}</span></div>`)
+      .join("");
 
-    // tabela
     const body = $("#tabelaBody");
-    $("#tabelaVazia").hidden = rows.length > 0;
-    body.innerHTML = rows.map((r) => {
-      const pessoas = Array.isArray(r.pessoas) ? r.pessoas : [];
-      const pessoasHTML = pessoas.map((p) =>
-        `<div><b>${esc(p.nome)}</b> <small>(${esc(p.relacao || "")})</small></div>`).join("");
-      const prefsHTML = pessoas.map((p) => {
-        const t = [...(p.bebidas || []), ...(p.comidas || [])];
-        return `<div>${esc(p.nome)}: ${t.length ? t.map((x) => `<span class="pill">${esc(x)}</span>`).join("") : "<small>—</small>"}</div>`;
+    $("#tabelaVazia").hidden = grupos.length > 0;
+    body.innerHTML = grupos.map((r) => {
+      const pessoas = porGrupo.get(r.id) || [];
+      const pessoasHTML = pessoas.map((p, i) => {
+        const nome = p.nome || `Acompanhante ${i}`;
+        const tipo = p.tipo === "crianca" ? " <small>(criança)</small>" : "";
+        return `<div><b>${esc(nome)}</b>${tipo}</div>`;
       }).join("");
-      const anivHTML = (r.aniversariantes || []).map((a) => `<span class="pill">${esc(a)}</span>`).join("");
+      const prefsHTML = pessoas.map((p, i) => {
+        const nome = p.nome || `Acompanhante ${i}`;
+        const t = preferencias(p);
+        return `<div>${esc(nome)}: ${t.length ? t.map((x) => `<span class="pill">${esc(x)}</span>`).join("") : "<small>—</small>"}</div>`;
+      }).join("");
+      // convidado_por guarda o ID; o nome vem do config.js pelo índice
+      const anivHTML = (r.convidado_por || [])
+        .map((id) => `<span class="pill">${esc(C.aniversariantes[id - 1] || "?" + id)}</span>`)
+        .join("");
       return `<tr>
-        <td>${fmtData(r.created_at)}</td>
-        <td><b>${esc(r.responsavel)}</b>${r.contato ? `<br><small>${esc(r.contato)}</small>` : ""}</td>
+        <td>${fmtData(r.criado_em)}</td>
+        <td><b>${esc(r.nome_principal)}</b><br><small>${esc(r.contato)}</small></td>
         <td>${anivHTML}</td>
         <td>${pessoasHTML}</td>
         <td>${prefsHTML}</td>
-        <td>${r.mensagem ? esc(r.mensagem) : "<small>—</small>"}</td>
+        <td>${r.observacoes ? esc(r.observacoes) : "<small>—</small>"}</td>
         <td><button class="p-remover" data-id="${r.id}" title="Apagar">✕</button></td>
       </tr>`;
     }).join("");

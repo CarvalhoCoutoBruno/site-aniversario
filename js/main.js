@@ -6,6 +6,12 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
+  // Precisa ficar AQUI, no topo: uid() é chamado durante a montagem do
+  // primeiro card, que roda antes do fim do arquivo. Declarado lá
+  // embaixo com `let`, cai na zona morta temporal e derruba o script.
+  let _n = 0;
+  const uid = (p) => p + _n++;
+
   // ---- Supabase (opcional: site funciona mesmo sem chaves) ----
   let sb = null;
   const temSupabase = C.supabase.url && !C.supabase.url.includes("COLE_");
@@ -94,24 +100,63 @@
   $("#carNext").addEventListener("click", () => { ir(idx + 1); reiniciarAuto(); });
   carregarFotos();
 
-  /* ================= CHIPS ANIVERSARIANTES ================= */
+  /* ================= PRAZO DE CONFIRMAÇÃO =================
+     status_rsvp() é a única leitura que o visitante anônimo tem.
+     Se der erro de rede, deixa o formulário aberto: o RPC rejeita de
+     qualquer jeito, e é melhor errar para o lado de deixar tentar. */
+  async function checarPrazo() {
+    if (!sb) return;
+    try {
+      const { data, error } = await sb.rpc("status_rsvp");
+      if (error) return console.warn("status_rsvp:", error);
+      const st = Array.isArray(data) ? data[0] : data;
+      if (st && st.aberto === false) fecharFormulario(st.prazo);
+    } catch (e) {
+      console.warn("Falha ao checar o prazo:", e);
+    }
+  }
+
+  function fecharFormulario(prazo) {
+    $("#rsvpForm").hidden = true;
+    const aviso = $("#rsvpEncerrado");
+    if (prazo) {
+      const d = new Date(prazo);
+      if (!isNaN(d)) {
+        $("#rsvpEncerradoTexto").textContent =
+          `O prazo para confirmar presença terminou em ${d.toLocaleDateString("pt-BR")}.`;
+      }
+    }
+    aviso.hidden = false;
+  }
+  checarPrazo();
+
+  /* ================= CHIPS ANIVERSARIANTES =================
+     O value é o ID (índice + 1), nunca o nome: é o que o banco grava
+     em convidado_por e o que liga o convidado ao aniversariante que
+     banca o consumo dele. Renomear no config não quebra registro. */
   $("#chipsAniversariantes").innerHTML = C.aniversariantes
-    .map((n, i) => chipHTML("aniv", `aniv_${i}`, n))
+    .map((nome, i) => `<label class="chip">
+        <input type="checkbox" class="aniv-check" value="${i + 1}" />
+        <span>${esc(nome)}</span>
+      </label>`)
     .join("");
   ativarChips($("#chipsAniversariantes"));
 
   /* ================= PESSOAS (responsável + acompanhantes) ================= */
+  const MAX_ACOMPANHANTES = 5;
   const lista = $("#pessoasLista");
   const tpl = $("#tplPessoa");
 
   function novoCard(ehResponsavel) {
     const node = tpl.content.firstElementChild.cloneNode(true);
+    node.dataset.papel = ehResponsavel ? "principal" : "acompanhante";
+
     if (ehResponsavel) {
       node.classList.add("responsavel");
       node.querySelector(".p-nome").placeholder = "Seu nome (mesmo acima)";
       node.querySelector(".p-remover").remove();
     }
-    // relação
+
     const sel = node.querySelector(".p-relacao");
     if (ehResponsavel) {
       sel.innerHTML = `<option value="Responsável">Eu (responsável)</option>`;
@@ -119,69 +164,144 @@
     } else {
       sel.innerHTML = C.relacoes.map((r) => `<option>${esc(r)}</option>`).join("");
     }
-    // bebidas + comidas
-    node.querySelector(".p-bebidas").innerHTML = C.bebidas.map((b, i) => chipHTML("beb", uid("b"), b)).join("");
-    node.querySelector(".p-comidas").innerHTML = C.comidas.map((c, i) => chipHTML("com", uid("c"), c)).join("");
+
+    // rádios de tipo precisam de name único por card, senão viram um
+    // grupo só e marcar "criança" num card desmarca o outro
+    const grupo = uid("tipo");
+    $$(".p-tipo input", node).forEach((r) => (r.name = grupo));
+
     ativarChips(node);
+    ligarRegraChopp(node);
+
     const rem = node.querySelector(".p-remover");
-    if (rem) rem.addEventListener("click", () => node.remove());
+    if (rem) rem.addEventListener("click", () => { node.remove(); atualizarBotaoAdd(); });
     return node;
   }
 
-  // primeiro card = responsável, sincroniza nome com o campo de cima
+  /* Chopp é bloqueado para criança — mesma regra da constraint do
+     banco. A tela desmarca e desabilita na hora, para o convidado
+     entender antes de enviar em vez de tomar erro do servidor. */
+  function ligarRegraChopp(card) {
+    const chopp = card.querySelector('[data-bebida="bebe_chopp"]');
+    const chipChopp = card.querySelector(".p-chip-chopp");
+    const aviso = card.querySelector(".p-aviso-chopp");
+
+    function aplicar() {
+      const ehCrianca = card.querySelector('.p-tipo input[value="crianca"]').checked;
+      chopp.disabled = ehCrianca;
+      chipChopp.classList.toggle("desabilitado", ehCrianca);
+      aviso.hidden = !ehCrianca;
+      if (ehCrianca && chopp.checked) {
+        chopp.checked = false;
+        chipChopp.classList.remove("marcado");
+      }
+    }
+    $$(".p-tipo input", card).forEach((r) => r.addEventListener("change", aplicar));
+    aplicar();
+  }
+
+  function contarAcompanhantes() {
+    return $$(".pessoa-card", lista).length - 1;
+  }
+
+  function atualizarBotaoAdd() {
+    const cheio = contarAcompanhantes() >= MAX_ACOMPANHANTES;
+    $("#addPessoa").hidden = cheio;
+    $("#limiteAcompanhantes").hidden = !cheio;
+  }
+
+  // primeiro card = responsável, com o nome espelhando o campo de cima
   const cardResp = novoCard(true);
   lista.appendChild(cardResp);
   const nomeResp = cardResp.querySelector(".p-nome");
   $("#responsavel").addEventListener("input", (e) => { nomeResp.value = e.target.value; });
 
   $("#addPessoa").addEventListener("click", () => {
+    if (contarAcompanhantes() >= MAX_ACOMPANHANTES) return;
     lista.appendChild(novoCard(false));
+    atualizarBotaoAdd();
   });
+  atualizarBotaoAdd();
 
   /* ================= ENVIO ================= */
+  function lerPessoa(card, indice) {
+    const nome = card.querySelector(".p-nome").value.trim();
+    const ehResponsavel = card.dataset.papel === "principal";
+    const p = {
+      // Nome de acompanhante é OPCIONAL e a pessoa entra mesmo sem ele.
+      // Descartar quem não tem nome (como o formulário antigo fazia)
+      // some com um consumidor e desequilibra o rateio.
+      nome: nome || (ehResponsavel ? "" : null),
+      tipo: card.querySelector('.p-tipo input[value="crianca"]').checked ? "crianca" : "adulto",
+      papel: ehResponsavel ? "principal" : "acompanhante",
+      bebe_agua: false, bebe_refri: false, bebe_chopp: false, come_pizza: false,
+    };
+    $$(".p-bebidas input:checked", card).forEach((i) => { p[i.dataset.bebida] = true; });
+    $$(".p-comida input:checked", card).forEach((i) => { p[i.dataset.comida] = true; });
+    if (p.tipo === "crianca") p.bebe_chopp = false; // cinto e suspensório
+    return p;
+  }
+
   $("#rsvpForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const status = $("#formStatus");
+    const btn = $("#btnEnviar");
     status.className = "form-status";
     status.textContent = "";
 
     const responsavel = $("#responsavel").value.trim();
     const contato = $("#contato").value.trim();
     const mensagem = $("#mensagem").value.trim();
-    const aniversariantes = valoresMarcados($("#chipsAniversariantes"));
+    const convidadoPor = $$(".aniv-check:checked", $("#chipsAniversariantes"))
+      .map((i) => Number(i.value));
 
     if (!responsavel) return falha(status, "Por favor, coloque seu nome.");
-    if (!aniversariantes.length) return falha(status, "Escolha quem te convidou.");
+    if (!contato) return falha(status, "Precisamos de um WhatsApp ou e-mail para falar com você.");
+    if (!convidadoPor.length) return falha(status, "Escolha quem te convidou.");
 
-    // monta pessoas
-    const pessoas = $$(".pessoa-card", lista).map((card) => {
-      const nome = card.querySelector(".p-nome").value.trim();
-      const relacao = card.querySelector(".p-relacao").value;
-      const bebidas = valoresMarcados(card.querySelector(".p-bebidas"));
-      const comidas = valoresMarcados(card.querySelector(".p-comidas"));
-      return { nome, relacao, bebidas, comidas };
-    }).filter((p) => p.nome);
-
-    if (!pessoas.length) return falha(status, "Confirme ao menos uma pessoa (você).");
-
-    const registro = {
-      responsavel, contato, aniversariantes, pessoas, mensagem,
-      total_pessoas: pessoas.length,
-    };
+    const cards = $$(".pessoa-card", lista);
+    const pessoas = cards.map(lerPessoa);
+    pessoas[0].nome = responsavel; // o principal sempre leva o nome de cima
 
     if (!sb) {
-      console.log("RSVP (sem Supabase configurado):", registro);
-      return sucesso("Confirmação registrada! (modo teste — configure o Supabase para salvar de verdade)");
+      console.log("RSVP (sem Supabase configurado):", { responsavel, contato, convidadoPor, pessoas, mensagem });
+      return falha(status, "O site ainda não está conectado ao banco. Avise o organizador.");
     }
 
-    const btn = $("#btnEnviar");
-    btn.disabled = true; btn.textContent = "Enviando...";
-    const { error } = await sb.from("rsvps").insert(registro);
-    btn.disabled = false; btn.textContent = "Confirmar presença 🎉";
+    btn.disabled = true;
+    btn.textContent = "Enviando...";
 
-    if (error) { console.error(error); return falha(status, "Ops, algo deu errado. Tente de novo."); }
+    const { error } = await sb.rpc("criar_rsvp", {
+      p_nome_principal: responsavel,
+      p_contato: contato,
+      p_convidado_por: convidadoPor,
+      p_observacoes: mensagem || null,
+      p_pessoas: pessoas,
+    });
+
+    if (error) {
+      // Erro de verdade: o formulário antigo fingia sucesso, e o
+      // convidado ia embora achando que tinha confirmado.
+      console.error(error);
+      btn.disabled = false;
+      btn.textContent = "Confirmar presença 🎉";
+      return falha(status, mensagemDeErro(error));
+    }
+
+    // sucesso: o botão NÃO volta a habilitar
+    btn.textContent = "Confirmado!";
     sucesso();
   });
+
+  // As exceptions do criar_rsvp já são escritas para o convidado ler.
+  function mensagemDeErro(error) {
+    const m = (error && (error.message || error.hint)) || "";
+    if (/confirma[çc][õo]es foram encerradas/i.test(m)) return m;
+    if (/Informe|Escolha|O grupo precisa/i.test(m)) return m;
+    if (/chopp_nao_para_crianca/.test(m)) return "Chopp não é liberado para criança.";
+    if (/violates|constraint/i.test(m)) return "Alguma informação ficou inválida. Confira e tente de novo.";
+    return "Não conseguimos salvar sua confirmação. Tente de novo em instantes.";
+  }
 
   function sucesso(msg) {
     dispararConfete();
@@ -196,22 +316,25 @@
   }
 
   /* ================= HELPERS ================= */
-  function chipHTML(grupo, id, valor) {
-    return `<label class="chip"><input type="checkbox" data-grupo="${grupo}" value="${esc(valor)}"><span>${esc(valor)}</span></label>`;
-  }
   function ativarChips(root) {
     $$(".chip input", root).forEach((inp) => {
-      inp.addEventListener("change", () => inp.closest(".chip").classList.toggle("marcado", inp.checked));
+      inp.addEventListener("change", () => {
+        // rádio: marcar um desmarca os irmãos do mesmo grupo
+        if (inp.type === "radio" && inp.name) {
+          $$(`input[name="${inp.name}"]`, root.ownerDocument || document).forEach((outro) => {
+            const chip = outro.closest(".chip");
+            if (chip) chip.classList.toggle("marcado", outro.checked);
+          });
+          return;
+        }
+        inp.closest(".chip").classList.toggle("marcado", inp.checked);
+      });
     });
   }
-  function valoresMarcados(root) {
-    return $$(".chip input:checked", root).map((i) => i.value);
-  }
-  function falha(el, msg) { el.className = "form-status err"; el.textContent = msg; }
+  function falha(el, msg) { el.className = "form-status err"; el.textContent = msg; el.scrollIntoView({ behavior: "smooth", block: "center" }); }
   function esc(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
-  let _n = 0; function uid(p) { return p + _n++; }
 
   function dispararConfete() {
     const wrap = $("#confetti");

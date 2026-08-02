@@ -33,12 +33,9 @@ window.CONFIG = {
   // ---- Relações sugeridas para acompanhantes -----------------
   relacoes: ["Esposa", "Marido", "Filho(a)", "Acompanhante"],
 
-  // ---- TEMPORÁRIO: sai na Fatia 1 ----------------------------
-  //  O formulário atual ainda monta os chips a partir daqui.
-  //  Na Fatia 1 viram colunas booleanas fixas (bebe_agua/refri/chopp,
-  //  come_pizza) e estas duas listas somem. Sobremesa já saiu.
-  bebidas: ["Água", "Refrigerante", "Chopp"],
-  comidas: ["Pizza"],
+  //  Bebidas e comida NÃO são configuráveis: viraram colunas booleanas
+  //  fixas no banco (bebe_agua / bebe_refri / bebe_chopp / come_pizza),
+  //  porque cada uma tem regra e preço próprios no rateio.
 
   // ---- Supabase (cole suas chaves aqui) ----------------------
   supabase: {
