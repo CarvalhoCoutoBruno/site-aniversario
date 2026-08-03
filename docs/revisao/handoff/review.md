@@ -1,35 +1,43 @@
-# Review — Fatia 9
+# Review — Fatia 10
 
-**Veredito: aprovado, com as decisões de design definidas abaixo.** Plano forte — a pré-checagem
-de que screenshot funciona, o **contraste WCAG medido** (não "parece legível"), o fix do mobile na
-equação e os 3 conflitos que você surfou são exatamente o que essa fatia precisava.
+**Veredito: aprovado, sem ajustes.** O terceiro caminho do item 1 é melhor que as duas opções que
+eu ofereci — segue com ele.
 
-## Decisões (as suas 3 perguntas)
-1. **Título — VISÍVEL no hero.** O Bruno quer o título no topo. Então: o `festa.titulo` é o
-   **headline (H1)** do hero, e o "160 / equação 40+50+70" fica como o **elemento gráfico de apoio**
-   logo abaixo/junto — os dois se complementam (nome + destaque visual), não competem. Cuidar pra
-   não virar repetição desajeitada de "160" (o título como headline e o 160 como número-arte grande,
-   não dois textos iguais empilhados). O `<title>` da aba passa a usar o `festa.titulo` (hoje é o
-   literal "Convite de Aniversário") — melhora o preview do link no WhatsApp.
-2. **Idades como constante no `main.js`, com o 160 = soma delas:** aprovado. Consistência garantida;
-   documenta o acoplamento idade[i]↔nome[i] (reordenar desalinha).
-3. **Cores — NÃO é a paleta do mockup: vai preto + azul + vermelho.** Hero escuro (preto), azul e
-   vermelho como acentos. **Manter o clima de festa** com essa paleta (confete, energia) pra não
-   virar cara de site corporativo/sério — o astral de aniversário tem que sobreviver às cores mais
-   fechadas. Definido antes de começar (mudar depois = refazer os screenshots).
+## Item 1 — o terceiro caminho, aceito
+O raciocínio está certo nos dois lados: **tirar o pill** empurra a data para baixo da dobra no
+celular, e "88 dias" não substitui uma data que a pessoa anota na agenda; **inventar conteúdo** pro
+card seria encher linguiça pra justificar um duplicado. Manter o pill e **refocar a seção no
+lugar** dá a cada bloco um trabalho só — hero responde *o quê/quando*, seção responde *onde* — e
+mata a repetição sem perder informação.
 
-## Uma trava técnica pra não vazar escopo
-O `css/style.css` é **compartilhado** com o `admin.html` (fora de escopo). As fontes novas (Fredoka)
-e a paleta nova **não podem vazar** pro admin — escopar o restyle ao convite (uma classe de
-página/`body`, ou seletores sob o container do convite), deixando as classes compartilhadas
-(`.btn`, `.chip`, `.stat`, `.selo`, `.conta-aniv`, `.msg-toast`) e o visual do admin **intactos**.
-Você já disse que ia manter as compartilhadas — só reforço que a **fonte/cor global** também não
-pode escorregar pro admin.
+E o efeito colateral é o melhor argumento: **resolve o item 3 pela causa** ("o problema não é
+padding a mais, é conteúdo de menos") em vez de empurrar espaçamento até disfarçar. Diagnóstico
+certo.
 
-## O resto, aprovado
-Preservar todos os estados da Fatia 8 (carregando, erro fail-loud coerente, countdown nos 3 estados,
-encerrado, carrossel vazio, sucesso), manter todos os ids que o `main.js` escreve, `main.js` no
-mínimo, e as fontes por `<link>`. O verify com screenshots + não-regressão funcional + contraste
-medido é o padrão certo pra uma fatia de design.
+## Itens 2, 3, 4 — aprovados
+- **Carrossel:** manter o `aspect-ratio` (que governa o mobile, bom como está) e somar o teto no
+  desktop é a abordagem certa.
+- **Confete:** reduzir densidade **e** empurrar pras bordas abaixo de 560px — as duas coisas, como
+  proposto. Enfeite não disputa com texto.
+- **Antes/depois capturado antes de mexer**: certíssimo, comparação real em vez de memória.
+
+## Respostas às 2 perguntas
+1. **Terceiro caminho:** sim, aceito (acima).
+2. **Teto de 420px:** ok como ponto de partida. Só um cuidado ao olhar o "depois": com
+   `aspect-ratio: 16/10` e teto de 420px, a largura fica em ~672px — bem mais estreita que os 900px
+   de hoje, e o carrossel pode parecer **pequeno/perdido** no meio do desktop. Se for o caso, a
+   saída melhor é **alargar a proporção no desktop** (16/9, 2/1) em vez de encolher a largura —
+   assim ele fica mais baixo *sem* ficar menor. Decide olhando o screenshot; não precisa voltar pra
+   review por causa disso.
+
+## Nota leve (opcional)
+Com o card de data fora, a copy da seção muda. O resto da página tem um tom brincalhão ("Anota aí",
+"Bora?", "Momentos") — vale a nova manter esse tom (algo como "Anota o endereço" / "É aqui") em vez
+de um "Onde vai ser" mais seco. Detalhe de voz, sem impacto estrutural.
+
+## Verify
+Cobre o que importa: antes/depois nos dois tamanhos, a não-regressão do fail-loud (**um estado
+só** — a asserção que já quebrou duas vezes), o modo escuro que não pode regredir, e o admin
+intacto.
 
 Pode `executa`.

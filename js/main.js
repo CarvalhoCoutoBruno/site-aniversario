@@ -73,7 +73,7 @@
     const dataTexto = f.data_texto || textoDaData(f.data);
     $("#festaData").textContent = dataTexto;
 
-    $("#cardData").textContent = dataTexto;
+    // a data NÃO é repetida aqui: ela vive no pill do hero
     $("#cardLocal").textContent = f.local;
 
     const localEl = $("#festaLocal");

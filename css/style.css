@@ -621,3 +621,68 @@ tr:last-child td { border-bottom: none; }
    de autor o vence. O .countdown tem display:flex, então ficava visível
    (zerado) ao lado do "É hoje!". Esta regra devolve a precedência. */
 .pagina-convite [hidden] { display: none !important; }
+
+/* =====================================================================
+   Fatia 10 — polimento visual
+   ===================================================================== */
+
+/* ---- 1 + 3: a seção do lugar ----
+   Um bloco só, com conteúdo de verdade, no lugar de dois cards baixos
+   com vazio entre eles. O ar sobrando vinha da falta de conteúdo, não
+   de padding a mais. */
+.pagina-convite .card-lugar {
+  background: var(--bg-soft);
+  border: 1.5px solid var(--cv-linha);
+  border-radius: 20px;
+  padding: 2.4rem 1.6rem;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+}
+.pagina-convite .card-lugar b {
+  display: block;
+  font-family: "Fredoka", sans-serif;
+  font-size: clamp(1.1rem, 2.4vw, 1.4rem);
+  line-height: 1.5;
+  margin-bottom: 1.4rem;
+}
+/* o tracejado do .btn-ghost é a afordância de "adicionar"; num link de
+   mapa ele lê como inacabado */
+.pagina-convite .card-lugar .link-mapa {
+  margin-top: 0;
+  border-style: solid;
+  border-color: var(--cv-azul-texto);
+}
+
+/* ---- 2: teto de altura do carrossel no desktop ----
+   O aspect-ratio 16/10 sobre 900px dava 562px — um terço da tela em
+   1360px. Alargar a proporção (em vez de encolher a largura) deixa o
+   carrossel mais BAIXO sem deixá-lo menor, como o review apontou.
+   O mobile segue no 16/10, que estava bom. */
+@media (min-width: 800px) {
+  .pagina-convite .carrossel { aspect-ratio: 2 / 1; }
+}
+
+/* ---- 4: confete longe do texto no mobile ----
+   As posições são percentuais: num viewport estreito o "meio" é onde o
+   texto está, e as partículas caíam sobre o título e sobre os cards.
+   Abaixo de 560px: menos partículas e todas coladas nas bordas. */
+@media (max-width: 560px) {
+  .pagina-convite .hero::before {
+    background-image:
+      radial-gradient(5px 5px at 4% 10%,  var(--cv-azul) 98%, transparent),
+      radial-gradient(5px 5px at 96% 18%, var(--cv-vermelho) 98%, transparent),
+      radial-gradient(4px 4px at 3% 46%,  #fff 98%, transparent),
+      radial-gradient(5px 5px at 97% 62%, var(--cv-azul) 98%, transparent),
+      radial-gradient(4px 4px at 5% 88%,  var(--cv-vermelho) 98%, transparent);
+    opacity: .55;
+  }
+  .pagina-convite .hero::after {
+    background-image:
+      linear-gradient(45deg, var(--cv-azul) 50%, transparent 50%),
+      linear-gradient(45deg, var(--cv-vermelho) 50%, transparent 50%);
+    background-size: 9px 9px, 8px 8px;
+    background-position: 2% 28%, 98% 78%;
+    opacity: .5;
+  }
+}

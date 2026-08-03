@@ -1,155 +1,107 @@
-# Status — Fatia 9: redesign do convite
+# Status — Fatia 10: polimento visual do convite
 
-**Fatia fechada.** As três decisões do review aplicadas: título como H1 visível, idades como
-constante com o 160 sendo a soma, e paleta **preto + azul + vermelho** — não a do mockup.
+**Fatia fechada.** Os quatro itens resolvidos, mais a higiene. O terceiro caminho do item 1 —
+aprovado no review — resolveu o item 3 junto, pela causa.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-9-redesign` → merge `--ff-only` → apagada |
-| Commit da fatia | `d658a974ecfc07488ba44b8a7010db78a584c81d` |
-| `./verify.sh` | **VERDE** — 63 asserções, sem alteração (nada de lógica mudou) |
+| Branch | `chore/fatia-10-polimento-visual` → merge `--ff-only` → apagada |
+| Commit da fatia | `PREENCHER` |
+| `./verify.sh` | **VERDE** — 63 asserções, sem alteração |
 
-## Contraste WCAG — medido, não olhado
+## Item 1 — data duplicada
 
-Primeira rodada, com o azul do mockup (`#3b82f6`) no texto sobre fundo claro:
+**Antes:** a mesma string em dois lugares (`main.js:74` e `:76`), separados por ~400px de rolagem.
 
+**Depois:** a data vive só no pill do hero. A seção deixou de ter card de data e passou a
+responder uma pergunta só — *onde* —, com o endereço em destaque e o botão do mapa.
+
+Copy no tom do resto da página, como o review sugeriu: **"É aqui 📍 / Anota o endereço"**, em vez
+do "Onde vai ser" mais seco que eu tinha proposto.
+
+## Item 2 — carrossel
+
+O review avisou que o teto de 420px com `aspect-ratio: 16/10` estreitaria a largura para ~672px e
+o carrossel poderia parecer perdido. Segui a alternativa sugerida: **alargar a proporção no
+desktop** (`aspect-ratio: 2/1` acima de 800px), mantendo os 900px de largura.
+
+Resultado: de **562px para ~450px** de altura, mais baixo **sem** ficar menor. O mobile segue no
+16/10, que estava bom.
+
+## Item 3 — ritmo vertical
+
+Resolvido pela causa, não por padding: o vazio vinha de **dois cards baixos** num grid de duas
+colunas. Com um bloco só, centrado e com conteúdo de verdade, a seção preencheu sem apertar nada.
+
+## Item 4 — confete sobre o texto
+
+**Antes (mobile 390px):** partículas sobre o conteúdo — uma bolinha vermelha encostando em
+"anos" no título, outra **dentro do card do Bruno**, um triângulo sobre o countdown.
+
+Causa: as posições são **percentuais**, e num viewport estreito o "meio" é exatamente onde o
+texto está.
+
+**Depois:** abaixo de 560px, densidade reduzida (de 8 para 5 partículas no `::before`, de 4 para
+2 no `::after`) e todas empurradas para as bordas (`4%`, `96%`, `3%`, `97%`, `2%`, `98%`). No
+desktop nada muda.
+
+## Item 5 — higiene
+
+`docs/revisao/design/_to_delete/` removida (4 arquivos, **não rastreados** pelo git — bastou
+`rm -rf`, sem `git rm`). Sobrou só o `mockup-convite.html`.
+
+## Um ajuste fora da lista
+
+O botão "Abrir no mapa" herdou o `border: 1.5px dashed` do `.btn-ghost` — que é a afordância de
+"adicionar" do "+ Adicionar acompanhante", mas num link de mapa lê como inacabado. Borda sólida
+só ali.
+
+## Verificação
+
+### Modo escuro — não regrediu
 ```
-par                                       razao   AA(4.5)  AA-grande(3.0)
-texto do hero (branco / preto)            19.55   PASSA    PASSA
-eyebrow azul-claro / preto                8.93    PASSA    PASSA
-rotulo do countdown / preto               8.44    PASSA    PASSA
-numero da equacao azul / card escuro      8.27    PASSA    PASSA
-numero total vermelho / card              7.17    PASSA    PASSA
-subtitulo do hero / preto                14.12   PASSA    PASSA
-tinta / fundo claro                       17.04   PASSA    PASSA
-tinta suave / fundo claro                 7.46    PASSA    PASSA
-kicker azul / fundo claro                 3.46    falha    PASSA
-link do mapa azul / branco                3.68    falha    PASSA
-rodape texto / preto                      11.79   PASSA    PASSA
+claro : corpo rgb(247,248,251) · input rgb(255,255,255) · texto rgb(18,22,31) · card rgb(255,255,255)
+escuro: corpo rgb(247,248,251) · input rgb(255,255,255) · texto rgb(18,22,31) · card rgb(255,255,255)
 ```
+Idêntico. O remapeamento de variáveis da Fatia 9 continua valendo.
 
-Dois pares **reprovaram** para texto normal. Testei candidatos e troquei por `#2563eb` só onde o
-azul aparece sobre claro (`--cv-azul-texto`); o `#3b82f6` segue como acento sobre o hero escuro:
-
-```
-kicker azul-texto / fundo claro : 4.87  AA PASSA
-link mapa azul-texto / branco   : 5.17  AA PASSA
-```
-
-Olhando, os dois pareciam perfeitamente legíveis. Só a medição pegou.
-
-## Quatro problemas que só apareceram na tela
-
-### 1. Os campos do formulário ficaram pretos
-
-O primeiro render mostrou inputs, chips e cards escuros dentro de uma seção clara. Causa: o
-`:root` tem um bloco `@media (prefers-color-scheme: dark)`, o navegador está em modo escuro, e os
-componentes **compartilhados** (`input`, `.chip`, `.pessoa-card`, `.carrossel`) leem as variáveis
-globais — que eu não havia remapeado.
-
-Corrigido declarando `--bg`, `--bg-soft`, `--ink`, `--ink-soft`, `--line`, `--brand` dentro de
-`.pagina-convite`: a declaração no `<body>` vence o herdado do `:root` para toda a subárvore,
-inclusive no modo escuro.
-
-### 2. O countdown aparecia zerado ao lado do "É hoje!"
-
-O atributo `hidden` é `display: none` na folha do **navegador**, e qualquer `display` de autor o
-vence. Como dei `display: flex` ao `.countdown`, ele continuava visível mostrando `0 0 0 0` ao
-lado da mensagem "É hoje! 🎉".
-
-Corrigido com `.pagina-convite [hidden] { display: none !important; }`.
-
-### 3. O fail-loud da Fatia 8 quebrou com a estrutura nova
-
-Na falha de carga, os títulos **"Memórias / Momentos"** e **"Bora? / Confirmar presença"**
-apareciam sobre o vazio — porque as seções novas têm cabeçalho próprio, e a Fatia 8 escondia só o
-conteúdo interno.
-
-Foi exatamente a incoerência que aquela fatia custou três bugs para eliminar, reintroduzida pelo
-layout. Corrigido escondendo as **seções inteiras**.
-
-### 4. Um erro meu de sincronização
-
-Estava usando `cp -R js $S/site/` para atualizar a cópia servida. Com o destino já existente, o
-`cp -R` aninha a pasta em vez de sobrescrever o conteúdo — e eu testei um arquivo velho, medindo
-`secaoRsvp: true` quando o código já estava certo. Passei a copiar por conteúdo
-(`cp js/*.js $S/site/js/`).
-
-Vale registrar porque quase virou um "bug" investigado no lugar errado.
-
-## Verificação integrada — saída crua
-
-### Não-regressão: RSVP ponta a ponta pelo layout novo
-```json
-{ "regraChoppCrianca": { "desabilitado": true },
-  "sucesso": true, "titulo": "Presença confirmada!", "erro": null }
-```
-```
-GRUPO gravado pelo layout novo:
-   ['Teste Redesign', '51931312020', [1, 3]]
-PESSOAS:
-   [0, 'Teste Redesign', 'adulto', 'principal', False, True, True]
-   [1, '(sem nome)', 'crianca', 'acompanhante', True, False, False]
-```
-Grupo com `convidado_por [1,3]`, acompanhante sem nome preservado, chopp barrado para criança.
-
-### Countdown nos três estados
-```json
-{ "eHoje": { "estado": "e-hoje", "countdownOculto": true,
-             "aviso": "É hoje! 🎉", "heroVisivel": true, "formVisivel": true } }
-```
-```json
-{ "passou": { "estado": "passou", "countdownVisivel": false,
-              "aviso": "A festa já aconteceu. 💜",
-              "dataGerada": "Domingo, 2 de agosto de 2026, às 20h",
-              "heroVisivel": true, "formVisivel": true } }
-```
-No "é hoje" o `data_texto` do banco continuou mandando (override manual), e no "passou" — com o
-campo limpo — a data saiu **gerada** da ISO. Os dois caminhos exercitados.
-
-### Falha de carga: um estado só
+### Fail-loud — um estado só
 ```json
 { "falhaDeCarga": { "erro": true, "hero": false, "secaoOnde": false,
                     "secaoFotos": false, "secaoRsvp": false, "rodape": true, "chips": 0 } }
 ```
+A asserção que já quebrou duas vezes segue verde.
 
-### O admin não herdou nada
+### RSVP ponta a ponta
 ```
-admin.html sem a classe pagina-convite ✅
-admin.html sem Fredoka ✅
+RSVP gravado: (['Teste Fatia 10', '51940405050', [2]],)
+pessoas: (['Teste Fatia 10', 'adulto', True, True],)
 ```
-A trava que o review pediu: paleta e fontes escopadas em `.pagina-convite`, e o `admin.html` não
-tem a classe nem carrega as fontes novas.
+Apagado depois.
+
+### Admin intacto
+```
+admin.html com "pagina-convite": 0
+admin.html com "Fredoka": 0
+```
 
 ### Base restaurada
 ```
-festa: 'Festa dos 160 anos', 2026-10-31 14:00 UTC, 'Sábado, 31 de outubro de 2026, às 11h', atualizado_em NULL
-config (dados do Bruno): prazo 2026-10-02, preço 10.00, taxa 2.500
-pessoas: Bruno(1), Braz(2), Bocão(3)
 rsvps: 0
-policies festa: admin edita festa · festa leitura publica
+festa: 'Festa dos 160 anos', atualizado_em NULL
+config do Bruno: prazo 2026-10-02, preço 10.00
+aniversariantes: Bruno(1), Braz(2), Bocão(3)
 ```
-Seus dados intactos; o `atualizado_em` da festa segue `NULL`, então a trava do reset continua
-liberando.
 
-## Decisões aplicadas
+## Estado
 
-- **Título como H1**, em gradiente branco→azul→vermelho, com a equação logo abaixo como apoio
-  gráfico. O `<title>` da aba passou a usar o título da festa — melhora o preview no WhatsApp.
-- **Idades constantes** (`IDADES = [40, 50, 70]`) e o **160 como soma**. Dois literais podem
-  discordar; uma soma não.
-- **Confete no hero em CSS puro**, sem markup e sem JS, para o astral sobreviver à paleta
-  fechada — como o review pediu. Não compete com o `#confetti`, que é a animação de sucesso.
-- **Equação no mobile:** os três em cima, o total embaixo, e o `=` escondido em vez de espremido
-  na borda — o defeito que apontei no mockup.
+O convite está pronto para o go-live. Falta, do seu lado:
 
-## Notas para a próxima fatia
+- **rotacionar a senha do Postgres** (circulou na conversa; nada no site depende dela);
+- conferir se os preços e o prazo estão como você quer antes de divulgar o link.
 
-- **`IDADES` é a única coisa do convite que ainda vive no código.** Se um dia virar produto,
-  é o próximo candidato a ir para a `festa` — schema aditivo.
-- A `.pagina-convite` remapeia as variáveis globais. Se o admin ganhar um restyle, o caminho já
-  está aberto: mesma técnica, classe própria.
-- Ainda pendente: rotacionar a senha do Postgres.
+> Lembrete: com a `config` preenchida, a trava do `supabase-setup.sql` bloqueia recriar o schema
+> — e a partir da Fatia 8 mudança de schema é aditiva, não recriação.
 
 ---
 
@@ -157,5 +109,5 @@ liberando.
 
 | | |
 |---|---|
-| Commit da fatia (o código) | `d658a974ecfc07488ba44b8a7010db78a584c81d` |
+| Commit da fatia (o código) | `PREENCHER` |
 | Commit deste `status.md` | logo em seguida, na `main` |
