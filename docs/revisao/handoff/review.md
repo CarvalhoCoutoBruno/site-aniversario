@@ -1,30 +1,33 @@
-# Review — Fatia 3
+# Review — Fatia 4
 
-**Veredito: aprovado, sem ajustes.** O achado do `.upsert()` é ótimo — exatamente o tipo de
-falha de runtime que o loop de review existe pra pegar antes do save.
+**Veredito: aprovado, sem ajustes.** Plano forte, e o risco que você mediu é o certo.
 
-## O catch do upsert
-Correto e bem provado (testou as duas formas de `ON CONFLICT` contra o banco). O índice único é
-**parcial** (`WHERE papel='aniversariante'`), e o `supabase-js`/PostgREST não expressa o `WHERE`
-na inferência → `.upsert({onConflict:'aniversariante_id'})` quebraria no primeiro save. Trocar
-por **ler-e-decidir `update`/`insert`** é a solução certa e deixa o código mais explícito. O
-tratamento da corrida (índice parcial barra o segundo → UI diz "recarregue") fecha o buraco.
+## O catch da corrida
+Ótimo. Os 3 carregadores rodam em paralelo no `mostrarPainel()` e nenhum guardava o que
+carregou; calcular a estimativa dentro de um deles rodaria com metade do estado, de forma
+intermitente — o clássico "passa no teste, falha na máquina". Guardar `ultimaConfig` /
+`ultimasPessoas` e disparar `atualizarEstimativa()` só quando os dois chegaram (guarda de
+completude; quem chega por último dispara) é a solução certa.
 
-## As 3 decisões — todas confirmadas
-1. **Criar linha para os 3 no save, mesmo sem nada marcado:** sim. Linha com 4 booleanos `false`
-   = "está na festa, não consome" ≠ "não cadastrado" — é o modelo mais previsível e deixa os 3
-   sempre presentes pro rateio/estimativa (do que a Fatia 4 depende).
-2. **Sem "remover cadastro":** concordo. Zerar = desmarcar. Um delete daria como sumir com um
-   pagante do rateio sem perceber — não vale o risco.
-3. **Regra do chopp duplicada (`main.js` + `admin.js`):** aceito. A **fonte única da verdade da
-   regra é a constraint `chopp_nao_para_crianca`** no banco; as duas cópias no JS são só espelho
-   de UX. Extrair ~10 linhas de lógica de DOM pra um 4º arquivo acopla mais do que resolve. (Se
-   um dia a regra mudar, muda a constraint e os dois espelhos — anotado, mas é barato.)
+Aprovo também:
+- **Usar a config salva** (do banco), não os inputs — a estimativa não deve refletir edição não salva.
+- **N/3 contado direto da lista** (`filter papel==='aniversariante'`), fugindo da mesma corrida.
+- Ter **verificado o `numeric`→string** (`"18.50"`): é o gotcha que zeraria/`NaN` em silêncio;
+  bom ter batido contra dados na forma que o banco devolve.
+
+## A decisão em aberto
+**Mostrar a estimativa zerada com 0 confirmações** (em vez de esconder a seção): sim, concordo.
+Some a dúvida "será que quebrou?" e é coerente com as outras seções sempre presentes.
+
+## Nota leve (não bloqueia)
+Enquanto os preços de referência estiverem em 0 (sementes), o **custo aproximado sai 0** — é
+esperado, e os **volumes/pizzas seguem úteis** pro fornecedor mesmo assim. Só não estranhar.
 
 ## Verify
-Cobre certo: o **#5 (salvar de novo → 3 linhas, não 6)** é a prova do caminho `update`/`insert`
-onde o `.upsert()` falharia; o **#6** valida o backstop da constraint; o **#7** já vem com o
-negativo de RLS **provado pelo estado do banco** (não pelo 204). Mantém a saída crua no
-`status.md` e restaura a base ao fim.
+Cobre certo — o **#2 (apagar os 3 aniversariantes → volumes caem o que eles consomem →
+recadastrar → volta)** é o que mais importa: sem ele a estimativa esqueceria os aniversariantes e
+ficaria plausível-e-errada. O **#4 (`custo_real_*` bem diferente não move a estimativa)** prova
+que usa os preços de referência, e o **#5 (estado do banco idêntico antes/depois)** confirma o
+read-only.
 
 Pode `executa`.

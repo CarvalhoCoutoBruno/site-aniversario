@@ -1,13 +1,12 @@
-# Status — Fatia 3: cadastro dos aniversariantes
+# Status — Fatia 4: estimativa de compra
 
-**Fatia fechada.** Aprovada sem ajustes; as 3 decisões do plano confirmadas pelo review e
-aplicadas. O achado do `.upsert()` se confirmou em runtime — o caminho `update`/`insert`
-funciona onde o upsert teria falhado.
+**Fatia fechada.** Aprovada sem ajustes. Todos os números conferidos contra a conta na mão, e a
+prova de que a estimativa conta os aniversariantes feita nos dois sentidos (tirar e recolocar).
 
 | | |
 |---|---|
-| Branch | `feat/fatia-3-aniversariantes` → merge `--ff-only` → apagada |
-| Commit da fatia | `adcb024f622a2b3d1b6fd825836039cba26920f0` |
+| Branch | `feat/fatia-4-estimativa` → merge `--ff-only` → apagada |
+| Commit da fatia | `f4b2fab7fda3b539959532acab9b031381e19e42` |
 | `./verify.sh` | **VERDE** — 41/41, sem regressão |
 
 ## `./verify.sh`
@@ -27,119 +26,138 @@ Coerência
 VERDE — verificação estática ok. Falta a integrada (navegador + banco).
 ```
 
+## Base de teste
+
+6 pessoas: 2 grupos (Ana + filha criança; Beto) e os 3 aniversariantes.
+
+```
+BASE MONTADA (tipo, papel, agua, refri, chopp, pizza):
+   ['crianca', 'acompanhante',   True,  True,  False, True ]
+   ['adulto',  'aniversariante', False, True,  True,  True ]   Bocão
+   ['adulto',  'aniversariante', True,  False, False, False]   Braz
+   ['adulto',  'aniversariante', False, False, True,  True ]   Bruno
+   ['adulto',  'principal',      True,  False, True,  True ]   Ana
+   ['adulto',  'principal',      False, True,  True,  False]   Beto
+```
+
+Taxas 2,0 / 0,6 / 0,5. Preços de referência 18,50 / 6,00 / 3,00 / 45,90 / 24,50.
+**`custo_real_*` populados de propósito com valores absurdos** (9999,99 / 8888,88 / 7777,77)
+para o teste #4.
+
 ## Verificação integrada — saída crua
 
-### 1. Tela carrega os 3 do `config.js`
+### 1. Números conferidos contra a conta na mão
 ```json
-{ "painelVisivel": true,
-  "secaoFechada": true,
-  "blocos": [
-   { "id": "1", "legenda": "Bruno (id 1)",  "tipoMarcado": "adulto", "bebidasMarcadas": 0, "pizzaMarcada": false },
-   { "id": "2", "legenda": "Braz (id 2)",   "tipoMarcado": "adulto", "bebidasMarcadas": 0, "pizzaMarcada": false },
-   { "id": "3", "legenda": "Bocão (id 3)",  "tipoMarcado": "adulto", "bebidasMarcadas": 0, "pizzaMarcada": false } ],
-  "statAniv": "Aniversariantes cadastrados=0/3" }
+{ "volumes": ["Chopp = 8 L", "Refrigerante = 1,8 L", "Água = 1,5 L"],
+  "pizzas": ["Pizzas de adulto = 3", "Pizzas de criança = 1"],
+  "custo": ["Custo aproximado = R$ 325,50"],
+  "contagens": ["Pessoas = 6", "Adultos = 5", "Crianças = 1",
+                "Bebem chopp = 4", "Bebem refri = 3", "Bebem água = 3"],
+  "avisoAnivOculto": true, "avisoPrecosOculto": true }
 ```
 
-### 2. Primeiro save — `SELECT` cru
-Tela: `{"msg": "Aniversariantes salvos. ✅", "statAniv": "Aniversariantes cadastrados=3/3"}`
+Conferência manual:
+- chopp: 4 adultos × 2,0 = **8 L** ✓
+- refri: 3 pessoas × 0,6 = **1,8 L** ✓
+- água: 3 pessoas × 0,5 = **1,5 L** ✓
+- custo: 8×18,50 + 1,8×6 + 1,5×3 + 3×45,90 + 1×24,50 = **R$ 325,50** ✓
 
-```
-LINHAS (aniv_id, nome, tipo, papel, rsvp_id, agua, refri, chopp, pizza):
-   [1, 'Bruno', 'adulto', 'aniversariante', None, False, False, True, True]
-   [2, 'Braz',  'adulto', 'aniversariante', None, False, True,  False, False]
-   [3, 'Bocão', 'adulto', 'aniversariante', None, True,  False, False, False]
-  total = 3
-```
-`rsvp_id = None` nos três, `papel` e `aniversariante_id` corretos, `nome` batendo com o
-`config.js`.
+### 2. **A prova de que conta os aniversariantes** — nos dois sentidos
 
-### 3. Recarregar — os valores persistem
+Removendo só o Bocão (chopp + refri + pizza, adulto):
 ```json
-{ "persistiuAposReload": {
-   "bruno": { "tipo": "adulto", "agua": false, "refri": false, "chopp": true, "pizza": true },
-   "braz":  { "tipo": "adulto", "agua": false, "refri": true,  "chopp": false, "pizza": false },
-   "bocao": { "tipo": "adulto", "agua": true,  "refri": false, "chopp": false, "pizza": false } } }
+{ "volumes": ["Chopp = 6 L", "Refrigerante = 1,2 L", "Água = 1,5 L"],
+  "pizzas": ["Pizzas de adulto = 2", "Pizzas de criança = 1"],
+  "custo": "Custo aproximado = R$ 239,00",
+  "avisoAniv": "Só 2 de 3 aniversariantes cadastrados — falta o consumo de 1 deles nesta conta." }
 ```
-É o teste que pegaria erro no casamento por `aniversariante_id`.
+Chopp 8 → 6 L e refri 1,8 → 1,2 L: exatamente o que ele consumia. **A água ficou em 1,5 L**,
+porque o Bocão não bebia água — o número não caiu "por cair".
 
-### 4. Chopp × criança na tela
-Marcando Braz como criança:
+Removendo os três:
 ```json
-{ "regraChoppCrianca": { "desabilitado": true, "riscado": true, "avisoVisivel": true } }
+{ "volumes": ["Chopp = 4 L", "Refrigerante = 1,2 L", "Água = 1 L"],
+  "pizzas": ["Pizzas de adulto = 1", "Pizzas de criança = 1"],
+  "custo": "Custo aproximado = R$ 154,60",
+  "contagens": ["Pessoas = 3", "Adultos = 2", "Crianças = 1",
+                "Bebem chopp = 2", "Bebem refri = 2", "Bebem água = 2"],
+  "aviso": "Só 0 de 3 aniversariantes cadastrados — falta o consumo de 3 deles nesta conta." }
 ```
 
-### 5. **A prova do upsert** — segundo save com valores diferentes
-Bruno perdeu o chopp e ganhou água; Braz virou criança.
-
-```
-PROVA DO UPSERT — apos o SEGUNDO save:
-  total de linhas = 3 (esperado 3; com .upsert() quebrado seriam 6 ou erro)
-   [1, 'Bruno', 'adulto',  True, False, False, True]
-   [2, 'Braz',  'crianca', False, True, False, False]
-   [3, 'Bocão', 'adulto',  True, False, False, False]
-  ids distintos = 3
+Recadastrando os três:
+```json
+{ "voltouAoOriginal": { "volumes": ["Chopp = 8 L", "Refrigerante = 1,8 L", "Água = 1,5 L"],
+                        "pizzas": ["Pizzas de adulto = 3", "Pizzas de criança = 1"],
+                        "custo": "Custo aproximado = R$ 325,50" },
+  "avisoAnivOculto": true }
 ```
 
-Confirma em runtime o que o plano tinha medido em SQL: `ON CONFLICT (aniversariante_id)` — a
-única forma que o supabase-js sabe emitir — falha contra o índice **parcial**
-(`WHERE papel='aniversariante'`), porque a inferência de índice parcial exige repetir o
-predicado. Ler as linhas e decidir `update`/`insert` resolve e deixa o código mais explícito.
+Sem isso a estimativa ficaria **plausível e errada** — o organizador compraria 4 L de chopp em
+vez de 8 e só descobriria na festa.
 
-### 6. Backstop do banco
-```
-  update Braz (crianca) para bebe_chopp=true     rejeitou -> violates check constraint
-  insert aniversariante_id=1 duplicado           rejeitou -> violates unique constraint
-```
-A regra do chopp na tela é espelho de UX; a fonte da verdade é a constraint.
+### 3. Aviso N/3
+Aparece com 2 de 3 e com 0 de 3 (textos acima), some com 3 de 3 (`avisoAnivOculto: true`).
 
-### 7. Negativo (RLS) — provado pelo estado do banco
+### 4. Usa os **preços de referência**, não o custo real
+Com os preços zerados e `custo_real_chopp = 9999,99` no banco:
+```json
+{ "comPrecosZerados": {
+    "volumes": ["Chopp = 8 L", "Refrigerante = 1,8 L", "Água = 1,5 L"],
+    "custo": "Custo aproximado = R$ 0,00",
+    "avisoPrecos": "Os preços de referência ainda estão zerados na configuração — por isso o
+                    custo dá R$ 0,00. Os volumes acima já valem." } }
 ```
-  anon SELECT pessoas: []
-  anon INSERT aniversariante: {"code":"42501","message":"new row violates row-level security policy for table \"pessoas\""}
-  anon UPDATE aniversariante 1: HTTP 204
-  anon DELETE aniversariantes: HTTP 204
-```
+Se a estimativa usasse `custo_real_*`, jamais daria zero. Os volumes seguem corretos, que é o
+que importa para o fornecedor — como o review antecipou na nota leve.
 
-> Os dois `204` de novo — como na Fatia 2, **parecem sucesso**. O `DELETE` do anon pediu para
-> apagar os três aniversariantes e voltou `204 No Content`. Só o `SELECT` como dono resolve:
+> Um falso negativo do meu próprio script: a asserção `=== "R$ 0,00"` deu `false` mesmo com a
+> tela mostrando `R$ 0,00`. O `Intl.NumberFormat` usa **espaço não-quebrável** (código 160)
+> entre o símbolo e o número:
+> ```json
+> { "custoBruto": "R$ 0,00", "codigosDosCaracteres": [82, 36, 160, 48],
+>   "normalizado": "R$ 0,00", "ehZero": true }
 > ```
-> depois das tentativas do anon (UPDATE bebe_chopp=true e DELETE de todos):
->   total de linhas = 3 (o anon tentou APAGAR os 3)
->    [1, 'Bruno', 'adulto',  True, False, False, True]
->    [2, 'Braz',  'crianca', False, True, False, False]
->    [3, 'Bocão', 'adulto',  True, False, False, False]
->   -> INTACTO ✅ (nao apagou, nao alterou o chopp do Bruno)
-> ```
-> Só o `INSERT` devolve `42501` explícito, porque a policy de insert avalia o `WITH CHECK` na
-> linha nova. `UPDATE` e `DELETE` filtram por `USING`: sem linha visível, não há o que
-> rejeitar — a operação "sucede" sobre zero linhas.
+> Fica o registro: comparar string de moeda formatada exige normalizar o espaço.
 
-### 8. Base restaurada
+### 5. Nenhuma escrita no banco
+Hash do estado de `pessoas` antes de abrir a estimativa e depois de abrir + recarregar duas
+vezes:
+```
+hash do estado de pessoas ANTES:  d6ced08390d3bae9995c625a0955eb8e
+hash do estado de pessoas DEPOIS: d6ced08390d3bae9995c625a0955eb8e
+  -> IDENTICO ✅ (a estimativa nao escreveu nada)
+  custo_real_chopp intacto: 9999.99
+```
+
+### 6. Base restaurada
 ```
 rsvps = 0
 pessoas = 0
 admins = 4
-config (taxas, prazo, custo_real) = [2.000, 0.600, 0.500, None, None]
+config = [2.000, 0.600, 0.500, 0.00, None, None]
 auth.users = ['bruno.carvalho@gmail.com','brazrs@gmail.com','rscouto47@hotmail.com','jhboca@hotmail.com']
 ```
 Usuário temporário apagado.
 
-## Decisões aplicadas (confirmadas no review)
+## O que a implementação resolveu
 
-1. **Save cria linha para os 3**, mesmo sem nada marcado — linha com booleanos `false` é "está
-   na festa, não consome", diferente de "não cadastrado".
-2. **Sem "remover cadastro"** — zerar é desmarcar.
-3. **Regra do chopp duplicada** entre `main.js` e `admin.js`, com a constraint como fonte única.
+**A corrida.** Os carregadores rodam em paralelo e nenhum guardava o que carregava. Agora
+`carregarConfig` e `carregarRSVPs` guardam a sua parte e chamam `atualizarEstimativa()`, que
+retorna cedo enquanto faltar alguma — quem chega por último dispara o cálculo. O "↻ Atualizar"
+recalcula de graça, porque já chama os dois.
 
-## Notas para a próxima fatia (4 — estimativa)
+**Um ajuste durante a verificação:** o aviso do N/3 dizia "o consumo dos outros 1 não está nesta
+conta". Corrigido para tratar singular e plural.
 
-- **Os 3 aniversariantes agora têm linha** quando o organizador salvar a tela; até lá a base
-  fica sem eles, e a estimativa sairia sem o consumo dos três. A tela mostra "cadastrados: N/3",
-  o que dá para usar como aviso na Fatia 4 se `N < 3`.
-- **`calculo.js` já está no `admin.html`** desde a Fatia 2 — `estimativa(pessoas, config)` está
-  pronta e testada, faltando só a tela.
-- A estimativa precisa de **todas** as pessoas: as de grupos (`rsvp_id` preenchido) e as três de
-  `papel='aniversariante'`. O `carregarRSVPs` já faz esse join e separa os aniversariantes.
+## Notas para a próxima fatia (5 — fechamento e rateio)
+
+- `Calculo.rateio(pessoas, config, grupos)` está pronto e testado; devolve `porAniversariante`
+  com detalhe por item, `totalRateado`, `custoRealTotal`, `fechamentoCompleto` e `confere`.
+- **A Fatia 5 precisa dos `grupos`** (`rsvps` com `convidado_por`), não só das pessoas — é o elo
+  que define quem banca quem. O `carregarRSVPs` já busca `g.data`; hoje guardo só as pessoas em
+  `ultimasPessoas`, então vai precisar guardar os grupos também.
+- `parseNumeroBR` e `fmtNumeroBR` do `admin.js` servem para os `custo_real_*` digitados.
+- O selo `confere` fica verde só com os três `custo_real_*` preenchidos **e** a soma batendo.
 - Ainda pendente do Bruno: rotacionar a senha do Postgres.
 
 ---
@@ -148,7 +166,7 @@ Usuário temporário apagado.
 
 | | |
 |---|---|
-| Commit da fatia (o código) | `adcb024f622a2b3d1b6fd825836039cba26920f0` |
+| Commit da fatia (o código) | `f4b2fab7fda3b539959532acab9b031381e19e42` |
 | Commit deste `status.md` | logo em seguida, na `main` |
 
 > Gravar o hash pós-push dentro de um arquivo versionado muda o hash — por isso os dois são
