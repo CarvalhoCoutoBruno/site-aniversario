@@ -132,8 +132,10 @@
       toastConfig("Não consegui carregar a configuração.", "err");
       return;
     }
-    ultimaConfig = data;   // a estimativa usa a config SALVA, não os inputs
-    atualizarEstimativa();
+    ultimaConfig = data;   // estimativa e rateio usam a config SALVA, não os inputs
+    montarCamposFechamento();
+    preencherFechamento(data);
+    recomputar();
     for (const [col] of CAMPOS_PRECO) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 2, 2);
     for (const [col] of CAMPOS_TAXA) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 0, 3);
     $("#cfgPrazo").value = dataDoPrazo(data.prazo_confirmacao);
@@ -391,6 +393,7 @@
 
   let ultimaConfig = null;
   let ultimasPessoas = null;
+  let ultimosGrupos = null;
 
   const fmtLitros = (n) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 
@@ -398,8 +401,17 @@
     return `<div class="stat"><b>${esc(String(valor))}</b><span>${esc(rotulo)}</span></div>`;
   }
 
+  // Guarda de completude única: os carregadores rodam em paralelo, e
+  // tanto a estimativa quanto o rateio precisam do conjunto inteiro.
+  // Quem chegar por último dispara os dois.
+  function recomputar() {
+    if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos) return;
+    atualizarEstimativa();
+    atualizarRateio();
+  }
+
   function atualizarEstimativa() {
-    if (!ultimaConfig || !ultimasPessoas) return; // guarda de completude
+    if (!ultimaConfig || !ultimasPessoas) return;
     const e = Calculo.estimativa(ultimasPessoas, ultimaConfig);
     const c = e.contagens;
 
@@ -452,6 +464,140 @@
     }
   }
 
+  /* ================= FECHAMENTO E RATEIO =================
+     Lança o custo real e mostra as 3 contas — uma por aniversariante.
+     Convidado não paga: o consumo dele é bancado por quem o convidou.
+
+     ⚠️ O rateio precisa dos GRUPOS (rsvps.convidado_por), não só das
+     pessoas: é o elo convidado -> pagante. Sem eles todo convidado vira
+     "consumo sem dono" e é descartado (não redistribuído), o rateio sai
+     muito abaixo do gasto e o selo fica vermelho. Falha alto, mas o
+     wiring de ultimosGrupos é o coração desta fatia.               */
+
+  const CAMPOS_CUSTO = [
+    ["custo_real_chopp", "Chopp"],
+    ["custo_real_refri", "Refrigerante"],
+    ["custo_real_agua", "Água"],
+  ];
+  const CAMPOS_PIZZA_REAL = [
+    ["preco_real_pizza_adulto", "Pizza — adulto (por pessoa)"],
+    ["preco_real_pizza_crianca", "Pizza — criança (por pessoa)"],
+  ];
+
+  function montarCamposFechamento() {
+    const campo = ([col, rotulo]) => `
+      <label class="config-campo">
+        <span>${esc(rotulo)}</span>
+        <input type="text" inputmode="decimal" id="fec_${col}" placeholder="em branco = não fechado" />
+      </label>`;
+    $("#fecCustos").innerHTML = CAMPOS_CUSTO.map(campo).join("");
+    $("#fecPizzas").innerHTML = CAMPOS_PIZZA_REAL.map(campo).join("");
+  }
+
+  function preencherFechamento(cfg) {
+    for (const [col] of [...CAMPOS_CUSTO, ...CAMPOS_PIZZA_REAL]) {
+      const el = $(`#fec_${col}`);
+      if (el) el.value = cfg[col] === null || cfg[col] === undefined ? "" : fmtNumeroBR(cfg[col], 2, 2);
+    }
+  }
+
+  function toastFec(msg, classe) {
+    const el = $("#fecMsg");
+    el.className = "msg-toast" + (classe ? " " + classe : "");
+    el.textContent = msg;
+  }
+
+  /* ---- salvar: update estreito, só os 5 campos de fechamento ----
+     Vazio = NULL aqui, ao contrário da Fatia 2: lá vazio era
+     esquecimento e se recusava; aqui significa "ainda não fechei". */
+  $("#fecForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("#btnSalvarFec");
+    toastFec("");
+
+    const patch = {};
+    for (const [col, rotulo] of [...CAMPOS_CUSTO, ...CAMPOS_PIZZA_REAL]) {
+      const r = parseNumeroBR($(`#fec_${col}`).value);
+      if (r.vazio) { patch[col] = null; continue; }
+      if (r.invalido) return erroFec(col, `"${rotulo}" não é um número válido.`);
+      if (r.valor < 0) return erroFec(col, `"${rotulo}" não pode ser negativo.`);
+      if (r.valor > MAX_PRECO) {
+        return erroFec(col, `"${rotulo}" passou do máximo aceito (${fmtNumeroBR(MAX_PRECO, 2, 2)}).`);
+      }
+      patch[col] = r.valor;
+    }
+    patch.atualizado_em = new Date().toISOString();
+
+    btn.disabled = true;
+    const rotulo = btn.textContent;
+    btn.textContent = "Salvando...";
+    const { error } = await sb.from("config").update(patch).eq("id", 1);
+    btn.disabled = false;
+    btn.textContent = rotulo;
+
+    if (error) {
+      console.error(error);
+      return toastFec("Não consegui salvar. Confira os valores e tente de novo.", "err");
+    }
+    toastFec("Fechamento salvo. ✅", "ok");
+    carregarConfig(); // recarrega a config e recomputa o rateio
+  });
+
+  function erroFec(col, msg) {
+    toastFec(msg, "err");
+    const el = $(`#fec_${col}`);
+    if (el) el.focus();
+  }
+
+  /* ---- o rateio (só leitura) ---- */
+  const ITENS_CONTA = [["chopp", "Chopp"], ["refri", "Refri"], ["agua", "Água"], ["pizza", "Pizza"]];
+
+  function atualizarRateio() {
+    if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos) return;
+    const r = Calculo.rateio(ultimasPessoas, ultimaConfig, ultimosGrupos);
+
+    $("#fecContas").innerHTML = r.porAniversariante.length
+      ? r.porAniversariante.map((a) => {
+          const itens = ITENS_CONTA
+            .filter(([k]) => a.detalhe[k] > 0)
+            .map(([k, rot]) => `<span class="pill">${esc(rot)}: ${esc(Calculo.formatarBRL(a.detalhe[k]))}</span>`)
+            .join("");
+          return `<div class="conta-aniv">
+            <div class="conta-topo">
+              <b>${esc(a.nome)}</b>
+              <span class="conta-total">${esc(Calculo.formatarBRL(a.total))}</span>
+            </div>
+            <div class="conta-itens">${itens || "<small>não consumiu nada</small>"}</div>
+          </div>`;
+        }).join("")
+      : '<p class="vazio">Nenhum aniversariante cadastrado ainda.</p>';
+
+    $("#fecTotais").innerHTML = [
+      cartao(Calculo.formatarBRL(r.custoRealTotal), "Total gasto"),
+      cartao(Calculo.formatarBRL(r.totalRateado), "Total rateado"),
+    ].join("");
+
+    // Três estados. Verde exige as DUAS condições: fechamento completo
+    // E soma batendo. Só comparar os totais deixaria passar por verde um
+    // fechamento incompleto cujas somas coincidem por acaso.
+    const selo = $("#fecSelo");
+    if (!r.fechamentoCompleto) {
+      selo.className = "selo cinza";
+      selo.textContent = "Fechamento incompleto — lance o custo real de chopp, refrigerante e água para fechar as contas.";
+    } else if (r.confere) {
+      selo.className = "selo verde";
+      selo.textContent = "✓ As contas fecham: a soma das 3 é exatamente o total gasto.";
+    } else {
+      const dif = r.custoRealTotal - r.totalRateado;
+      selo.className = "selo vermelho";
+      selo.textContent =
+        `✗ A soma das contas não bate com o total gasto — diferença de ${Calculo.formatarBRL(Math.abs(dif))}. ` +
+        (dif > 0
+          ? "Sobrou custo sem ninguém para ratear: confira se lançou algo que ninguém consumiu."
+          : "O rateio passou do total: confira os valores lançados.");
+    }
+  }
+
   /* ================= CONFIRMAÇÕES =================
      Lê o schema novo: rsvps + pessoas por FK. As telas de config,
      aniversariantes, estimativa e fechamento são as Fatias 2 a 5 —
@@ -471,7 +617,8 @@
       porGrupo.get(pessoa.rsvp_id).push(pessoa);
     }
     ultimasPessoas = p.data || [];   // TODAS: as de grupo e as 3 de aniversariante
-    atualizarEstimativa();
+    ultimosGrupos = g.data || [];    // o elo convidado -> pagante (convidado_por)
+    recomputar();
     render(g.data || [], porGrupo, aniversariantes);
   }
 

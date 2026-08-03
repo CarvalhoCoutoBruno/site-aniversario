@@ -317,3 +317,19 @@ tr:last-child td { border-bottom: none; }
 .est-titulo { font-size: 1rem; margin: 1.4rem 0 .1rem; color: var(--ink-soft);
               text-transform: uppercase; letter-spacing: .05em; }
 .est-titulo:first-of-type { margin-top: .8rem; }
+
+/* ---- Fatia 5: fechamento e rateio ---- */
+.conta-aniv { border: 1.5px solid var(--line); border-radius: 14px;
+              padding: .8rem 1rem; margin-top: .6rem; background: var(--bg); }
+.conta-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.conta-topo b { font-size: 1.05rem; }
+.conta-total { font-family: "Fraunces", serif; font-size: 1.3rem; color: var(--brand); }
+.conta-itens { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+
+.selo { margin-top: 1.2rem; padding: .8rem 1rem; border-radius: 12px;
+        font-weight: 600; line-height: 1.45; border: 1.5px solid; }
+.selo.verde    { color: var(--ok);  border-color: var(--ok);
+                 background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.selo.vermelho { color: var(--err); border-color: var(--err);
+                 background: color-mix(in srgb, var(--err) 10%, transparent); }
+.selo.cinza    { color: var(--ink-soft); border-color: var(--line); background: var(--bg-soft); }

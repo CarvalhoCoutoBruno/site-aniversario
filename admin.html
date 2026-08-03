@@ -129,6 +129,45 @@
       <div class="stats" id="estContagens"></div>
     </details>
 
+    <!-- Fechamento e rateio -->
+    <details class="admin-secao config-secao" id="fecSecao">
+      <summary><h2>Fechamento e rateio 🧾</h2></summary>
+
+      <form id="fecForm" novalidate>
+        <fieldset class="config-bloco">
+          <legend>Custo real gasto (R$)</legend>
+          <p class="campo-dica">
+            O que foi pago de verdade, depois da compra. Deixe em branco o que ainda não fechou —
+            vazio significa "ainda não sei", não zero.
+          </p>
+          <div class="config-grid" id="fecCustos"></div>
+        </fieldset>
+
+        <fieldset class="config-bloco">
+          <legend>Preço real da pizza (R$) — opcional</legend>
+          <p class="campo-dica">
+            Se em branco, o rateio usa o preço de referência da configuração.
+          </p>
+          <div class="config-grid" id="fecPizzas"></div>
+        </fieldset>
+
+        <div class="config-acoes">
+          <button type="submit" class="btn btn-primary" id="btnSalvarFec">Salvar fechamento</button>
+        </div>
+        <p class="msg-toast" id="fecMsg"></p>
+      </form>
+
+      <h3 class="est-titulo">Quanto cada aniversariante paga</h3>
+      <p class="campo-dica">
+        Convidado não paga: o consumo dele é bancado por quem o convidou, dividido igualmente
+        quando foi mais de um.
+      </p>
+      <div id="fecContas"></div>
+
+      <div class="selo" id="fecSelo"></div>
+      <div class="stats" id="fecTotais"></div>
+    </details>
+
     <!-- Estatísticas -->
     <div class="stats" id="stats"></div>
 
