@@ -361,7 +361,123 @@ secao("rateio aleatório (Σ 3 contas === custo real)");
 }
 
 /* =============================================================
-   6) estimativa — NÃO muda com o modelo de rateio
+   6) acerto — quem transfere quanto para quem
+   ============================================================= */
+secao("acerto");
+
+// monta um resultado de rateio no formato que o acerto consome
+function rateioFalso(deve, custos, opcoes) {
+  const o = opcoes || {};
+  const total = custos.chopp + custos.refri + custos.agua + custos.pizza;
+  return {
+    porAniversariante: deve.map(([id, nome, t]) => ({ aniversarianteId: id, nome, total: t, detalhe: {} })),
+    totalRateado: deve.reduce((a, d) => a + d[2], 0),
+    custoRealTotal: total,
+    custosPorItem: custos,
+    fechamentoCompleto: o.fechamentoCompleto !== false,
+    confere: o.confere !== false,
+  };
+}
+
+{
+  // o caso do ×6,5: Bruno deve 650 e pagou o chopp de 700
+  const r = rateioFalso([[1, "Bruno", 65000], [2, "Braz", 5000], [3, "Bocão", 0]],
+                        { chopp: 70000, refri: 0, agua: 0, pizza: 0 });
+  const a = C.acerto(r, { chopp: 1 });
+  const s = (k) => a.saldos.find((x) => x.aniversarianteId === k);
+
+  ok(a.status === "completo", "status completo", a.motivo);
+  ok(s(1).pagou === 70000 && s(1).saldo === -5000, "Bruno pagou 700 e tem 50 a receber",
+    JSON.stringify(s(1)));
+  ok(s(2).saldo === 5000, "Braz tem 50 a pagar", JSON.stringify(s(2)));
+  ok(s(3).saldo === 0, "Bocão não deve nem recebe");
+  ok(a.transferencias.length === 1, "uma única transferência");
+  const t = a.transferencias[0];
+  ok(t.de === 2 && t.para === 1 && t.valor === 5000,
+    "Braz → Bruno R$ 50,00", JSON.stringify(t));
+}
+
+{
+  // item sem custo não precisa de pagador; item COM custo precisa
+  const r = rateioFalso([[1, "Bruno", 5000], [2, "Braz", 5000], [3, "Bocão", 0]],
+                        { chopp: 10000, refri: 0, agua: 0, pizza: 0 });
+  ok(C.acerto(r, { chopp: 1 }).status === "completo", "item de custo zero dispensa pagador");
+  const semDono = C.acerto(r, {});
+  ok(semDono.status === "incompleto", "item com custo e sem pagador barra");
+  ok(/chopp/.test(semDono.motivo), "o motivo nomeia o item", semDono.motivo);
+  ok(semDono.transferencias.length === 0, "sem acerto falso quando falta pagador");
+}
+
+{
+  // o catch: rateio que não confere (órfão) não pode gerar acerto,
+  // mesmo com todos os pagadores marcados
+  const r = rateioFalso([[1, "Bruno", 10000], [2, "Braz", 0], [3, "Bocão", 0]],
+                        { chopp: 10000, refri: 8000, agua: 0, pizza: 0 }, { confere: false });
+  const a = C.acerto(r, { chopp: 1, refri: 2 });
+  ok(a.status === "incompleto", "rateio que não confere barra o acerto");
+  ok(a.transferencias.length === 0, "e não gera transferência que não quitaria nada");
+}
+
+{
+  const r = rateioFalso([[1, "Bruno", 0], [2, "Braz", 0], [3, "Bocão", 0]],
+                        { chopp: 0, refri: 0, agua: 0, pizza: 0 }, { fechamentoCompleto: false });
+  const a = C.acerto(r, {});
+  ok(a.status === "incompleto" && /custo real/i.test(a.motivo),
+    "fechamento incompleto adia o acerto", a.motivo);
+}
+
+{
+  // quem pagou mas não tem linha no rateio não pode sumir com o dinheiro
+  const r = rateioFalso([[1, "Bruno", 10000]], { chopp: 10000, refri: 0, agua: 0, pizza: 0 });
+  const a = C.acerto(r, { chopp: 2 });
+  const braz = a.saldos.find((x) => x.aniversarianteId === 2);
+  ok(braz && braz.pagou === 10000 && braz.saldo === -10000,
+    "pagador sem linha no rateio entra como credor", JSON.stringify(braz));
+}
+
+{
+  // asserção forte: Σ saldo = 0 e as transferências zeram tudo
+  const rand = rng(99);
+  let falhas = 0, maxT = 0, exemplo = null;
+
+  for (let caso = 0; caso < 20000; caso++) {
+    const custos = {
+      chopp: Math.floor(rand() * 200000), refri: Math.floor(rand() * 50000),
+      agua: Math.floor(rand() * 20000), pizza: Math.floor(rand() * 80000),
+    };
+    const total = custos.chopp + custos.refri + custos.agua + custos.pizza;
+    // reparte o total entre os 3 (o rateio real garante que Σ deve = total)
+    const d1 = Math.floor(rand() * (total + 1));
+    const d2 = Math.floor(rand() * (total - d1 + 1));
+    const r = rateioFalso([[1, "A", d1], [2, "B", d2], [3, "C", total - d1 - d2]], custos);
+    const pp = {};
+    for (const i of ["chopp", "refri", "agua", "pizza"]) pp[i] = 1 + Math.floor(rand() * 3);
+
+    const a = C.acerto(r, pp);
+    const soma = a.saldos.reduce((x, s) => x + s.saldo, 0);
+
+    // aplica as transferências e confere que todo mundo zera
+    const fim = new Map(a.saldos.map((s) => [s.aniversarianteId, s.saldo]));
+    for (const t of a.transferencias) {
+      fim.set(t.de, fim.get(t.de) - t.valor);
+      fim.set(t.para, fim.get(t.para) + t.valor);
+    }
+    const zerou = [...fim.values()].every((v) => v === 0);
+    maxT = Math.max(maxT, a.transferencias.length);
+
+    if (soma !== 0 || !zerou) {
+      falhas++;
+      if (!exemplo) exemplo = { custos, saldos: a.saldos, transferencias: a.transferencias };
+    }
+  }
+
+  ok(falhas === 0, "20.000 acertos aleatórios: Σ saldo = 0 e as transferências zeram tudo",
+    falhas ? `${falhas} falhas, ex.: ${JSON.stringify(exemplo)}` : null);
+  ok(maxT <= 2, "nunca mais de 2 transferências entre 3 pessoas", `máximo observado: ${maxT}`);
+}
+
+/* =============================================================
+   7) estimativa — NÃO muda com o modelo de rateio
    ============================================================= */
 secao("estimativa");
 

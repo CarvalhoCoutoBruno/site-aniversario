@@ -596,6 +596,120 @@
           ? "Sobrou custo sem ninguém para ratear: confira se lançou algo que ninguém consumiu."
           : "O rateio passou do total: confira os valores lançados.");
     }
+
+    montarPagadores(r.custosPorItem);
+    preencherPagadores(ultimaConfig);
+    atualizarAcerto(r);
+  }
+
+  /* ================= ACERTO: quem deve a quem =================
+     O rateio diz quanto cada aniversariante DEVE. Aqui se registra
+     quanto cada um PAGOU — só o pagador de cada item; o valor vem do
+     custo já calculado no fechamento.
+
+     ⚠️ O acerto só aparece quando o rateio CONFERE. Se o fechamento tem
+     custo órfão, Σ deve ≠ Σ pagou, os saldos não somam zero e as
+     transferências não quitariam nada. Checar só "todo item tem
+     pagador" produziria um acerto silenciosamente errado.        */
+
+  const CAMPOS_PAGO_POR = [
+    ["pago_por_chopp", "chopp", "Chopp"],
+    ["pago_por_refri", "refri", "Refrigerante"],
+    ["pago_por_agua", "agua", "Água"],
+    ["pago_por_pizza", "pizza", "Pizza"],
+  ];
+
+  function montarPagadores(custosPorItem) {
+    const opcoes = ['<option value="">—</option>']
+      .concat(C.aniversariantes.map((nome, i) => `<option value="${i + 1}">${esc(nome)}</option>`))
+      .join("");
+    $("#acertoPagadores").innerHTML = CAMPOS_PAGO_POR
+      .map(([col, item, rotulo]) => {
+        const valor = custosPorItem ? Calculo.formatarBRL(custosPorItem[item] || 0) : "";
+        return `<label class="config-campo">
+          <span>${esc(rotulo)} <small>${esc(valor)}</small></span>
+          <select id="ac_${col}">${opcoes}</select>
+        </label>`;
+      })
+      .join("");
+  }
+
+  function preencherPagadores(cfg) {
+    for (const [col] of CAMPOS_PAGO_POR) {
+      const el = $(`#ac_${col}`);
+      if (el) el.value = cfg[col] === null || cfg[col] === undefined ? "" : String(cfg[col]);
+    }
+  }
+
+  function toastAcerto(msg, classe) {
+    const el = $("#acertoMsg");
+    el.className = "msg-toast" + (classe ? " " + classe : "");
+    el.textContent = msg;
+  }
+
+  $("#acertoForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("#btnSalvarAcerto");
+    toastAcerto("");
+
+    // update estreito: só os 4 pago_por. Nunca encosta em custo_real_*
+    // (Fatia 5) nem nos campos da Fatia 2.
+    const patch = { atualizado_em: new Date().toISOString() };
+    for (const [col] of CAMPOS_PAGO_POR) {
+      const v = $(`#ac_${col}`).value;
+      patch[col] = v === "" ? null : Number(v);
+    }
+
+    btn.disabled = true;
+    const rotulo = btn.textContent;
+    btn.textContent = "Salvando...";
+    const { error } = await sb.from("config").update(patch).eq("id", 1);
+    btn.disabled = false;
+    btn.textContent = rotulo;
+
+    if (error) {
+      console.error(error);
+      return toastAcerto("Não consegui salvar quem pagou.", "err");
+    }
+    toastAcerto("Pagadores salvos. ✅", "ok");
+    carregarConfig();
+  });
+
+  function atualizarAcerto(resultadoRateio) {
+    const pagoPor = {};
+    for (const [col, item] of CAMPOS_PAGO_POR) pagoPor[item] = ultimaConfig[col];
+    const a = Calculo.acerto(resultadoRateio, pagoPor);
+
+    $("#acertoSaldos").innerHTML = a.saldos.map((s) => {
+      const rotulo = s.saldo > 0 ? "a pagar" : s.saldo < 0 ? "a receber" : "quite";
+      const classe = s.saldo > 0 ? "saldo-pagar" : s.saldo < 0 ? "saldo-receber" : "";
+      return `<div class="conta-aniv">
+        <div class="conta-topo">
+          <b>${esc(s.nome)}</b>
+          <span class="conta-total ${classe}">${esc(Calculo.formatarBRL(Math.abs(s.saldo)))} <small>${rotulo}</small></span>
+        </div>
+        <div class="conta-itens">
+          <span class="pill">deve: ${esc(Calculo.formatarBRL(s.deve))}</span>
+          <span class="pill">pagou: ${esc(Calculo.formatarBRL(s.pagou))}</span>
+        </div>
+      </div>`;
+    }).join("");
+
+    const selo = $("#acertoSelo");
+    const lista = $("#acertoTransferencias");
+    if (a.status !== "completo") {
+      selo.className = "selo cinza";
+      selo.textContent = a.motivo;
+      lista.innerHTML = "";
+      return;
+    }
+    selo.className = "selo verde";
+    selo.textContent = "✓ Acerto fechado: os saldos somam zero.";
+    lista.innerHTML = a.transferencias.length
+      ? `<ul class="transferencias">${a.transferencias.map((t) =>
+          `<li><b>${esc(t.deNome)}</b> → <b>${esc(t.paraNome)}</b>: ${esc(Calculo.formatarBRL(t.valor))}</li>`
+        ).join("")}</ul>`
+      : '<p class="campo-dica">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte.</p>';
   }
 
   /* ================= CONFIRMAÇÕES =================

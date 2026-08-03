@@ -22,12 +22,56 @@ create extension if not exists pgcrypto;
 --  Se o descarte for mesmo intencional, apague as linhas antes.
 -- =============================================================
 do $$
+declare
+  v_cfg    jsonb;
+  v_motivo text;
 begin
+  -- (1) confirmações
   if to_regclass('public.rsvps') is not null then
     if (select count(*) from public.rsvps) > 0 then
       raise exception
         'ABORTADO: public.rsvps tem % confirmacao(oes). Recriar o schema apagaria dado real. Apague manualmente antes se for intencional.',
         (select count(*) from public.rsvps);
+    end if;
+  end if;
+
+  -- (2) config com dado real do organizador.
+  -- A `admins` sobrevive ao reset; a `config` NÃO — e ela guarda preços,
+  -- prazo, custo real e quem pagou. Sem esta trava, uma base com rsvps
+  -- vazio mas config preenchida perderia tudo isso em silêncio.
+  --
+  -- Leitura via to_jsonb + EXECUTE de propósito: colunas novas (pago_por_*)
+  -- podem ainda não existir na primeira execução, e referenciá-las direto
+  -- quebraria o script no parse.
+  if to_regclass('public.config') is not null then
+    execute 'select to_jsonb(c) from public.config c where id = 1' into v_cfg;
+    if v_cfg is not null then
+      if  (v_cfg->>'custo_real_chopp')        is not null
+       or (v_cfg->>'custo_real_refri')        is not null
+       or (v_cfg->>'custo_real_agua')         is not null
+       or (v_cfg->>'preco_real_pizza_adulto') is not null
+       or (v_cfg->>'preco_real_pizza_crianca')is not null then
+        v_motivo := 'custo real de fechamento lancado';
+      elsif (v_cfg->>'pago_por_chopp') is not null
+         or (v_cfg->>'pago_por_refri') is not null
+         or (v_cfg->>'pago_por_agua')  is not null
+         or (v_cfg->>'pago_por_pizza') is not null then
+        v_motivo := 'pagadores do acerto marcados';
+      elsif (v_cfg->>'prazo_confirmacao') is not null then
+        v_motivo := 'prazo de confirmacao definido';
+      elsif coalesce((v_cfg->>'preco_litro_chopp')::numeric, 0)   > 0
+         or coalesce((v_cfg->>'preco_litro_refri')::numeric, 0)   > 0
+         or coalesce((v_cfg->>'preco_litro_agua')::numeric, 0)    > 0
+         or coalesce((v_cfg->>'preco_pizza_adulto')::numeric, 0)  > 0
+         or coalesce((v_cfg->>'preco_pizza_crianca')::numeric, 0) > 0 then
+        v_motivo := 'precos de referencia preenchidos';
+      end if;
+
+      if v_motivo is not null then
+        raise exception
+          'ABORTADO: public.config tem dado real (%). Recriar o schema apagaria preco, prazo e fechamento. Limpe a config manualmente antes se o descarte for intencional.',
+          v_motivo;
+      end if;
     end if;
   end if;
 end $$;
@@ -228,6 +272,16 @@ create table public.config (
   custo_real_agua         numeric(10,2),
   preco_real_pizza_adulto numeric(10,2),
   preco_real_pizza_crianca numeric(10,2),
+
+  -- acerto: quem bancou cada item. NULL = ninguém marcado ainda.
+  -- O valor do item não é digitado — vem do custo já calculado no
+  -- fechamento; aqui só se registra o pagador.
+  -- CHECK simples basta: "x is null or ..." nunca avalia para NULL, ao
+  -- contrário do que aconteceu em aniversariante_id_coerente.
+  pago_por_chopp  smallint check (pago_por_chopp  is null or pago_por_chopp  between 1 and 3),
+  pago_por_refri  smallint check (pago_por_refri  is null or pago_por_refri  between 1 and 3),
+  pago_por_agua   smallint check (pago_por_agua   is null or pago_por_agua   between 1 and 3),
+  pago_por_pizza  smallint check (pago_por_pizza  is null or pago_por_pizza  between 1 and 3),
 
   atualizado_em timestamptz not null default now()
 );

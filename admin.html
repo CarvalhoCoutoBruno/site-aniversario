@@ -166,6 +166,23 @@
 
       <div class="selo" id="fecSelo"></div>
       <div class="stats" id="fecTotais"></div>
+
+      <h3 class="est-titulo">Acerto entre vocês</h3>
+      <p class="campo-dica">
+        Marque quem bancou cada item. O valor vem do fechamento acima — não precisa digitar.
+      </p>
+
+      <form id="acertoForm" novalidate>
+        <div class="config-grid" id="acertoPagadores"></div>
+        <div class="config-acoes">
+          <button type="submit" class="btn btn-primary" id="btnSalvarAcerto">Salvar quem pagou</button>
+        </div>
+        <p class="msg-toast" id="acertoMsg"></p>
+      </form>
+
+      <div id="acertoSaldos"></div>
+      <div class="selo" id="acertoSelo"></div>
+      <div id="acertoTransferencias"></div>
     </details>
 
     <!-- Estatísticas -->

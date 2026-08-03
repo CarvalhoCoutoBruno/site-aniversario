@@ -283,10 +283,113 @@
       porAniversariante,
       totalRateado,
       custoRealTotal,
+      // O acerto precisa de quanto custou CADA item para saber o que
+      // quem pagou aquele item desembolsou. Expor daqui em vez de
+      // recalcular lá evita que os dois lados divirjam sobre o mesmo
+      // número.
+      custosPorItem: { chopp: custos.chopp, refri: custos.refri, agua: custos.agua, pizza: totalPizza },
       fechamentoCompleto,
       // verde só com os três custos lançados e as contas fechando
       confere: fechamentoCompleto && totalRateado === custoRealTotal,
     };
+  }
+
+  /* ---------- acerto: quem transfere quanto para quem ----------
+     O rateio diz quanto cada aniversariante DEVE. Aqui entra quanto
+     cada um PAGOU: cada item (chopp/refri/água/pizza) tem um pagador, e
+     o valor do item é o custo já calculado no fechamento — ninguém
+     digita valor, só marca quem pagou.
+
+       saldo = deve - pagou     (positivo = tem a pagar; negativo = a receber)
+
+     Como Σ deve = Σ pagou = custoRealTotal, então Σ saldo = 0 e o acerto
+     sempre fecha. As transferências saem do guloso (maior devedor com
+     maior credor), que para 3 pessoas é ótimo: no máximo 2.
+  ------------------------------------------------------------- */
+  const ITENS = ["chopp", "refri", "agua", "pizza"];
+  const NOME_ITEM = { chopp: "chopp", refri: "refrigerante", agua: "água", pizza: "pizza" };
+
+  function acerto(resultadoRateio, pagoPor) {
+    const r = resultadoRateio || {};
+    const custos = r.custosPorItem || { chopp: 0, refri: 0, agua: 0, pizza: 0 };
+    const pp = pagoPor || {};
+
+    const pagou = new Map();
+    const faltaPagador = [];
+    for (const item of ITENS) {
+      const valor = custos[item] || 0;
+      if (valor <= 0) continue; // item sem custo dispensa pagador
+      const k = Number(pp[item]) || null;
+      if (!k) { faltaPagador.push(item); continue; }
+      pagou.set(k, (pagou.get(k) || 0) + valor);
+    }
+
+    // todo aniversariante do rateio entra, mesmo com saldo zero
+    const saldos = (r.porAniversariante || []).map((a) => {
+      const p = pagou.get(a.aniversarianteId) || 0;
+      return {
+        aniversarianteId: a.aniversarianteId,
+        nome: a.nome,
+        deve: a.total,
+        pagou: p,
+        saldo: a.total - p,
+      };
+    });
+
+    // quem pagou item mas não tem linha no rateio (aniversariante sem
+    // cadastro): não pode sumir com o dinheiro dele
+    for (const [k, p] of pagou) {
+      if (!saldos.some((s) => s.aniversarianteId === k)) {
+        saldos.push({ aniversarianteId: k, nome: `Aniversariante ${k}`, deve: 0, pagou: p, saldo: -p });
+      }
+    }
+    saldos.sort((a, b) => a.aniversarianteId - b.aniversarianteId);
+
+    /* status: exige as DUAS condições. Só checar "todo item tem
+       pagador" deixaria passar o caso órfão — onde o rateio não confere,
+       Σ deve ≠ Σ pagou, Σ saldo ≠ 0 e as transferências não quitam nada.
+       O acerto sairia silenciosamente errado. */
+    let status = "completo";
+    let motivo = "";
+    if (!r.fechamentoCompleto) {
+      status = "incompleto";
+      motivo = "Feche o custo real primeiro: falta lançar o gasto de chopp, refrigerante ou água.";
+    } else if (!r.confere) {
+      status = "incompleto";
+      motivo = "As contas do rateio não fecham — resolva isso antes de acertar entre vocês.";
+    } else if (faltaPagador.length) {
+      status = "incompleto";
+      motivo = "Indique quem pagou: " + faltaPagador.map((i) => NOME_ITEM[i]).join(", ") + ".";
+    }
+
+    const transferencias = status === "completo" ? minimizarTransferencias(saldos) : [];
+    return { saldos, transferencias, status, motivo, faltaPagador };
+  }
+
+  // Guloso: casa o maior devedor com o maior credor. Com soma zero e 3
+  // pessoas, gera no máximo 2 transferências — que é o mínimo possível.
+  function minimizarTransferencias(saldos) {
+    const devedores = saldos.filter((s) => s.saldo > 0)
+      .map((s) => ({ id: s.aniversarianteId, nome: s.nome, resta: s.saldo }))
+      .sort((a, b) => b.resta - a.resta || a.id - b.id);
+    const credores = saldos.filter((s) => s.saldo < 0)
+      .map((s) => ({ id: s.aniversarianteId, nome: s.nome, resta: -s.saldo }))
+      .sort((a, b) => b.resta - a.resta || a.id - b.id);
+
+    const out = [];
+    let i = 0, j = 0;
+    while (i < devedores.length && j < credores.length) {
+      const valor = Math.min(devedores[i].resta, credores[j].resta);
+      if (valor > 0) {
+        out.push({ de: devedores[i].id, deNome: devedores[i].nome,
+                   para: credores[j].id, paraNome: credores[j].nome, valor });
+      }
+      devedores[i].resta -= valor;
+      credores[j].resta -= valor;
+      if (devedores[i].resta === 0) i++;
+      if (credores[j].resta === 0) j++;
+    }
+    return out;
   }
 
   /* ---------- export (browser + node) ---------- */
@@ -294,6 +397,7 @@
     paraCentavos, paraReais, formatarBRL,
     confirmados, contagens, estimativa,
     ratearCentavos, pesosDaPessoa, precoPizza, rateio,
+    acerto, minimizarTransferencias,
     SEXTOS,
   };
 
