@@ -1,132 +1,103 @@
-# Plano — Fatia 8: convite editável pelo admin
+# Plano — Fatia 9: redesign do convite
 
-Branch: `feat/fatia-8-convite-editavel`
+Branch: `feat/fatia-9-redesign`
 
-## O risco central: hoje o convite **não pode** falhar em carregar
+## Viabilidade primeiro: os screenshots funcionam
 
-O prompt sinaliza o problema do load assíncrono. Medindo, ele é mais grave do que "o hero
-demora": os chips de `convidado_por` nascem vazios no HTML —
+A evidência que esta fatia pede são imagens, e o `FLUXO.md` registra que **screenshot sai preto**
+com o painel do navegador oculto. Testei antes de planejar, servindo o mockup: funcionou em
+desktop e em mobile (375×812). A fatia é verificável como o prompt quer.
 
-```
-92:      <div class="chips" id="chipsAniversariantes"></div>
-```
+O mockup também está bonito — a direção está certa, e ele resolve o problema de "como fazer um
+convite de três aniversariantes não virar uma lista".
 
-— e são preenchidos por JS a partir do `config.js`, que é **síncrono e sempre existe**. Movendo
-para a `festa`, um fetch que falhe deixa os chips vazios. E a validação do envio exige pelo menos
-um marcado:
+## Três conflitos entre o mockup e o que a Fatia 8 acabou de construir
 
-```js
-if (!convidadoPor.length) return falha(status, "Escolha quem te convidou.");
-```
+O mockup é uma página estática com tudo escrito à mão. O convite real virou dinâmico na fatia
+passada. Onde os dois se encontram, há decisões a tomar:
 
-Resultado: **o convidado vê um formulário completo, preenche tudo, clica em enviar e é barrado
-por um campo que não existe na tela.** Um soluço de rede transforma o convite num beco sem saída.
+### 1. O título editável não tem lugar no hero novo
 
-Hoje isso é impossível — o `config.js` garante os chips. Depois desta fatia, passa a depender da
-rede.
+A Fatia 8 tornou `festa.titulo` editável, e o convite hoje mostra "Festa dos 160 anos" como `<h1>`.
+No mockup o hero é: *"VOCÊ ESTÁ CONVIDADO PARA A"* → **160** → *"anos de festa"*. O título não
+aparece em lugar nenhum.
 
-São 11 pontos de leitura síncrona a migrar (6 no `main.js`, 5 no `admin.js`), e o
-`const alvo = new Date(C.festa.data)` do countdown é avaliado no topo do módulo.
+Se eu simplesmente adotar o mockup, **o campo Título do painel deixa de ter efeito visível** —
+uma fatia desfazendo a anterior em silêncio.
 
-### Como resolvo
+**Proposta:** o `<h1>` passa a ser o próprio bloco "160 / anos de festa", e o `titulo` da `festa`
+vira a linha de contexto — no rodapé ("Festa dos 160 anos · Bruno, Braz & Bocão") e no
+`<title>` da aba, que hoje é o literal "Convite de Aniversário". Assim o campo continua servindo
+para alguma coisa, sem competir com o 160.
 
-**Falhar alto, não pela metade.** Se a `festa` não carregar, o formulário não aparece: no lugar
-dele, uma mensagem dizendo que não deu para carregar os dados e pedindo para recarregar. É o
-mesmo princípio do "confirmações encerradas" da Fatia 1 — melhor um estado explícito do que um
-formulário que rejeita o envio por um motivo invisível.
+### 2. O "160" e a equação são dado, e não existem
 
-Enquanto carrega, um estado de "carregando" em vez do hero com placeholders (`Aniversário`, `—`,
-`—`), que hoje aparecem por um instante e passariam a ser o que se vê num erro.
+Os números 40/50/70 não estão em lugar nenhum — nem no `config.js` antigo, nem na `festa`. O
+prompt recomenda fixá-los no layout, e **concordo**: esta festa é esta festa, e transformar idade
+em schema é fatia à parte.
 
-> Considerei guardar a última `festa` conhecida em `localStorage` como rede de segurança. **Não
-> vou** — a complexidade e o risco de exibir dado velho (uma data corrigida que não pega) não
-> compensam num convite que se abre poucas vezes. Se o review preferir, é fácil de somar.
+**Como vou fixar, com um cuidado:** as idades ficam num array de constante no `main.js`, ao lado
+de onde os nomes são renderizados, e **o 160 do hero é a soma delas** — não um literal. Assim a
+equação e o número gigante não têm como discordar. Se alguém mexer numa idade, o hero acompanha.
 
-## A trava do reset precisa de um sinal novo
+O acoplamento que sobra: idade[i] tem de casar com nome[i]. Renomear é seguro; **reordenar os
+nomes no painel desalinha as idades** — o mesmo risco que a ordem já carrega para o rateio, agora
+visível no convite. Vou deixar isso escrito no comentário e no aviso da tela de admin.
 
-A trava da Fatia 6 pergunta "a `config` tem dado real?". Para a `festa` isso não funciona: ela é
-**semeada pelo próprio script**, então tem linha sempre — "tem dado" seria verdade desde o
-primeiro `Run`, e o script nunca mais rodaria.
+### 3. O mockup não tem os estados que a Fatia 8 construiu
 
-**Solução:** `festa.atualizado_em`, `NULL` no seed e preenchido pelo admin ao salvar. A trava
-aborta quando é não-nulo. Ou seja: recriar é livre enquanto ninguém editou o convite; depois
-disso, bloqueia — que é exatamente o comportamento desejado.
+Ele cobre a página feliz. Faltam, e **todos precisam sobreviver**: carregando, erro de carga
+(fail-loud, que custou três bugs para acertar), countdown "é hoje" / "passou", "confirmações
+encerradas", carrossel vazio e o sucesso do RSVP.
+
+Vou desenhar cada um na pele nova. O erro de carga em especial: hoje ele esconde hero, carrossel
+e formulário e mostra um bloco só — essa coerência não pode se perder num layout mais complexo.
+
+## Um detalhe do mockup a corrigir
+
+No mobile a equação quebra feio: `70 Bocão` e o `=` dividem uma linha, e o `160` cai sozinho
+embaixo. Vou reorganizar para empilhar como 3 + resultado, sem operador órfão.
 
 ## Implementação
 
-### Schema
-Tabela `festa` (linha única, `check (id = 1)`): `titulo`, `subtitulo` (nullable), `data` (ISO com
--03:00), `data_texto` (nullable — vazio = gerado), `local`, `local_mapa`, `nome_aniv_1/2/3`,
-`atualizado_em` (nullable).
-
-**RLS:** `select` liberado para `anon` — é a **primeira tabela** que o visitante lê direto. Por
-isso ela guarda só o que já está impresso no convite; preço e custo real seguem na `config`,
-fechada. `update` só admin, via `is_admin()`.
-
-Seed com os valores que estão hoje no `config.js`.
-
-> Ganho colateral: hoje a posição no array é o id dos aniversariantes, e reordenar quebra
-> silenciosamente. Em colunas `nome_aniv_1/2/3` a posição vira explícita — não dá para reordenar
-> sem querer.
-
-### `data_texto` gerado
-Validei a geração a partir da ISO, no fuso de São Paulo:
-```
-2026-10-31T11:00:00-03:00  ->  Sábado, 31 de outubro de 2026, às 11h
-2026-12-25T19:30:00-03:00  ->  Sexta-feira, 25 de dezembro de 2026, às 19h30
-2027-01-01T00:00:00-03:00  ->  Sexta-feira, 1 de janeiro de 2027, às 00h
-```
-A primeira linha é **idêntica** ao que está hoje no `config.js` — o seed não muda o que o
-convidado vê. O campo continua editável para quem quiser escrever à mão.
-
-### `js/main.js`
-- `carregarFesta()` no início; hero, countdown e chips passam a ser montados por ela.
-- `alvo` deixa de ser `const` de topo; o cronômetro só começa quando a data chega.
-- Falha → esconde o formulário e mostra o aviso.
-
-### `js/admin.js`
-Seção **Convite** com todos os campos, `update` estreito só na `festa` + `atualizado_em`.
-`ultimaFesta` entra no mesmo padrão de guarda de completude que já existe para config/pessoas/
-grupos — os cinco pontos que hoje leem `C.aniversariantes` passam a ler dela.
-
-Validação: título e local obrigatórios; `data` válida; `local_mapa` precisa ser URL `http(s)` —
-hoje vai direto para o `href`, e um valor colado errado viraria link quebrado no convite.
-
-### `js/config.js`
-Fica só o bloco `supabase`. O `temSupabase` continua sendo o guarda de "site não configurado".
-
-### Docs
-A ET §2.1 descreve o `config.js` guardando os dados da festa e a ordem do array como id — passa a
-estar errado. Corrijo junto, mesmo princípio da Fatia 7.
+- **`index.html`:** remarcação do convite mantendo **todos os ids** que o `main.js` escreve
+  (`#festaTitulo`, `#festaSubtitulo`, `#festaData`, `#festaLocal`, `#heroNomes`, `#countdown`,
+  `#cdDias/Horas/Min/Seg`, `#festaEstado`, `#conviteCarregando`, `#hero-conteudo`, `#conviteErro`,
+  `#carrossel*`, `#rsvp*`, `#chipsAniversariantes`, `#pessoasLista`, `#tplPessoa`...).
+- **`css/style.css`:** reescrita da parte do convite. O `admin.html` usa o mesmo arquivo, então
+  as classes compartilhadas (`.chip`, `.btn`, `.campo`, `.msg-toast`, `.stat`, `.selo`,
+  `.conta-aniv`…) **ficam intactas** — restyle só do que é exclusivo do convite.
+- **`js/main.js`:** o mínimo. As idades, a soma para o hero, e os nomes na equação. Nenhuma
+  mudança de comportamento.
+- Fontes Fredoka + Nunito por `<link>`, como o site já faz com Fraunces + Inter.
 
 ## Fora de escopo
-Preços, taxas, prazo, `custo_real_*`, `pago_por_*` (seguem na `config`), rateio, acerto,
-estimativa, e a produtização (multi-tenant) — que é conversa à parte.
+`admin.html`, lógica, dados, schema, produtização.
 
 ## Verify
 
-`./verify.sh` verde.
+`./verify.sh` verde — 63 asserções, sem alteração (nada de cálculo muda).
 
-Integrada, com saída crua no `status.md`:
+**Não-regressão funcional**, com saída crua no `status.md`:
+1. RSVP real ponta a ponta pelo layout novo (`criar_rsvp` grava; apago depois);
+2. countdown nos 3 estados, incluindo o dia da festa com `diff` negativo;
+3. carrossel com foto e vazio;
+4. falha de carga: **um estado só visível** — a mesma asserção da Fatia 8;
+5. "confirmações encerradas".
 
-1. editar **cada campo** no admin → salvar → recarregar o site público e provar a mudança
-   (título, subtítulo, data/countdown, local + link, os 3 nomes no hero **e nos chips**);
-2. **countdown** com a data nova: os três estados da Fatia 7 (futuro / é-hoje / passou),
-   incluindo o caso do `diff` negativo no dia da festa;
-3. **renomear um aniversariante não quebra confirmação existente** — gravo um RSVP, renomeio, e
-   provo que `convidado_por` continua apontando para o mesmo id e o painel mostra o nome novo;
-4. **anon lê a `festa` e não lê a `config`** — as duas chamadas, saída crua;
-5. **anon não grava a `festa`** — pelo estado do banco, não pelo HTTP;
-6. **falha de carga:** simulo a `festa` indisponível e provo que o formulário **não** aparece
-   pela metade — é o risco central desta fatia;
-7. **trava do reset** protege a `festa` depois de editada, e libera antes;
-8. `data_texto` em branco → gerado da data; preenchido → respeitado;
-9. re-seed e base restaurada ao fim.
+**Visual**, em desktop e mobile: normal, é-hoje, encerrado, erro-de-carga, sem-fotos.
+
+**Acessibilidade:** contraste medido, não olhado. Vou calcular a razão WCAG dos pares
+texto/fundo do hero escuro e das seções claras, e reportar os números — "parece legível" não é
+evidência.
 
 ## Para o review
 
-1. **Confirmar que a `festa` é pública.** É a primeira leitura direta que o anon ganha no
-   projeto. Só entra ali o que já aparece impresso no convite, mas vale o aceite explícito.
-2. **`localStorage` como fallback** — minha recomendação é não; digo acima o porquê.
+1. **O título editável** (conflito 1): concorda com ele virar rodapé + `<title>` da aba, ou
+   prefere um lugar mais visível no hero?
+2. **Idades como constante no `main.js`, com o 160 sendo a soma** — ok? A alternativa é literal
+   no HTML, que aceita divergir da equação.
+3. As cores do mockup entram como estão, ou quer afinar algo? Só peço definir antes: mexer em
+   paleta depois de pronto é refazer os screenshots todos.
 
 Parado, sem implementar, aguardando `review.md`.

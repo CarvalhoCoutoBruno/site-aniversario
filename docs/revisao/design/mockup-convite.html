@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Festa dos 160 anos — mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --plum:#4a1d6e; --plum-2:#2e1147;
+    --roxo:#7c3aed; --pink:#ff4d8d; --amber:#ffb020; --teal:#10b981; --blue:#3b82f6;
+    --cream:#fff7ef; --ink:#331b4d; --muted:#7a6a8e;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{font-family:"Nunito",system-ui,sans-serif; color:var(--ink); background:var(--cream); line-height:1.55}
+  h1,h2,h3,.disp{font-family:"Fredoka",sans-serif}
+  .wrap{max-width:920px; margin:0 auto; padding:0 22px}
+  .btn{display:inline-flex; align-items:center; gap:.5em; font-family:"Fredoka"; font-weight:600; font-size:1.05rem;
+    padding:.85em 1.6em; border-radius:999px; border:0; cursor:pointer; text-decoration:none;
+    background:linear-gradient(135deg,var(--pink),var(--amber)); color:#fff; box-shadow:0 10px 24px -8px rgba(255,77,141,.6); transition:transform .15s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn.ghost{background:#fff; color:var(--roxo); box-shadow:0 6px 18px -8px rgba(0,0,0,.25)}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative; overflow:hidden; text-align:center; color:#fff;
+    background:radial-gradient(120% 120% at 50% -10%, #6d28d9 0%, var(--plum) 45%, var(--plum-2) 100%);
+    padding:70px 0 90px; border-radius:0 0 36px 36px}
+  .confete{position:absolute; inset:0; pointer-events:none}
+  .confete i{position:absolute; width:11px; height:14px; border-radius:2px; opacity:.9; animation:cai 6s linear infinite}
+  @keyframes cai{0%{transform:translateY(-20px) rotate(0)}100%{transform:translateY(620px) rotate(360deg)}}
+  .kicker{font-family:"Fredoka"; font-weight:500; letter-spacing:.22em; text-transform:uppercase; font-size:.8rem; opacity:.85}
+  .n160{font-family:"Fredoka"; font-weight:700; font-size:min(38vw,240px); line-height:.9; margin:.05em 0;
+    background:linear-gradient(135deg,#ffd36e,var(--pink) 55%,#a78bfa); -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 8px 30px rgba(255,77,141,.35))}
+  .hero .sub{font-family:"Fredoka"; font-weight:600; font-size:clamp(1.3rem,4vw,2rem)}
+  .equacao{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; margin:26px 0 8px}
+  .pessoa{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(4px);
+    border-radius:16px; padding:12px 18px; min-width:118px}
+  .pessoa b{font-family:"Fredoka"; font-size:1.25rem; display:block}
+  .pessoa .idade{font-family:"Fredoka"; font-weight:700; font-size:2rem; line-height:1;
+    background:linear-gradient(135deg,var(--amber),var(--pink)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .op{font-family:"Fredoka"; font-size:1.8rem; opacity:.7}
+  .datapill{display:inline-block; margin-top:22px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.2);
+    padding:.5em 1.2em; border-radius:999px; font-weight:700}
+  .hero .cta{margin-top:28px}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:56px 0}
+  .tag{display:inline-block; font-family:"Fredoka"; font-weight:600; color:var(--roxo); background:#f0e7ff;
+    padding:.3em 1em; border-radius:999px; font-size:.85rem; margin-bottom:14px}
+  h2{font-size:clamp(1.6rem,4vw,2.3rem); margin-bottom:8px}
+  .lead{color:var(--muted); max-width:44ch}
+
+  .count{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:8px}
+  .tile{background:#fff; border-radius:20px; padding:20px 8px; text-align:center; box-shadow:0 12px 30px -18px rgba(74,29,110,.5)}
+  .tile b{font-family:"Fredoka"; font-weight:700; font-size:clamp(2rem,7vw,3rem); color:var(--roxo); display:block; line-height:1}
+  .tile span{font-size:.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em}
+
+  .card{background:#fff; border-radius:26px; padding:30px; box-shadow:0 20px 50px -30px rgba(74,29,110,.6);
+    display:grid; grid-template-columns:1.1fr 1fr; gap:26px; align-items:center}
+  .infoline{display:flex; gap:12px; align-items:flex-start; margin:14px 0}
+  .infoline .ic{font-size:1.5rem}
+  .infoline b{font-family:"Fredoka"}
+  .mapa{background:linear-gradient(135deg,#efe7ff,#ffe9f2); border-radius:18px; min-height:170px;
+    display:flex; align-items:center; justify-content:center; text-align:center; color:var(--roxo); font-family:"Fredoka"; font-weight:600; position:relative}
+  .mapa small{position:absolute; bottom:12px; font-family:"Nunito"; color:var(--muted); font-weight:600}
+
+  .fotos{display:grid; grid-template-columns:repeat(4,1fr); gap:12px}
+  .foto{aspect-ratio:1; border-radius:18px; background:
+    linear-gradient(135deg,#ffe1ec,#e9deff); display:flex; align-items:center; justify-content:center; font-size:1.8rem; opacity:.9}
+
+  .final{text-align:center; background:linear-gradient(135deg,#7c3aed,#4a1d6e); color:#fff; border-radius:32px; padding:54px 24px; margin:0 0 56px}
+  .final h2{color:#fff}
+  .final p{opacity:.9; margin:6px auto 22px; max-width:40ch}
+  footer{text-align:center; color:var(--muted); padding:30px; font-size:.9rem}
+  @media(max-width:640px){ .card{grid-template-columns:1fr} .count{grid-template-columns:repeat(2,1fr)} .fotos{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="confete" id="cf"></div>
+    <div class="wrap">
+      <div class="kicker">Você está convidado para a</div>
+      <div class="n160">160</div>
+      <div class="sub">anos de festa 🎉</div>
+
+      <div class="equacao">
+        <div class="pessoa"><span class="idade">40</span><b>Bruno</b></div>
+        <div class="op">+</div>
+        <div class="pessoa"><span class="idade">50</span><b>Braz</b></div>
+        <div class="op">+</div>
+        <div class="pessoa"><span class="idade">70</span><b>Bocão</b></div>
+        <div class="op">=</div>
+        <div class="pessoa"><span class="idade">160</span><b>de comemoração</b></div>
+      </div>
+
+      <div class="datapill">📅 Sábado, 31 de outubro · 11h</div>
+      <div class="cta"><a href="#rsvp" class="btn">Confirmar presença 🎉</a></div>
+    </div>
+  </header>
+
+  <section class="wrap">
+    <span class="tag">A conta é simples</span>
+    <h2>Três motivos pra brindar</h2>
+    <p class="lead">Bruno faz 40, Braz faz 50 e Bocão faz 70. Somando tudo, são 160 anos de história pra celebrar num rolê só — com chopp, pizza e gente boa.</p>
+  </section>
+
+  <section class="wrap">
+    <span class="tag">Contagem regressiva</span>
+    <h2>Falta pouco</h2>
+    <div class="count">
+      <div class="tile"><b>88</b><span>dias</span></div>
+      <div class="tile"><b>14</b><span>horas</span></div>
+      <div class="tile"><b>30</b><span>min</span></div>
+      <div class="tile"><b>12</b><span>seg</span></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <span class="tag">Quando &amp; onde</span>
+    <h2>Anota aí</h2>
+    <div class="card" style="margin-top:16px">
+      <div>
+        <div class="infoline"><span class="ic">🗓️</span><div><b>Sábado, 31 de outubro de 2026</b><br><span style="color:var(--muted)">a partir das 11h</span></div></div>
+        <div class="infoline"><span class="ic">📍</span><div><b>Salão 3</b><br><span style="color:var(--muted)">Av. Cel. Marcos, 627 — Pedra Redonda, Porto Alegre/RS</span></div></div>
+        <a href="#" class="btn ghost" style="margin-top:8px">Abrir no mapa 🗺️</a>
+      </div>
+      <div class="mapa">📍 mapa<small>toque para abrir a localização</small></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <span class="tag">Memórias</span>
+    <h2>Momentos</h2>
+    <div class="fotos" style="margin-top:16px">
+      <div class="foto">📸</div><div class="foto">🥂</div><div class="foto">🎂</div><div class="foto">🍕</div>
+    </div>
+  </section>
+
+  <section class="wrap" id="rsvp">
+    <div class="final">
+      <h2>Bora?</h2>
+      <p>Confirma sua presença, conta quem vem com você e o que vai querer beber e comer. Rapidinho.</p>
+      <a href="#" class="btn" style="background:#fff;color:var(--roxo)">Confirmar presença 🎉</a>
+    </div>
+  </section>
+
+  <footer>Festa dos 160 anos · Bruno, Braz &amp; Bocão · 31/10/2026</footer>
+
+<script>
+  // confete só decorativo do mockup
+  const cf=document.getElementById('cf'), cores=['#ffd36e','#ff4d8d','#7c3aed','#10b981','#3b82f6','#ffb020'];
+  for(let i=0;i<40;i++){const s=document.createElement('i');s.style.left=Math.random()*100+'%';
+    s.style.background=cores[i%cores.length];s.style.animationDelay=(Math.random()*6)+'s';
+    s.style.animationDuration=(4+Math.random()*4)+'s';if(Math.random()>.5)s.style.borderRadius='50%';cf.appendChild(s);}
+</script>
+</body>
+</html>
