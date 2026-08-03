@@ -1,7 +1,7 @@
 # Regras de Negócio — Site Aniversário
 
 > Especificação para orientar o desenvolvimento (RSVP + estimativa de compra + rateio de custo).
-> Versão 5 — rateio corrigido: **quem paga são os 3 aniversariantes**, e o consumo de cada convidado é bancado por quem o convidou (`convidado_por`). Serve de handoff para o Claude Code.
+> Versão 6 — inclui o **acerto** (quem deve a quem) sobre o rateio da v5: quem paga são os 3 aniversariantes, e o consumo de cada convidado é bancado por quem o convidou (`convidado_por`).
 
 ## 1. Objetivo dos dados
 
@@ -122,12 +122,34 @@ o selo fica vermelho sozinho (Σ ≠ total gasto), sinalizando o erro de lançam
 
 ---
 
+---
+
+## Acerto (quem deve a quem)
+
+Depois do rateio (quanto cada aniversariante **deve**) e do fechamento (custo real), registra-se
+**quem pagou** cada item (chopp/refri/água/pizza) — um pagador por item, marcado no admin; o
+valor é o custo já calculado, não digitado.
+
+- `pagou_k` = soma dos itens que k bancou.
+- `saldo_k = deve_k − pagou_k` — positivo = a **pagar**; negativo = a **receber**.
+- Como Σ deve = Σ pagou = custo real total, **Σ saldo = 0** e o acerto sempre fecha.
+- Gera as **transferências mínimas** entre os 3 (≤ 2): "quem deve a quem".
+- Só fecha quando o rateio **confere** (fechamento completo, sem órfão) **e** todo item com
+  custo > 0 tem pagador.
+- Tudo em centavos; herda a exatidão do rateio.
+- Campos: `config.pago_por_chopp/refri/agua/pizza` (`smallint` 1/2/3 ou NULL).
+
+> As duas condições são necessárias. Se o rateio não confere, `Σ deve` e `Σ pagou` divergem, os
+> saldos não somam zero e as transferências não quitariam nada — alguém transferiria um valor
+> que não resolve.
+
 ## 5. Área administrativa
 - **Login** protegido (ver segurança).
 - **Cadastro dos 3 aniversariantes** como consumidores (com `aniversariante_id` 1/2/3).
 - **Config** de preços, taxas e **prazo de confirmação** (editável).
 - **Estimativa**: volumes + pizzas + custo aproximado.
 - **Fechamento**: lançar custo real → rateio final **por aniversariante** (3 contas), com a validação de que a soma bate.
+- **Acerto**: marcar quem pagou cada item → saldos e transferências entre os 3, com resumo para compartilhar.
 - **Lista de confirmações** (grupos e pessoas).
 - **Gestão de fotos** do carrossel.
 

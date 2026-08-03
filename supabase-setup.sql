@@ -120,12 +120,19 @@ create policy "admin le admins" on public.admins
   for select to authenticated
   using (public.is_admin());
 
+-- Os quatro organizadores. Rosaura é admin e convidada, sem ser
+-- aniversariante — admin, aniversariante e pagante são eixos
+-- independentes, e é por isso que a autorização passa por esta tabela
+-- em vez de um papel fixo.
 insert into public.admins (uid, nome) values
-  ('406ce6c3-f700-4393-b587-1322f04d1564', 'Bruno')
+  ('406ce6c3-f700-4393-b587-1322f04d1564', 'Bruno'),
+  ('e3d8d44b-d748-48d5-bd38-b0782ef6f38d', 'Braz'),
+  ('f595acd0-8f69-4972-a613-5e49f4107b8f', 'Bocão'),
+  ('92bec53c-d288-4ad9-be53-fe263ae94874', 'Rosaura')
 on conflict (uid) do nothing;
 
--- Para liberar os demais (Braz, Bocão, Rosaura): crie a conta em
--- Authentication > Users (com Auto Confirm), copie o UID e rode:
+-- Para liberar mais alguém: crie a conta em Authentication > Users
+-- (com Auto Confirm), copie o UID e rode:
 --   insert into public.admins (uid, nome) values ('<UID>', '<Nome>');
 
 -- =============================================================

@@ -392,12 +392,31 @@
     return out;
   }
 
+  /* ---------- resumo do acerto, para compartilhar ----------
+     Texto puro (dados -> string), sem DOM e sem rede — como o
+     formatarBRL. Fica aqui para entrar no verify e ganhar teste.
+     Devolve "" quando o acerto não está completo: sem acerto fechado
+     não há o que compartilhar.                                     */
+  function resumoAcerto(resultadoAcerto, titulo) {
+    const a = resultadoAcerto || {};
+    if (a.status !== "completo") return "";
+
+    const cabecalho = titulo ? `${titulo}\n\n` : "";
+    if (!a.transferencias || !a.transferencias.length) {
+      return cabecalho + "Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte. 🎉";
+    }
+    const linhas = a.transferencias
+      .map((t) => `• ${t.deNome} → ${t.paraNome}: ${formatarBRL(t.valor)}`)
+      .join("\n");
+    return cabecalho + "Acerto das contas:\n" + linhas;
+  }
+
   /* ---------- export (browser + node) ---------- */
   const API = {
     paraCentavos, paraReais, formatarBRL,
     confirmados, contagens, estimativa,
     ratearCentavos, pesosDaPessoa, precoPizza, rateio,
-    acerto, minimizarTransferencias,
+    acerto, minimizarTransferencias, resumoAcerto,
     SEXTOS,
   };
 

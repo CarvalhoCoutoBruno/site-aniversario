@@ -344,3 +344,16 @@ tr:last-child td { border-bottom: none; }
 .transferencias li { background: var(--bg-soft); border: 1.5px solid var(--line);
                      border-radius: 12px; padding: .7rem 1rem; font-size: 1.05rem; }
 .config-campo span small { font-weight: 400; color: var(--ink-soft); }
+
+/* ---- Fatia 7: estado da festa (hoje / já aconteceu) ---- */
+.festa-estado {
+  font-family: "Fraunces", serif;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  margin: 1.5rem 0;
+  color: var(--brand);
+}
+
+/* ---- Fatia 7: compartilhar o acerto ---- */
+.acerto-texto { width: 100%; margin-top: .8rem; font-family: inherit;
+                font-size: .9rem; padding: .7rem; border-radius: 12px;
+                border: 1.5px solid var(--line); background: var(--bg-soft); color: var(--ink); }

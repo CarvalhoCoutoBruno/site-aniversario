@@ -1,106 +1,128 @@
 # 🎉 Site de Aniversário
 
-Convite de festa com carrossel de fotos, confirmação de presença (RSVP) com
-acompanhantes e preferências (bebidas e comidas), escolha de qual dos 3
-aniversariantes convidou, e um **painel de administração** protegido por senha
-para ver todas as confirmações, os totais e gerenciar as fotos.
+Convite de festa para **3 aniversariantes**, com carrossel de fotos, contagem regressiva,
+confirmação de presença (RSVP) e um painel de organizador que fecha o ciclo do dinheiro:
+estimativa de compra, rateio do custo real e o acerto entre os três.
 
-Tudo **grátis** e **sem cartão de crédito**: Supabase (banco + fotos) + Netlify (hospedagem).
+**Site estático** — HTML, CSS e JS puro. Sem framework, sem passo de build.
+
+| Parte | Onde |
+|---|---|
+| Hospedagem | **GitHub Pages** — deploy automático a cada `git push` na `main` (1-2 min) |
+| Banco, fotos e login | **Supabase** (Postgres + Storage + Auth) |
 
 ---
 
-## 📁 O que tem aqui
+## 📁 Estrutura
 
 ```
 site-aniversario/
 ├── index.html          → o convite (página do convidado)
 ├── admin.html          → painel do organizador (login por senha)
-├── css/style.css       → visual
-├── js/config.js        → ⚙️ VOCÊ EDITA AQUI (nomes, data, chaves)
-├── js/main.js          → lógica do convite
-├── js/admin.js         → lógica do painel
-└── supabase-setup.sql  → cria o banco (rodar 1 vez)
+├── css/style.css       → visual (tema claro/escuro)
+├── js/
+│   ├── config.js       → ⚙️ dados da festa + chaves do Supabase
+│   ├── calculo.js      → cálculos puros: estimativa, rateio e acerto
+│   ├── main.js         → lógica do convite
+│   └── admin.js        → lógica do painel
+├── tests/              → testes do cálculo (sem framework)
+├── supabase-setup.sql  → cria todo o schema (fonte da verdade)
+├── verify.sh           → a verificação do projeto
+└── docs/               → regras de negócio e especificação técnica
 ```
 
 ---
 
-## 🚀 Passo a passo (uns 15 min)
+## 🚀 Do zero ao ar
 
-### 1) Criar o banco no Supabase (grátis)
+### 1) Criar o banco no Supabase
 
-1. Acesse **https://supabase.com** e crie uma conta (pode entrar com o GitHub/Google).
-2. Clique em **New project**. Dê um nome, crie uma senha do banco e escolha a região
-   **South America (São Paulo)**. Aguarde ~2 min.
-3. No menu lateral, vá em **SQL Editor → New query**.
-4. Abra o arquivo `supabase-setup.sql`, **copie tudo**, cole ali e clique em **Run**.
-   Isso cria a tabela de confirmações e o espaço para as fotos.
+1. **https://supabase.com** → *New project*, região **South America (São Paulo)**.
+2. **Authentication → Users → Add user** para cada organizador (marque *Auto Confirm User*).
+   Copie o **UID** de cada um.
+3. Abra o `supabase-setup.sql` e ajuste o `insert into public.admins` com esses UIDs
+   (os quatro atuais já estão lá; o template para incluir mais está logo abaixo).
+4. **SQL Editor → New query** → cole o arquivo inteiro → **Run**.
+5. **Authentication → Sign In / Providers → Email** → desligue *Allow new users to sign up*.
 
-### 2) Pegar as chaves
+> O `supabase-setup.sql` **recria** o schema, e traz uma trava: ele se recusa a rodar se já
+> houver confirmações ou se a `config` tiver dado real (preços, prazo, custo lançado).
 
-1. No Supabase, vá em **Project Settings (engrenagem) → API**.
-2. Copie o **Project URL** e a chave **anon public**.
-3. Abra `js/config.js` e cole nos campos:
-   ```js
-   supabase: {
-     url: "https://SEU-PROJETO.supabase.co",
-     anonKey: "eyJ...sua-chave-anon...",
-     bucketFotos: "fotos",
-   }
-   ```
+### 2) Conectar o site
 
-### 3) Criar o seu login de organizador
+Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**, e cole em
+`js/config.js`. A chave anon é pública por natureza — pode ficar no repositório, porque a
+segurança está nas regras de acesso (RLS) do banco.
 
-1. No Supabase, vá em **Authentication → Users → Add user → Create new user**.
-2. Coloque seu **e-mail** e uma **senha** e marque **Auto Confirm User**.
-3. Esse e-mail/senha é o que você vai usar em `admin.html` para entrar no painel.
+No mesmo arquivo ficam os dados da festa: título, data, local, link do mapa e os 3 nomes.
 
-### 4) Personalizar a festa
+> ⚠️ A **ordem** dos nomes em `aniversariantes` é o identificador deles no banco. Renomear é
+> seguro; **reordenar ou remover** depois que houver confirmação salva troca o dono dos registros.
 
-Ainda no `js/config.js`, edite:
+### 3) Publicar
 
-- `festa` → título, subtítulo, **data/hora**, texto da data, local e link do mapa.
-- `aniversariantes` → os **3 nomes**.
-- `bebidas` / `comidas` → as opções (já vem com Água, Refrigerante, Chopp, Pizza, Sobremesa).
+```bash
+git push origin main
+```
 
-### 5) Publicar no Netlify (grátis)
+O GitHub Pages atualiza sozinho em 1-2 minutos. Não há upload manual.
 
-1. Acesse **https://app.netlify.com/drop**.
-2. **Arraste a pasta `site-aniversario` inteira** para a área indicada.
-3. Pronto! O Netlify te dá um link (ex: `https://seu-site.netlify.app`).
-   Esse é o link que você manda para os convidados.
+### 4) Subir as fotos
 
-> Para trocar algo depois, edite os arquivos e arraste a pasta de novo
-> (ou conecte um repositório do GitHub para atualizar automático).
-
-### 6) Subir as fotos
-
-1. Abra `https://seu-site.netlify.app/admin.html`.
-2. Entre com o e-mail/senha do passo 3.
-3. Na seção **Fotos do carrossel**, arraste as fotos. Elas aparecem no convite na hora. 📸
+Abra `.../admin.html`, entre com o e-mail e senha do passo 1, e arraste as fotos na seção
+**Fotos do carrossel**. Elas aparecem no convite na hora.
 
 ---
 
 ## ✅ Como funciona para o convidado
 
-1. Abre o link, vê o convite, a contagem regressiva e o carrossel de fotos.
-2. Clica em **Confirmar presença**.
-3. Coloca o nome, marca **quem o convidou** (um ou mais aniversariantes).
-4. Marca as próprias preferências e clica em **+ Adicionar acompanhante**
-   para incluir esposa/marido/filhos, cada um com bebidas e comidas.
-5. Envia → cai direto no seu painel.
+1. Abre o link, vê o convite, a contagem regressiva e as fotos.
+2. Informa nome e contato, e marca **quem o convidou** (um ou mais aniversariantes).
+3. Adiciona acompanhantes — até 5 — dizendo, para cada pessoa, se é adulto ou criança e o que
+   consome: água, refrigerante, chopp e pizza. *(Chopp não é liberado para criança.)*
+4. Envia. Se confirmar de novo com o mesmo contato, a confirmação anterior é **substituída**.
+
+Se o organizador definir um prazo, o convite mostra a data e, depois dela, fecha o formulário.
 
 ---
 
-## 🧪 Testar antes de configurar
+## 🧮 Como funciona para o organizador
 
-Você pode abrir o `index.html` no navegador **antes** de configurar o Supabase.
-Ele funciona em "modo teste": o formulário mostra a confirmação de sucesso, mas
-os dados só ficam salvos de verdade depois que você colar as chaves do Supabase.
+O painel tem cinco seções, na ordem em que se usam:
+
+| Seção | Para quê |
+|---|---|
+| **Preços, taxas e prazo** | quanto custa cada item, quanto se estima que cada pessoa consome, e até quando dá para confirmar |
+| **Aniversariantes** | o que cada um dos 3 consome — eles entram nas contas como qualquer pessoa |
+| **Estimativa de compra** | litros de chopp/refri/água e quantas pizzas, para passar ao fornecedor |
+| **Fechamento e rateio** | lançar o custo real gasto → as 3 contas, uma por aniversariante |
+| **Confirmações** | a lista de quem vem, com as preferências de cada um |
+
+**Quem paga são os 3 aniversariantes.** Convidado não paga nada: o consumo dele é bancado por
+quem o convidou, dividido igualmente quando foi mais de um. Depois de lançar o custo real e
+marcar quem pagou cada item, o painel calcula o **acerto** — quem transfere quanto para quem — e
+gera um resumo para mandar no grupo.
+
+Os detalhes do modelo estão em [docs/REGRAS-NEGOCIO.md](docs/REGRAS-NEGOCIO.md).
 
 ---
 
 ## 🔒 Sobre segurança
 
-- Qualquer visitante **pode confirmar** presença, mas **só você** (logado no admin)
-  consegue **ver, apagar** confirmações e **subir/apagar** fotos.
-- Isso é garantido pelas regras (RLS) criadas pelo `supabase-setup.sql`.
+- Qualquer visitante **pode confirmar** presença, mas só pela função `criar_rsvp`, que valida
+  tudo antes de gravar. Não há escrita direta nas tabelas.
+- **Ler** confirmações, preços e contas é só para quem está na tabela `admins`.
+- O cadastro público no Supabase Auth fica **desligado**: contas de organizador são criadas à mão.
+- A chave `service_role` **nunca** entra no repositório.
+
+---
+
+## 🧪 Verificar antes de publicar
+
+```bash
+./verify.sh
+```
+
+Confere a sintaxe dos arquivos JS, roda os testes de cálculo e procura credencial vazada. É uma
+verificação **estática**: não prova que o formulário grava nem que o painel funciona — para isso
+é preciso abrir o site e conferir o resultado no banco.

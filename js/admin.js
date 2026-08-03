@@ -697,6 +697,12 @@
 
     const selo = $("#acertoSelo");
     const lista = $("#acertoTransferencias");
+
+    // Antes do return: se ficasse depois, o acerto voltando a incompleto
+    // deixaria o botão de compartilhar na tela com o texto anterior —
+    // pronto para mandar no grupo um acerto que não vale mais.
+    prepararCompartilhar(a);
+
     if (a.status !== "completo") {
       selo.className = "selo cinza";
       selo.textContent = a.motivo;
@@ -711,6 +717,40 @@
         ).join("")}</ul>`
       : '<p class="campo-dica">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte.</p>';
   }
+
+  /* ---- compartilhar o acerto ----
+     Só aparece com o acerto completo: sem acerto fechado não há o que
+     mandar no grupo. O texto sai do resumoAcerto (puro e testado), não
+     é montado aqui. */
+  function prepararCompartilhar(a) {
+    const caixa = $("#acertoCompartilhar");
+    const texto = Calculo.resumoAcerto(a, `${C.festa.titulo} 🎉`);
+    caixa.hidden = !texto;
+    $("#acertoTexto").hidden = true;
+    $("#acertoCopiaMsg").textContent = "";
+    if (!texto) return;
+
+    $("#acertoTexto").value = texto;
+    // wa.me sem número: o organizador escolhe o contato ou o grupo
+    $("#btnWhatsAcerto").href = "https://wa.me/?text=" + encodeURIComponent(texto);
+  }
+
+  $("#btnCopiarAcerto").addEventListener("click", async () => {
+    const texto = $("#acertoTexto").value;
+    const msg = $("#acertoCopiaMsg");
+    try {
+      // exige contexto seguro e pode ser negada pelo usuário
+      await navigator.clipboard.writeText(texto);
+      msg.textContent = "Copiado! ✅";
+    } catch (e) {
+      // sem saída melhor que mostrar erro: expõe o texto para copiar na mão
+      console.warn("clipboard indisponível:", e);
+      const area = $("#acertoTexto");
+      area.hidden = false;
+      area.select();
+      msg.textContent = "Não consegui copiar sozinho — o texto está aí embaixo, selecionado.";
+    }
+  });
 
   /* ================= CONFIRMAÇÕES =================
      Lê o schema novo: rsvps + pessoas por FK. As telas de config,

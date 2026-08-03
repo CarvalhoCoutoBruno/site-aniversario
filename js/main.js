@@ -29,22 +29,57 @@
 
   $("#heroNomes").innerHTML = C.aniversariantes.map((n) => `<li>${esc(n)}</li>`).join("");
 
-  /* ================= COUNTDOWN ================= */
+  /* ================= COUNTDOWN =================
+     Três estados, decididos pela DATA em São Paulo — nunca pelo sinal
+     do diff. A festa é às 11h: das 11h às 23h59 daquele dia o diff já
+     é negativo, e um "diff <= 0 => acabou" diria que a festa passou
+     com ela acontecendo, 13 horas antes da hora.
+
+     O dia sai do fuso de São Paulo, não do navegador: o convidado pode
+     estar viajando.                                                */
   const alvo = new Date(C.festa.data).getTime();
-  function tick() {
-    const diff = alvo - Date.now();
-    if (isNaN(alvo)) { $("#countdown").style.display = "none"; return; }
-    const d = Math.max(0, diff);
-    const dias = Math.floor(d / 864e5);
-    const horas = Math.floor((d % 864e5) / 36e5);
-    const min = Math.floor((d % 36e5) / 6e4);
-    const seg = Math.floor((d % 6e4) / 1e3);
-    $("#cdDias").textContent = dias;
-    $("#cdHoras").textContent = horas;
-    $("#cdMin").textContent = min;
-    $("#cdSeg").textContent = seg;
+
+  function diaEmSaoPaulo(ms) {
+    const partes = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date(ms));
+    const parte = (t) => partes.find((x) => x.type === t).value;
+    return `${parte("year")}-${parte("month")}-${parte("day")}`;
   }
-  tick(); setInterval(tick, 1000);
+
+  // "contagem" | "e-hoje" | "passou"
+  function estadoDaFesta(agora) {
+    const hoje = diaEmSaoPaulo(agora);
+    const dia = diaEmSaoPaulo(alvo);
+    return hoje < dia ? "contagem" : hoje === dia ? "e-hoje" : "passou";
+  }
+
+  let cronometro = null;
+  function tick() {
+    const cd = $("#countdown");
+    if (isNaN(alvo)) { cd.hidden = true; return; }
+
+    const estado = estadoDaFesta(Date.now());
+    cd.dataset.estado = estado;
+
+    if (estado !== "contagem") {
+      clearInterval(cronometro);
+      cd.hidden = true;
+      const aviso = $("#festaEstado");
+      aviso.hidden = false;
+      aviso.textContent = estado === "e-hoje" ? "É hoje! 🎉" : "A festa já aconteceu. 💜";
+      return;
+    }
+
+    const d = alvo - Date.now();
+    $("#cdDias").textContent = Math.floor(d / 864e5);
+    $("#cdHoras").textContent = Math.floor((d % 864e5) / 36e5);
+    $("#cdMin").textContent = Math.floor((d % 36e5) / 6e4);
+    $("#cdSeg").textContent = Math.floor((d % 6e4) / 1e3);
+  }
+  tick();
+  cronometro = setInterval(tick, 1000);
 
   /* ================= CARROSSEL ================= */
   const track = $("#carrosselTrack");

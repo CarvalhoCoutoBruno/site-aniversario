@@ -476,6 +476,30 @@ function rateioFalso(deve, custos, opcoes) {
   ok(maxT <= 2, "nunca mais de 2 transferências entre 3 pessoas", `máximo observado: ${maxT}`);
 }
 
+{
+  // resumo compartilhável
+  const r = rateioFalso([[1, "Bruno", 65000], [2, "Braz", 5000], [3, "Bocão", 0]],
+                        { chopp: 70000, refri: 0, agua: 0, pizza: 0 });
+  const a = C.acerto(r, { chopp: 1 });
+
+  const txt = C.resumoAcerto(a, "Festa dos 160 anos 🎉");
+  ok(/Festa dos 160 anos/.test(txt), "o resumo abre com o título", txt);
+  ok(/Braz → Bruno: R\$\s*50,00/.test(txt), "lista a transferência com valor", txt);
+  ok(txt.split("\n").filter((l) => l.startsWith("•")).length === 1,
+    "uma linha por transferência");
+
+  // acerto incompleto não tem o que compartilhar
+  const incompleto = C.acerto(rateioFalso([[1, "Bruno", 100]], { chopp: 100, refri: 0, agua: 0, pizza: 0 }), {});
+  ok(C.resumoAcerto(incompleto, "x") === "", "acerto incompleto devolve string vazia");
+
+  // completo SEM transferências: cada um pagou a própria parte
+  const quites = C.acerto(rateioFalso([[1, "Bruno", 10000], [2, "Braz", 0], [3, "Bocão", 0]],
+                                      { chopp: 10000, refri: 0, agua: 0, pizza: 0 }), { chopp: 1 });
+  const txtQuites = C.resumoAcerto(quites, "T");
+  ok(quites.transferencias.length === 0, "ninguém deve nada nesse cenário");
+  ok(/Ninguém deve nada/.test(txtQuites), "texto próprio em vez de lista vazia", txtQuites);
+}
+
 /* =============================================================
    7) estimativa — NÃO muda com o modelo de rateio
    ============================================================= */
