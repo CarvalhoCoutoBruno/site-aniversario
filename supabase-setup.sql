@@ -74,6 +74,19 @@ begin
       end if;
     end if;
   end if;
+
+  -- (3) convite editado pelo organizador.
+  -- Aqui "tem linha" NÃO serve de sinal: a festa é semeada por este
+  -- próprio script, então existiria desde o primeiro Run e a trava
+  -- dispararia para sempre. O sinal é atualizado_em: NULL no seed,
+  -- preenchido quando alguém salva pelo painel.
+  if to_regclass('public.festa') is not null then
+    execute 'select to_jsonb(f) from public.festa f where id = 1' into v_cfg;
+    if v_cfg is not null and (v_cfg->>'atualizado_em') is not null then
+      raise exception
+        'ABORTADO: public.festa foi editada pelo painel (titulo, data, local ou nomes). Recriar o schema voltaria o convite para os valores do seed.';
+    end if;
+  end if;
 end $$;
 
 drop function if exists public.criar_rsvp(text, text, smallint[], text, jsonb);
@@ -81,6 +94,7 @@ drop function if exists public.status_rsvp();
 drop table if exists public.pessoas;
 drop table if exists public.rsvps;
 drop table if exists public.config;
+drop table if exists public.festa;
 -- admins e is_admin() sobrevivem ao reset: guardam os UIDs das contas
 -- do painel, que não têm nada a ver com o modelo de dados da festa.
 
@@ -248,6 +262,47 @@ create unique index pessoas_um_principal_por_grupo
 -- cada aniversariante cadastrado uma única vez
 create unique index pessoas_aniversariante_id_unico
   on public.pessoas (aniversariante_id) where papel = 'aniversariante';
+
+-- =============================================================
+--  TABELA: festa — os dados do convite, editáveis pelo painel
+--
+--  É a ÚNICA tabela que o visitante anônimo lê direto. Por isso só
+--  entra aqui o que já aparece impresso no convite: título, data,
+--  local e os nomes. Preço, custo real e pagadores seguem na `config`,
+--  que continua fechada.
+--
+--  A posição do aniversariante é o id (1/2/3) usado em convidado_por e
+--  em aniversariante_id. Em colunas nomeadas, e não num array, a
+--  posição fica explícita — não dá para reordenar sem perceber.
+-- =============================================================
+create table public.festa (
+  id            smallint primary key default 1 check (id = 1),
+  titulo        text not null check (length(btrim(titulo)) between 1 and 120),
+  subtitulo     text check (subtitulo is null or length(subtitulo) <= 200),
+  -- ISO com offset -03:00; base do countdown
+  data          timestamptz not null,
+  -- vazio = gerado a partir de `data` na tela
+  data_texto    text check (data_texto is null or length(data_texto) <= 160),
+  local         text not null check (length(btrim(local)) between 1 and 200),
+  local_mapa    text check (local_mapa is null or local_mapa ~ '^https?://'),
+  nome_aniv_1   text not null check (length(btrim(nome_aniv_1)) between 1 and 60),
+  nome_aniv_2   text not null check (length(btrim(nome_aniv_2)) between 1 and 60),
+  nome_aniv_3   text not null check (length(btrim(nome_aniv_3)) between 1 and 60),
+  -- NULL até alguém salvar pelo painel; é o sinal da trava do reset
+  atualizado_em timestamptz
+);
+
+insert into public.festa (id, titulo, subtitulo, data, data_texto, local, local_mapa,
+                          nome_aniv_1, nome_aniv_2, nome_aniv_3)
+values (1,
+  'Festa dos 160 anos',
+  null,
+  '2026-10-31T11:00:00-03:00',
+  'Sábado, 31 de outubro de 2026, às 11h',
+  'Salão 3 — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS',
+  'https://www.google.com/maps/search/?api=1&query=Av.+Cel.+Marcos%2C+627+-+Pedra+Redonda%2C+Porto+Alegre+-+RS%2C+91760-000',
+  'Bruno', 'Braz', 'Bocão')
+on conflict (id) do nothing;
 
 -- =============================================================
 --  TABELA: config — linha única, editável pelo painel
@@ -430,9 +485,22 @@ revoke all on function public.convidado_por_valido(smallint[]) from public, anon
 --  RLS — acesso administrativo via is_admin().
 --  NUNCA use o papel genérico "authenticated" como autorização.
 -- =============================================================
+alter table public.festa   enable row level security;
 alter table public.rsvps   enable row level security;
 alter table public.pessoas enable row level security;
 alter table public.config  enable row level security;
+
+-- ---- festa: leitura PÚBLICA (é o convite), escrita só admin ----
+drop policy if exists "festa leitura publica" on public.festa;
+create policy "festa leitura publica" on public.festa
+  for select to anon, authenticated
+  using (true);
+
+drop policy if exists "admin edita festa" on public.festa;
+create policy "admin edita festa" on public.festa
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- ---- rsvps ----
 drop policy if exists "admin le rsvps" on public.rsvps;

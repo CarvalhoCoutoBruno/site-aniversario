@@ -28,19 +28,153 @@
   });
 
   $("#btnSair").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
-  $("#btnAtualizar").addEventListener("click", () => { carregarConfig(); carregarAniversariantes(); carregarRSVPs(); carregarFotos(); });
+  $("#btnAtualizar").addEventListener("click", async () => {
+    await carregarConvite();
+    carregarConfig(); carregarAniversariantes(); carregarRSVPs(); carregarFotos();
+  });
 
   // já logado?
   sb.auth.getSession().then(({ data }) => { if (data.session) mostrarPainel(); });
 
-  function mostrarPainel() {
+  async function mostrarPainel() {
     $("#loginBox").hidden = true;
     $("#painel").hidden = false;
+    prepararUpload();
+    // A festa vem PRIMEIRO e sozinha: os nomes dos aniversariantes saem
+    // dela, e quem renderiza rótulo (cadastro, seletor de pagador,
+    // coluna "convidou") pegaria o fallback se rodasse em paralelo.
+    await carregarConvite();
     carregarConfig();
     carregarAniversariantes();
     carregarRSVPs();
     carregarFotos();
-    prepararUpload();
+  }
+
+  /* ================= CONVITE: o que o convidado vê =================
+     Tabela `festa` — a única que o anon lê direto. Aqui só entra o que
+     já aparece impresso no convite; preço e custo real seguem na
+     `config`, fechada.
+
+     Os nomes dos aniversariantes moram aqui, e a POSIÇÃO é o id usado
+     em convidado_por e aniversariante_id. Em colunas nomeadas em vez de
+     array, não dá para reordenar sem perceber.                      */
+
+  let ultimaFesta = null;
+
+  const CAMPOS_CONVITE = ["titulo", "subtitulo", "data_texto", "local", "local_mapa",
+                          "nome_aniv_1", "nome_aniv_2", "nome_aniv_3"];
+
+  // datetime-local <-> timestamptz, sempre em -03:00, mesma disciplina
+  // do prazo: o dia sai do fuso de São Paulo, não do navegador.
+  function dataParaInput(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const p = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo", hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    }).formatToParts(d);
+    const g = (t) => p.find((x) => x.type === t).value;
+    return `${g("year")}-${g("month")}-${g("day")}T${g("hour")}:${g("minute")}`;
+  }
+
+  const inputParaData = (v) => (v ? `${v}:00-03:00` : null);
+
+  async function carregarConvite() {
+    const { data, error } = await sb.from("festa").select("*").eq("id", 1).single();
+    if (error || !data) {
+      console.error(error);
+      return toastConvite("Não consegui carregar o convite.", "err");
+    }
+    ultimaFesta = data;
+    for (const col of CAMPOS_CONVITE) $(`#cv_${col}`).value = data[col] || "";
+    $("#cv_data").value = dataParaInput(data.data);
+    $("#conviteAtualizado").textContent = data.atualizado_em
+      ? `Editado em ${fmtData(data.atualizado_em)}`
+      : "Ainda nos valores originais";
+    recomputar();
+  }
+
+  function toastConvite(msg, classe) {
+    const el = $("#conviteMsg");
+    el.className = "msg-toast" + (classe ? " " + classe : "");
+    el.textContent = msg;
+  }
+
+  $("#conviteForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("#btnSalvarConvite");
+    toastConvite("");
+
+    const txt = (id) => $(`#cv_${id}`).value.trim();
+    const obrigatorios = [["titulo", "Título"], ["local", "Local"],
+                          ["nome_aniv_1", "1º aniversariante"],
+                          ["nome_aniv_2", "2º aniversariante"],
+                          ["nome_aniv_3", "3º aniversariante"]];
+    for (const [col, rotulo] of obrigatorios) {
+      if (!txt(col)) return erroConvite(col, `Preencha "${rotulo}".`);
+    }
+    if (!$("#cv_data").value) return erroConvite("data", "Escolha a data e a hora da festa.");
+
+    // o link vai direto para o href do convite: um valor colado errado
+    // viraria link quebrado na cara do convidado
+    const mapa = txt("local_mapa");
+    if (mapa && !/^https?:\/\//i.test(mapa)) {
+      return erroConvite("local_mapa", "O link do mapa precisa começar com http:// ou https://.");
+    }
+
+    const patch = {
+      titulo: txt("titulo"),
+      subtitulo: txt("subtitulo") || null,
+      data: inputParaData($("#cv_data").value),
+      data_texto: txt("data_texto") || null,
+      local: txt("local"),
+      local_mapa: mapa || null,
+      nome_aniv_1: txt("nome_aniv_1"),
+      nome_aniv_2: txt("nome_aniv_2"),
+      nome_aniv_3: txt("nome_aniv_3"),
+      atualizado_em: new Date().toISOString(),
+    };
+
+    btn.disabled = true;
+    const rotulo = btn.textContent;
+    btn.textContent = "Salvando...";
+    const { error } = await sb.from("festa").update(patch).eq("id", 1);
+    btn.disabled = false;
+    btn.textContent = rotulo;
+
+    if (error) {
+      console.error(error);
+      return toastConvite("Não consegui salvar o convite.", "err");
+    }
+    toastConvite("Convite salvo. ✅ O site já está mostrando isso.", "ok");
+    // await antes dos dependentes: os rótulos dos blocos e a coluna
+    // "convidou" saem dos nomes, e sem esperar pegariam os antigos.
+    await carregarConvite();
+    carregarAniversariantes();
+    carregarRSVPs();
+  });
+
+  function erroConvite(col, msg) {
+    toastConvite(msg, "err");
+    const el = $(`#cv_${col}`);
+    if (el) el.focus();
+  }
+
+  /* O rateio rotula as contas com `pessoas.nome`, que é o snapshot de
+     quando o aniversariante foi cadastrado. Renomeando no Convite, a
+     conta continuaria com o nome velho até alguém re-salvar o cadastro.
+     A festa é a fonte única do nome — o snapshot serve só de reserva. */
+  function nomeDoAniversariante(id, reserva) {
+    return nomesAniversariantes()[id - 1] || reserva || `Aniversariante ${id}`;
+  }
+
+  // nomes dos 3, na ordem — a posição é o id
+  function nomesAniversariantes() {
+    return ultimaFesta
+      ? [ultimaFesta.nome_aniv_1, ultimaFesta.nome_aniv_2, ultimaFesta.nome_aniv_3]
+      : ["Aniversariante 1", "Aniversariante 2", "Aniversariante 3"];
   }
 
   /* ================= CONFIG: preços, taxas e prazo =================
@@ -225,7 +359,7 @@
   const linhaDoAniversariante = new Map();
 
   function montarBlocosAniversariantes() {
-    $("#anivBlocos").innerHTML = C.aniversariantes
+    $("#anivBlocos").innerHTML = nomesAniversariantes()
       .map((nome, i) => {
         const k = i + 1;
         return `
@@ -339,7 +473,7 @@
       const tipo = bloco.querySelector('.a-tipo input[value="crianca"]').checked ? "crianca" : "adulto";
       const registro = {
         // nome sempre do config.js: renomear lá propaga aqui no próximo save
-        nome: C.aniversariantes[k - 1],
+        nome: nomesAniversariantes()[k - 1],
         tipo,
         papel: "aniversariante",
         aniversariante_id: k,
@@ -405,7 +539,9 @@
   // tanto a estimativa quanto o rateio precisam do conjunto inteiro.
   // Quem chegar por último dispara os dois.
   function recomputar() {
-    if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos) return;
+    // ultimaFesta entra na guarda: os nomes dos aniversariantes vêm
+    // dela, e o rateio/acerto rotula as contas com esses nomes.
+    if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos || !ultimaFesta) return;
     atualizarEstimativa();
     atualizarRateio();
   }
@@ -564,7 +700,7 @@
             .join("");
           return `<div class="conta-aniv">
             <div class="conta-topo">
-              <b>${esc(a.nome)}</b>
+              <b>${esc(nomeDoAniversariante(a.aniversarianteId, a.nome))}</b>
               <span class="conta-total">${esc(Calculo.formatarBRL(a.total))}</span>
             </div>
             <div class="conta-itens">${itens || "<small>não consumiu nada</small>"}</div>
@@ -621,7 +757,7 @@
 
   function montarPagadores(custosPorItem) {
     const opcoes = ['<option value="">—</option>']
-      .concat(C.aniversariantes.map((nome, i) => `<option value="${i + 1}">${esc(nome)}</option>`))
+      .concat(nomesAniversariantes().map((nome, i) => `<option value="${i + 1}">${esc(nome)}</option>`))
       .join("");
     $("#acertoPagadores").innerHTML = CAMPOS_PAGO_POR
       .map(([col, item, rotulo]) => {
@@ -685,7 +821,7 @@
       const classe = s.saldo > 0 ? "saldo-pagar" : s.saldo < 0 ? "saldo-receber" : "";
       return `<div class="conta-aniv">
         <div class="conta-topo">
-          <b>${esc(s.nome)}</b>
+          <b>${esc(nomeDoAniversariante(s.aniversarianteId, s.nome))}</b>
           <span class="conta-total ${classe}">${esc(Calculo.formatarBRL(Math.abs(s.saldo)))} <small>${rotulo}</small></span>
         </div>
         <div class="conta-itens">
@@ -713,7 +849,7 @@
     selo.textContent = "✓ Acerto fechado: os saldos somam zero.";
     lista.innerHTML = a.transferencias.length
       ? `<ul class="transferencias">${a.transferencias.map((t) =>
-          `<li><b>${esc(t.deNome)}</b> → <b>${esc(t.paraNome)}</b>: ${esc(Calculo.formatarBRL(t.valor))}</li>`
+          `<li><b>${esc(nomeDoAniversariante(t.de, t.deNome))}</b> → <b>${esc(nomeDoAniversariante(t.para, t.paraNome))}</b>: ${esc(Calculo.formatarBRL(t.valor))}</li>`
         ).join("")}</ul>`
       : '<p class="campo-dica">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte.</p>';
   }
@@ -724,7 +860,7 @@
      é montado aqui. */
   function prepararCompartilhar(a) {
     const caixa = $("#acertoCompartilhar");
-    const texto = Calculo.resumoAcerto(a, `${C.festa.titulo} 🎉`);
+    const texto = Calculo.resumoAcerto(a, `${(ultimaFesta && ultimaFesta.titulo) || "A festa"} 🎉`);
     caixa.hidden = !texto;
     $("#acertoTexto").hidden = true;
     $("#acertoCopiaMsg").textContent = "";
@@ -829,7 +965,7 @@
       }).join("");
       // convidado_por guarda o ID; o nome vem do config.js pelo índice
       const anivHTML = (r.convidado_por || [])
-        .map((id) => `<span class="pill">${esc(C.aniversariantes[id - 1] || "?" + id)}</span>`)
+        .map((id) => `<span class="pill">${esc(nomesAniversariantes()[id - 1] || "?" + id)}</span>`)
         .join("");
       return `<tr>
         <td>${fmtData(r.criado_em)}</td>

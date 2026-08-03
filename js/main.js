@@ -19,26 +19,106 @@
     sb = window.supabase.createClient(C.supabase.url, C.supabase.anonKey);
   }
 
-  /* ================= DADOS DA FESTA ================= */
-  $("#festaTitulo").textContent = C.festa.titulo;
-  $("#festaData").textContent = C.festa.dataTexto;
-  const localEl = $("#festaLocal");
-  localEl.textContent = C.festa.local;
-  if (C.festa.localMapa) localEl.href = C.festa.localMapa;
-  else localEl.removeAttribute("href");
+  /* ================= DADOS DO CONVITE =================
+     Vêm da tabela `festa` (leitura pública), não mais do config.js.
 
-  $("#heroNomes").innerHTML = C.aniversariantes.map((n) => `<li>${esc(n)}</li>`).join("");
+     ⚠️ Isto passou a ser ASSÍNCRONO. Os chips de "quem te convidou"
+     nascem vazios no HTML e são montados aqui; se a festa não carregar,
+     eles ficam vazios e o envio é barrado por um campo que o convidado
+     não vê na tela — ele preencheria tudo e não conseguiria enviar.
+     Por isso a falha esconde o convite inteiro e mostra um aviso, em
+     vez de deixar meia tela funcionando.                            */
+
+  let alvo = NaN;          // instante da festa; só existe depois do load
+  let cronometro = null;
+  let conviteFalhou = false;
+
+  async function carregarFesta() {
+    if (!sb) return falhaConvite();
+    try {
+      const { data, error } = await sb.from("festa").select("*").eq("id", 1).single();
+      if (error || !data) {
+        console.error("festa:", error);
+        return falhaConvite();
+      }
+      montarConvite(data);
+    } catch (e) {
+      console.error("festa:", e);
+      falhaConvite();
+    }
+  }
+
+  function montarConvite(f) {
+    $("#festaTitulo").textContent = f.titulo;
+
+    const sub = $("#festaSubtitulo");
+    sub.textContent = f.subtitulo || "";
+    sub.hidden = !f.subtitulo;
+
+    // data_texto em branco: gera a partir da data, no fuso de São Paulo
+    $("#festaData").textContent = f.data_texto || textoDaData(f.data);
+
+    const localEl = $("#festaLocal");
+    localEl.textContent = f.local;
+    if (f.local_mapa) localEl.href = f.local_mapa;
+    else localEl.removeAttribute("href");
+
+    const nomes = [f.nome_aniv_1, f.nome_aniv_2, f.nome_aniv_3];
+    $("#heroNomes").innerHTML = nomes.map((n) => `<li>${esc(n)}</li>`).join("");
+
+    // O value é o ID (posição), nunca o nome: é o que o banco grava em
+    // convidado_por e o que liga o convidado ao aniversariante que
+    // banca o consumo dele. Renomear não quebra registro nenhum.
+    $("#chipsAniversariantes").innerHTML = nomes
+      .map((nome, i) => `<label class="chip">
+          <input type="checkbox" class="aniv-check" value="${i + 1}" />
+          <span>${esc(nome)}</span>
+        </label>`)
+      .join("");
+    ativarChips($("#chipsAniversariantes"));
+
+    alvo = new Date(f.data).getTime();
+    $("#conviteCarregando").hidden = true;
+    $("#hero-conteudo").hidden = false;
+    tick();
+    cronometro = setInterval(tick, 1000);
+  }
+
+  // Um estado só para o convite inteiro: sem hero pela metade ao lado
+  // de um formulário escondido.
+  function falhaConvite() {
+    conviteFalhou = true;
+    $("#conviteCarregando").hidden = true;
+    $("#hero-conteudo").hidden = true;
+    $("#carrossel").style.display = "none";
+    $("#carrosselVazio").hidden = true;
+    $("#rsvpForm").hidden = true;
+    $("#rsvpEncerrado").hidden = true;
+    // o aviso de prazo pode ter chegado ANTES desta falha: a flag cobre
+    // quem resolve depois, e esta limpeza cobre quem já resolveu.
+    $("#prazoAberto").hidden = true;
+    $("#conviteErro").hidden = false;
+  }
+
+  function textoDaData(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const f = (o) => new Intl.DateTimeFormat("pt-BR",
+      Object.assign({ timeZone: "America/Sao_Paulo" }, o)).format(d);
+    const hora = f({ hour: "2-digit", minute: "2-digit", hour12: false })
+      .replace(":00", "h").replace(":", "h");
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+    return `${cap(f({ weekday: "long" }))}, ${f({ day: "numeric" })} de ${f({ month: "long" })} de ${f({ year: "numeric" })}, às ${hora}`;
+  }
 
   /* ================= COUNTDOWN =================
      Três estados, decididos pela DATA em São Paulo — nunca pelo sinal
-     do diff. A festa é às 11h: das 11h às 23h59 daquele dia o diff já
-     é negativo, e um "diff <= 0 => acabou" diria que a festa passou
-     com ela acontecendo, 13 horas antes da hora.
+     do diff. A festa tem hora marcada: depois dela, e ainda no mesmo
+     dia, o diff já é negativo, e um "diff <= 0 => acabou" diria que a
+     festa passou com ela acontecendo.
 
      O dia sai do fuso de São Paulo, não do navegador: o convidado pode
      estar viajando.                                                */
-  const alvo = new Date(C.festa.data).getTime();
-
   function diaEmSaoPaulo(ms) {
     const partes = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Sao_Paulo",
@@ -55,7 +135,6 @@
     return hoje < dia ? "contagem" : hoje === dia ? "e-hoje" : "passou";
   }
 
-  let cronometro = null;
   function tick() {
     const cd = $("#countdown");
     if (isNaN(alvo)) { cd.hidden = true; return; }
@@ -78,8 +157,8 @@
     $("#cdMin").textContent = Math.floor((d % 36e5) / 6e4);
     $("#cdSeg").textContent = Math.floor((d % 6e4) / 1e3);
   }
-  tick();
-  cronometro = setInterval(tick, 1000);
+
+  carregarFesta();
 
   /* ================= CARROSSEL ================= */
   const track = $("#carrosselTrack");
@@ -106,6 +185,10 @@
   }
 
   function montarCarrossel(urls) {
+    // O load das fotos resolve depois do da festa. Sem esta guarda ele
+    // reexibiria o carrossel por cima do estado de erro, deixando o
+    // convite meio quebrado — que é o que a falha existe para evitar.
+    if (conviteFalhou) return;
     if (!urls.length) {
       $("#carrossel").style.display = "none";
       $("#carrosselVazio").hidden = false;
@@ -146,6 +229,7 @@
       if (error) return console.warn("status_rsvp:", error);
       const st = Array.isArray(data) ? data[0] : data;
       if (!st) return;
+      if (conviteFalhou) return; // não mexer na tela de erro
       if (st.aberto === false) fecharFormulario(st.prazo);
       else if (st.prazo) avisarPrazo(st.prazo);
     } catch (e) {
@@ -176,18 +260,6 @@
     aviso.hidden = false;
   }
   checarPrazo();
-
-  /* ================= CHIPS ANIVERSARIANTES =================
-     O value é o ID (índice + 1), nunca o nome: é o que o banco grava
-     em convidado_por e o que liga o convidado ao aniversariante que
-     banca o consumo dele. Renomear no config não quebra registro. */
-  $("#chipsAniversariantes").innerHTML = C.aniversariantes
-    .map((nome, i) => `<label class="chip">
-        <input type="checkbox" class="aniv-check" value="${i + 1}" />
-        <span>${esc(nome)}</span>
-      </label>`)
-    .join("");
-  ativarChips($("#chipsAniversariantes"));
 
   /* ================= PESSOAS (responsável + acompanhantes) ================= */
   const MAX_ACOMPANHANTES = 5;

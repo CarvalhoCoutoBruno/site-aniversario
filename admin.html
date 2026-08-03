@@ -39,6 +39,61 @@
       </div>
     </div>
 
+    <!-- Convite: o que o convidado vê -->
+    <details class="admin-secao config-secao" id="conviteSecao">
+      <summary><h2>Convite 💌</h2></summary>
+
+      <form id="conviteForm" novalidate>
+        <p class="campo-dica">
+          O que aparece na página do convidado. Editar aqui muda o site na hora — sem mexer em
+          código.
+        </p>
+
+        <fieldset class="config-bloco">
+          <legend>A festa</legend>
+          <div class="config-grid">
+            <label class="config-campo"><span>Título *</span>
+              <input type="text" id="cv_titulo" maxlength="120" /></label>
+            <label class="config-campo"><span>Subtítulo</span>
+              <input type="text" id="cv_subtitulo" maxlength="200" /></label>
+            <label class="config-campo"><span>Data e hora *</span>
+              <input type="datetime-local" id="cv_data" /></label>
+            <label class="config-campo"><span>Data por extenso <small>(vazio = gerada)</small></span>
+              <input type="text" id="cv_data_texto" maxlength="160" /></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="config-bloco">
+          <legend>Onde</legend>
+          <div class="config-grid">
+            <label class="config-campo"><span>Local *</span>
+              <input type="text" id="cv_local" maxlength="200" /></label>
+            <label class="config-campo"><span>Link do mapa</span>
+              <input type="url" id="cv_local_mapa" placeholder="https://..." /></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="config-bloco">
+          <legend>Aniversariantes</legend>
+          <p class="campo-dica">
+            A <strong>posição</strong> é o identificador de cada um nas confirmações. Renomear é
+            seguro; trocar de posição reatribui quem convidou quem.
+          </p>
+          <div class="config-grid">
+            <label class="config-campo"><span>1º *</span><input type="text" id="cv_nome_aniv_1" maxlength="60" /></label>
+            <label class="config-campo"><span>2º *</span><input type="text" id="cv_nome_aniv_2" maxlength="60" /></label>
+            <label class="config-campo"><span>3º *</span><input type="text" id="cv_nome_aniv_3" maxlength="60" /></label>
+          </div>
+        </fieldset>
+
+        <div class="config-acoes">
+          <button type="submit" class="btn btn-primary" id="btnSalvarConvite">Salvar convite</button>
+          <small class="campo-dica" id="conviteAtualizado"></small>
+        </div>
+        <p class="msg-toast" id="conviteMsg"></p>
+      </form>
+    </details>
+
     <!-- Config: preços, taxas e prazo -->
     <details class="admin-secao config-secao" id="configSecao">
       <summary><h2>Preços, taxas e prazo ⚙️</h2></summary>

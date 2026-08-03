@@ -15,8 +15,12 @@
   <!-- ===================== HERO / CONVITE ===================== -->
   <header class="hero">
     <div class="hero-inner">
+      <p class="carregando" id="conviteCarregando">Carregando o convite…</p>
+
+      <div id="hero-conteudo" hidden>
       <p class="hero-eyebrow">🎉 Você está convidado 🎉</p>
-      <h1 class="hero-title" id="festaTitulo">Aniversário</h1>
+      <h1 class="hero-title" id="festaTitulo"></h1>
+      <p class="hero-sub" id="festaSubtitulo" hidden></p>
 
       <ul class="hero-nomes" id="heroNomes"><!-- aniversariantes --></ul>
 
@@ -41,6 +45,13 @@
       <p class="festa-estado" id="festaEstado" hidden></p>
 
       <a href="#confirmar" class="btn btn-primary btn-lg">Confirmar presença ↓</a>
+      </div>
+
+      <div class="convite-erro" id="conviteErro" hidden>
+        <div class="big">😕</div>
+        <h2>Não consegui carregar o convite</h2>
+        <p>Parece que a conexão falhou. Recarregue a página para tentar de novo.</p>
+      </div>
     </div>
   </header>
 

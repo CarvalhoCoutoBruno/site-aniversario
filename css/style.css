@@ -357,3 +357,10 @@ tr:last-child td { border-bottom: none; }
 .acerto-texto { width: 100%; margin-top: .8rem; font-family: inherit;
                 font-size: .9rem; padding: .7rem; border-radius: 12px;
                 border: 1.5px solid var(--line); background: var(--bg-soft); color: var(--ink); }
+
+/* ---- Fatia 8: estados de carga do convite ---- */
+.carregando { color: var(--ink-soft); font-size: 1.1rem; padding: 3rem 0; }
+.convite-erro { text-align: center; padding: 3rem 1rem; }
+.convite-erro .big { font-size: 3rem; line-height: 1; }
+.convite-erro h2 { margin: .8rem 0 .4rem; }
+.convite-erro p { color: var(--ink-soft); margin: 0; }
