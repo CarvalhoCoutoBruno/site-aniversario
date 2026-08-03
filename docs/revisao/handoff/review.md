@@ -1,34 +1,40 @@
-# Review — Fatia 5
+# Review — Fatia 6
 
-**Veredito: aprovado, sem ajustes.** Plano forte, e a pré-verificação foi exatamente a que eu faria.
+**Veredito: aprovado, com uma inclusão — a trava do reset entra agora.** Plano forte; os dois
+achados são reais.
 
-## O que gostei
-- **O ×6,5 batendo ao centavo** (Bruno 650 / Braz 50 / Bocão 0, `confere=true`) — o caso da spec
-  §4.2 confirmado contra o módulo antes de escrever tela.
-- **"Esquecer os grupos falha alto":** não passar `ultimosGrupos` → todo convidado vira "sem
-  dono", é **descartado** (não redistribuído), Bruno paga 100 de 700, selo vermelho. É a prova de
-  que o coração da fatia (o wiring dos grupos) grita se errar. Ainda assim provar o caminho certo
-  no verify é o correto — "grita" só ajuda quem olha.
-- **Os 3 estados do selo**, com o caso sutil coberto: chopp só (refri/agua NULL) fica **cinza
-  mesmo com as somas coincidindo** (10000=10000), porque `fechamentoCompleto` é falso. Verde
-  exige as duas condições — não só a soma. Perfeito.
-- **`recomputar()` estendendo a guarda de completude** da Fatia 4 pra exigir também os grupos,
-  com os dois carregadores chamando ele — reaproveita o padrão certo.
-- **Vazio = `NULL` aqui** (invertido da Fatia 2, de propósito): o `parseNumeroBR` já distingue
-  vazio de inválido, então é só trocar o ramo. A tabelinha deixa claro.
+## O `status` gated no `confere` — confirmo
+Certíssimo, e é o mesmo princípio do selo da Fatia 5. Se o rateio não confere (órfão),
+`Σ deve = totalRateado` mas `Σ pagou = custoRealTotal`; os dois diferem, `Σ saldo ≠ 0` e as
+transferências não quitam nada. Checar só "todo item tem pagador" produziria um acerto
+silenciosamente errado. `completo = confere E todo item com custo>0 tem pagador` — as duas
+condições. Aprovado.
 
-## A decisão em aberto
-**Mostrar a diferença em R$ no selo vermelho:** sim, entra. Sem ela o organizador sabe que algo
-está errado mas não por quanto — e o valor da diferença costuma apontar direto pro item digitado
-errado. É informação pra agir, não ruído.
+## `custosPorItem` no retorno do `rateio` — aprovado
+Aditivo, mantém as 41 asserções, e faz o `acerto` receber só (rateio + `pago_por`) — zero chance
+de os dois lados divergirem sobre quanto custou o chopp. É a forma certa de "não recomputar".
 
-## Fora de escopo, corretamente
-"Quem deve a quem" e o link `wa.me` ficam pra Fatia 6 (§9 da ET) — a Fatia 5 exibe as 3 contas, e
-está certo assim.
+## A trava do reset — **entra agora, nesta fatia**
+É o achado que mais importa. Decisão: **estender a trava já.** Porquê:
+- Esta fatia recria o schema (4 colunas novas), e a `config` **não** sobrevive ao reset (só a
+  `admins` sobrevive). A trava atual olha **só `rsvps`** — uma base com `rsvps` vazio mas `config`
+  preenchida passa batido e perde preços/prazo/custo real **em silêncio**.
+- Hoje é seguro (config nas sementes), então estender a trava **não bloqueia o recreate desta
+  fatia** — e a partir de agora protege dado real. É a **janela certa**: o momento em que a config
+  passa a valer dado, e a fatia já mexe no bloco de reset.
+- Sugiro guardar nos campos que nascem vazios/NULL/0 e só ficam preenchidos por ação do
+  organizador: `custo_real_*`, `pago_por_*`, `prazo_confirmacao` e os preços — abortar se qualquer
+  um estiver setado, com mensagem no mesmo tom da trava de `rsvps` ("config tem dados reais; limpe
+  antes se o descarte for intencional").
+
+## Detalhe que gostei
+O `CHECK (x is null or x between 1 and 3)` simples está certo aqui — e você reparou sozinho por
+que **não** precisa do `CASE` da `aniversariante_id_coerente` (lá a expressão podia dar `NULL`;
+aqui `x is null or ...` nunca dá). Testar 4 e 0 mesmo assim é o rigor certo.
 
 ## Verify
-Cobre o que importa: o ×6,5, o compartilhado 50/50, pizza real x referência, o órfão (vermelho +
-diferença), o incompleto (cinza mesmo com somas iguais), o **update estreito** (campos da Fatia 2
-intactos) e o negativo de RLS pelo **estado do banco**.
+Cobre tudo, e o **#4 (órfão → acerto não aparece mesmo com pagadores marcados)** é a prova do
+catch do `confere`. Só falta somar o teste da **trava estendida** (config preenchida → reset
+aborta), já que ela entra nesta fatia.
 
 Pode `executa`.
