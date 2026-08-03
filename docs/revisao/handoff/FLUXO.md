@@ -52,7 +52,22 @@ Decisão registrada na ET: **não há migrations de errata**. Quando o modelo mu
 
 O que torna isso seguro é o bloco de RESET no topo, que **aborta se `rsvps` tiver qualquer linha**. `admins` e `is_admin()` sobrevivem ao reset de propósito.
 
-> Vale enquanto o projeto é pré-lançamento. Depois que o link for divulgado e chegarem confirmações reais, a trava vira a única coisa entre um `Run` distraído e a perda dos dados — e mudança de schema volta a exigir cuidado manual.
+### A era do recreate acabou (Fatia 8)
+
+Aconteceu: a trava disparou sobre trabalho real do organizador — preços, prazo e os três
+aniversariantes cadastrados pelo painel. Não foi falso positivo; foi a trava fazendo o que existe
+para fazer.
+
+**A partir daqui, mudança de schema é aditiva.** Criar tabela ou coluna nova com
+`create table if not exists` / `add column if not exists`, aplicado à parte, e o
+`supabase-setup.sql` atualizado para continuar descrevendo o schema inteiro — de modo que uma
+instalação do zero produza o mesmo resultado.
+
+O que **não** se faz mais: rodar o arquivo inteiro contra a base do Bruno. A trava impede, e
+contorná-la (limpar para o script passar) seria usar a chave para arrombar a própria porta.
+
+Antes de aplicar qualquer coisa à mão: **backup do que a trava protege**, impresso na conversa
+para ficar recuperável, e conferência contra ele depois. Foi assim na Fatia 8.
 
 ## Push publica
 
