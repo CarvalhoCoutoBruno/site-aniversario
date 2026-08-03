@@ -1,90 +1,107 @@
-# Plano — Fatia 4: estimativa de compra
+# Plano — Fatia 5: fechamento e rateio
 
-Branch: `feat/fatia-4-estimativa`
-
-## Ponto de partida
-
-`calculo.estimativa(pessoas, config)` está pronto, testado (41/41) e já carregado no
-`admin.html` desde a Fatia 2. Esta fatia é essencialmente tela: **nenhuma escrita no banco**.
+Branch: `feat/fatia-5-fechamento`
 
 ## O que verifiquei antes de planejar
 
-### A costura entre os tipos do banco e o módulo puro funciona
+### 1. O caso do ×6,5 da spec bate com o módulo
 
-`numeric` volta do Supabase como **string** (`"18.50"`, `"2.000"`), não número. Se o módulo
-tratasse isso mal, o custo sairia zerado ou `NaN` — e em silêncio. Rodei `estimativa` com dados
-exatamente na forma que o banco devolve:
+Montei o cenário exato da regra de negócio §4.2 — 5 convidados só do Bruno + 1 compartilhado
+Bruno/Braz + o próprio Bruno, todos no chopp, `custo_real_chopp = 700,00`:
 
 ```
-contagens : {"totalPessoas":4,"adultos":3,"criancas":1,"chopp":2,"refri":2,"agua":2,
-             "pizzaAdultos":2,"pizzaCriancas":1}
-litros    : chopp=4 refri=1.2 agua=1
-custo     : 20050 centavos = R$ 200,50
-
-conferindo na mao:
-  chopp: 2 adultos x 2,0 = 4 L        -> OK
-  refri: 2 pessoas x 0,6 = 1,2 L      -> OK
-  agua : 2 pessoas x 0,5 = 1,0 L      -> OK
-  custo: 7400+720+300+9180+2450       -> OK
+COM grupos:
+  Bruno (id 1) = R$ 650,00
+  Braz  (id 2) = R$ 50,00
+  Bocão (id 3) = R$ 0,00
+  totalRateado=70000 custoRealTotal=70000 confere=true
 ```
 
-`paraCentavos` e a conversão de taxa dão conta da string. Sem surpresa aqui.
+7 consumidores → C = R$ 100,00. Bruno = 5 + 0,5 + 1 = **6,5 unidades** = R$ 650,00; Braz leva a
+meia unidade do compartilhado. É o número da spec, ao centavo.
 
-### O problema real é de coordenação, não de cálculo
+### 2. Esquecer os `grupos` falha **alto**, não em silêncio
 
-Os três carregadores rodam **em paralelo** no `mostrarPainel()`:
+O item 1 do escopo (guardar `ultimosGrupos`) é o coração da fatia. Testei o que acontece se eu
+não passar os grupos:
 
-```js
-carregarConfig();          // busca config
-carregarAniversariantes(); // busca pessoas (aniversariante)
-carregarRSVPs();           // busca rsvps + pessoas
+```
+SEM passar grupos:
+  Bruno = R$ 100,00
+  Braz  = R$ 0,00
+  Bocão = R$ 0,00
+  totalRateado=10000 custoRealTotal=70000 confere=false
 ```
 
-A estimativa precisa de **config + pessoas juntas**, e hoje nenhum dos dois guarda o que
-carregou: `carregarConfig` popula os inputs e descarta a linha; `carregarRSVPs` monta
-`porGrupo`/`aniversariantes` e passa direto para o `render`.
+Sem os grupos, todo convidado vira "consumo sem dono" e é **descartado** em vez de
+redistribuído — exatamente o que o `calculo.js` foi desenhado para fazer. Resultado: R$ 100 de
+R$ 700 rateados e **selo vermelho**. O erro se denuncia.
 
-Se eu recalculasse a estimativa dentro de um deles, ela rodaria com metade do estado —
-intermitentemente, dependendo de qual promessa resolvesse primeiro. É o tipo de bug que passa no
-teste e falha na máquina do usuário.
+Isso me deixa mais tranquilo: se eu errar o wiring, a tela grita. Ainda assim vou provar o
+caminho certo no verify, porque "grita" só ajuda quem olha.
 
-**Solução:** guardar `ultimaConfig` e `ultimasPessoas` em variáveis do módulo; cada carregador
-preenche a sua parte e chama `atualizarEstimativa()`, que **não faz nada** enquanto faltar
-alguma. Quem chegar por último dispara o cálculo.
+### 3. Os três estados do selo
 
-### A config da estimativa é a **salva**, não a do formulário
+```
+  so chopp lancado (refri/agua NULL)   -> CINZA (incompleto)       rateado=10000 total=10000
+  os tres lancados, tudo consumido     -> VERDE                    rateado=15000 total=15000
+  orfao: refri lancado, ninguem bebe   -> VERMELHO (soma != total) rateado=15000 total=23000
+  os tres em zero                      -> VERDE                    rateado=0     total=0
+```
 
-Ler os inputs seria mais fácil, mas mostraria estimativa baseada em edição não salva. Uso a
-linha que veio do banco (atualizada também depois de cada save bem-sucedido).
+Repare no primeiro: as somas **coincidem** (10000 = 10000) e mesmo assim o selo é cinza, porque
+`fechamentoCompleto` é falso. Verde exige as duas condições, como o prompt pede — não basta a
+soma bater.
 
-### A contagem N/3 sai das próprias pessoas
-
-O `linhaDoAniversariante` do `carregarAniversariantes` teria a informação, mas é preenchido por
-outro carregador em paralelo — mesma corrida. Conto direto na lista:
-`pessoas.filter(p => p.papel === "aniversariante").length`. Auto-contido, sem corrida.
+### 4. Pizza real x referência
+```
+  so referencia (45,90)    -> Bruno paga R$ 45,90
+  real preenchido (60,00)  -> Bruno paga R$ 60,00
+```
 
 ## Implementação
 
-### `admin.html`
-Seção em `<details>` fechado, depois de aniversariantes (ordem da ET §7.2). Três blocos:
-volumes (chopp / refri / água), pizzas (adulto / criança) e custo aproximado. Mais um
-detalhamento curto das contagens e a faixa de aviso do N/3. **Sem botão de salvar.**
-
 ### `js/admin.js`
-- `ultimaConfig` / `ultimasPessoas` — o estado compartilhado.
-- `atualizarEstimativa()` — guarda de completude, chama `calculo.estimativa`, pinta a tela.
-- `carregarConfig` e `carregarRSVPs` passam a guardar o que carregam e a chamar a atualização.
-- Formatação: litros com até 3 casas em pt-BR; custo por `Calculo.formatarBRL`.
+- `ultimosGrupos` ao lado de `ultimasPessoas`; `carregarRSVPs` guarda `g.data`.
+- `recomputar()` substitui a chamada direta a `atualizarEstimativa()`: mesma guarda de
+  completude, agora exigindo também os grupos, e dispara estimativa **e** rateio. Os dois
+  carregadores passam a chamar `recomputar()`.
+- `carregarFechamento()` popula os 5 inputs a partir da `config` já carregada.
+- `salvarFechamento()` — **update estreito**, só os 5 campos + `atualizado_em`.
+- `atualizarRateio()` — chama `Calculo.rateio(ultimasPessoas, ultimaConfig, ultimosGrupos)` e
+  pinta as 3 contas, os totais e o selo.
 
-O "↻ Atualizar" já chama os dois carregadores, então recalcula de graça.
+### Validação — **vazio é válido aqui**
 
-### Rótulos
-"Custo aproximado" vem com **preços de referência** ao lado, e a seção diz que é estimativa —
-para ninguém confundir com o fechamento da Fatia 5.
+Invertida em relação à Fatia 2, e de propósito: lá vazio era esquecimento, aqui vazio significa
+"ainda não fechei" e vira `NULL`. O `parseNumeroBR` já distingue `vazio` de `invalido`, então é
+só trocar o ramo:
+
+| Entrada | Fatia 2 (config) | Fatia 5 (fechamento) |
+|---|---|---|
+| vazio | recusa | **`NULL`** |
+| inválido | recusa | recusa |
+| negativo | recusa | recusa |
+| acima da faixa | recusa | recusa |
+
+### `admin.html`
+Seção em `<details>`, depois da estimativa. Um bloco de inputs (3 custos + 2 preços reais de
+pizza, estes marcados como opcionais), o botão salvar, e abaixo o resultado: as 3 contas com
+detalhe por item, os totais e o selo.
+
+### Selo
+Três estados visuais, com a razão escrita ao lado:
+- **cinza** — "fechamento incompleto: faltam custos"
+- **verde** — "as contas fecham"
+- **vermelho** — "a soma das contas não bate com o total gasto", com a diferença em reais
+
+O vermelho é o caso órfão (custo lançado para item que ninguém consome). Mostrar a **diferença**
+ajuda a achar o erro de digitação — é a informação que falta para agir.
 
 ## Fora de escopo
-Fechamento e `custo_real_*` (Fatia 5), edição de config, cadastro de aniversariantes,
-formulário público. **Nenhuma escrita no banco nesta fatia.**
+Estimativa, config de preços/taxas/prazo (não edito esses campos aqui), formulário público, e o
+polimento da Fatia 6 — incluindo o "quem deve a quem" e o link `wa.me`, que continuam em aberto
+na §9 da ET.
 
 ## Verify
 
@@ -92,24 +109,25 @@ formulário público. **Nenhuma escrita no banco nesta fatia.**
 
 Integrada, com saída crua no `status.md`:
 
-1. montar base conhecida — 2 grupos com consumo definido + os 3 aniversariantes cadastrados —
-   e conferir os números da tela **contra a conta na mão** (nº que bebe × taxa);
-2. **prova de que conta os aniversariantes:** apagar as 3 linhas de aniversariante, recarregar,
-   e mostrar os volumes caindo exatamente o que eles consumiam; recadastrar e voltar ao valor;
-3. **aviso N/3:** com 2 de 3 cadastrados o aviso aparece; com 3, some;
-4. o custo usa os **preços de referência** — provo populando `custo_real_*` com valores bem
-   diferentes e mostrando que a estimativa não se move;
-5. **nenhuma escrita:** comparar o estado do banco antes e depois de abrir e recarregar a
-   estimativa — tem de ser idêntico;
-6. restaurar a base ao fim.
-
-O item 2 é o que importa: se a estimativa esquecer os aniversariantes, os números ficam
-plausíveis e errados — o organizador compra chopp a menos e ninguém percebe até a festa.
+1. base com o padrão do ×6,5 (5 convidados de [1], 1 compartilhado [1,2], os 3 aniversariantes)
+   → lançar `custo_real_chopp = 700,00` → **Bruno R$ 650,00 / Braz R$ 50,00 / Bocão R$ 0,00**,
+   conferido na mão, `Σ = custoRealTotal`, selo **verde**;
+2. o convidado compartilhado dividido **50/50** — visível no detalhe por item;
+3. **pizza real x referência:** com `preco_real_pizza_adulto` preenchido, entra; vazio, cai no
+   de referência;
+4. **caso órfão:** lançar custo de item que ninguém consome → selo **vermelho** com a diferença,
+   sem quebrar;
+5. **fechamento incompleto:** com 2 dos 3 custos → selo **cinza**, mesmo se as somas coincidirem;
+6. **update estreito:** preços de referência, taxas e prazo **intactos** após salvar o
+   fechamento — provado por `SELECT`;
+7. **negativo (RLS):** anon não lê nem grava `config` — provado pelo **estado do banco**, não
+   pelo HTTP (a lição dos `204`);
+8. restaurar a base ao fim.
 
 ## Para o review
 
-Uma decisão que tomei sozinho e vale confirmar: **a estimativa aparece mesmo com zero
-confirmações**, mostrando tudo zerado, em vez de esconder a seção. Prefiro assim — some a dúvida
-"será que a tela quebrou?" — mas se preferir esconder até haver gente, é trivial.
+Uma decisão que tomei: **mostrar a diferença em reais no selo vermelho**, não só o aviso. Sem
+ela o organizador sabe que algo está errado mas não por quanto — e o valor da diferença
+costuma apontar direto para o item digitado errado. Se achar ruído, tiro.
 
 Parado, sem implementar, aguardando `review.md`.
