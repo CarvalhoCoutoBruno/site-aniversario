@@ -1,180 +1,154 @@
-# Status — Fatia 8: convite editável pelo admin
+# Status — Fatia 9: redesign do convite
 
-**Fatia fechada.** Aprovada sem ajustes; as duas notas leves do review entraram — e uma delas
-apontou para três bugs de corrida que só apareceram na verificação integrada.
+**Fatia fechada.** As três decisões do review aplicadas: título como H1 visível, idades como
+constante com o 160 sendo a soma, e paleta **preto + azul + vermelho** — não a do mockup.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-8-convite-editavel` → merge `--ff-only` → apagada |
-| Commit da fatia | `22352466bcdc93a7685fbd902db01f0fb6dca106` |
-| `./verify.sh` | **VERDE** — 63 asserções, sem regressão |
+| Branch | `feat/fatia-9-redesign` → merge `--ff-only` → apagada |
+| Commit da fatia | `d658a974ecfc07488ba44b8a7010db78a584c81d` |
+| `./verify.sh` | **VERDE** — 63 asserções, sem alteração (nada de lógica mudou) |
 
-## ⚠️ Esta fatia encontrou dado real seu no banco
+## Contraste WCAG — medido, não olhado
 
-Ao aplicar o schema, a trava do reset **abortou**:
+Primeira rodada, com o azul do mockup (`#3b82f6`) no texto sobre fundo claro:
 
 ```
-ABORTADO: public.config tem dado real (prazo de confirmacao definido).
+par                                       razao   AA(4.5)  AA-grande(3.0)
+texto do hero (branco / preto)            19.55   PASSA    PASSA
+eyebrow azul-claro / preto                8.93    PASSA    PASSA
+rotulo do countdown / preto               8.44    PASSA    PASSA
+numero da equacao azul / card escuro      8.27    PASSA    PASSA
+numero total vermelho / card              7.17    PASSA    PASSA
+subtitulo do hero / preto                14.12   PASSA    PASSA
+tinta / fundo claro                       17.04   PASSA    PASSA
+tinta suave / fundo claro                 7.46    PASSA    PASSA
+kicker azul / fundo claro                 3.46    falha    PASSA
+link do mapa azul / branco                3.68    falha    PASSA
+rodape texto / preto                      11.79   PASSA    PASSA
 ```
 
-Não era falso positivo. Você usou o painel: prazo em 01/10/2026, preços (chopp 10,00; refri
-5,00; água 3,00; pizza 20,00), taxa de chopp ajustada para 2,5 L, os **3 aniversariantes
-cadastrados** e **2 fotos** no carrossel.
+Dois pares **reprovaram** para texto normal. Testei candidatos e troquei por `#2563eb` só onde o
+azul aparece sobre claro (`--cv-azul-texto`); o `#3b82f6` segue como acento sobre o hero escuro:
 
-**O que eu fiz:** backup completo impresso na conversa, e então apliquei **só a tabela nova**,
-sem derrubar nada — em vez de limpar a base para o script inteiro passar. Contornar a trava
-seria usar a chave para arrombar a própria porta.
-
-Conferido depois, contra o backup:
 ```
-config no banco agora: [2026-10-02 02:59:59+00, 10.00, 5.00, 3.00, 20.00, 20.00, 2.500, 0.600, 0.500]
-config no backup     : ['2026-10-02T02:59:59+00:00', 10.0, 5.0, 3.0, 20.0, 20.0, 2.5, 0.6, 0.5]
-pessoas: (['Bruno', 1], ['Braz', 2], ['Bocão', 3])
+kicker azul-texto / fundo claro : 4.87  AA PASSA
+link mapa azul-texto / branco   : 5.17  AA PASSA
 ```
-Idêntico. Nada seu foi perdido, e as 2 fotos nunca foram tocadas.
 
-> Registrei no `FLUXO.md`: **a era do recreate acabou.** Daqui em diante, mudança de schema é
-> aditiva, com o `supabase-setup.sql` seguindo como descrição completa para instalação do zero.
+Olhando, os dois pareciam perfeitamente legíveis. Só a medição pegou.
+
+## Quatro problemas que só apareceram na tela
+
+### 1. Os campos do formulário ficaram pretos
+
+O primeiro render mostrou inputs, chips e cards escuros dentro de uma seção clara. Causa: o
+`:root` tem um bloco `@media (prefers-color-scheme: dark)`, o navegador está em modo escuro, e os
+componentes **compartilhados** (`input`, `.chip`, `.pessoa-card`, `.carrossel`) leem as variáveis
+globais — que eu não havia remapeado.
+
+Corrigido declarando `--bg`, `--bg-soft`, `--ink`, `--ink-soft`, `--line`, `--brand` dentro de
+`.pagina-convite`: a declaração no `<body>` vence o herdado do `:root` para toda a subárvore,
+inclusive no modo escuro.
+
+### 2. O countdown aparecia zerado ao lado do "É hoje!"
+
+O atributo `hidden` é `display: none` na folha do **navegador**, e qualquer `display` de autor o
+vence. Como dei `display: flex` ao `.countdown`, ele continuava visível mostrando `0 0 0 0` ao
+lado da mensagem "É hoje! 🎉".
+
+Corrigido com `.pagina-convite [hidden] { display: none !important; }`.
+
+### 3. O fail-loud da Fatia 8 quebrou com a estrutura nova
+
+Na falha de carga, os títulos **"Memórias / Momentos"** e **"Bora? / Confirmar presença"**
+apareciam sobre o vazio — porque as seções novas têm cabeçalho próprio, e a Fatia 8 escondia só o
+conteúdo interno.
+
+Foi exatamente a incoerência que aquela fatia custou três bugs para eliminar, reintroduzida pelo
+layout. Corrigido escondendo as **seções inteiras**.
+
+### 4. Um erro meu de sincronização
+
+Estava usando `cp -R js $S/site/` para atualizar a cópia servida. Com o destino já existente, o
+`cp -R` aninha a pasta em vez de sobrescrever o conteúdo — e eu testei um arquivo velho, medindo
+`secaoRsvp: true` quando o código já estava certo. Passei a copiar por conteúdo
+(`cp js/*.js $S/site/js/`).
+
+Vale registrar porque quase virou um "bug" investigado no lugar errado.
 
 ## Verificação integrada — saída crua
 
-### 1. Fronteira de leitura do anon
-```
-festa : [{"titulo":"Festa dos 160 anos","nome_aniv_1":"Bruno","nome_aniv_2":"Braz","nome_aniv_3":"Bocão"}]
-config: []
-```
-A `festa` é a primeira tabela que o visitante lê direto — e só tem o que já aparece impresso no
-convite. Preço e custo real seguem invisíveis.
-
-### 2. Convite montado a partir do banco
+### Não-regressão: RSVP ponta a ponta pelo layout novo
 ```json
-{ "carregandoOculto": true, "heroVisivel": true, "erroOculto": true,
-  "titulo": "Festa dos 160 anos",
-  "data": "Sábado, 31 de outubro de 2026, às 11h",
-  "local": "Salão 3 — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS",
-  "temLinkMapa": true,
-  "nomesNoHero": ["Bruno", "Braz", "Bocão"],
-  "chips": ["1:Bruno", "2:Braz", "3:Bocão"],
-  "countdownEstado": "contagem", "dias": "88",
-  "configJsAindaTemFesta": false }
+{ "regraChoppCrianca": { "desabilitado": true },
+  "sucesso": true, "titulo": "Presença confirmada!", "erro": null }
 ```
+```
+GRUPO gravado pelo layout novo:
+   ['Teste Redesign', '51931312020', [1, 3]]
+PESSOAS:
+   [0, 'Teste Redesign', 'adulto', 'principal', False, True, True]
+   [1, '(sem nome)', 'crianca', 'acompanhante', True, False, False]
+```
+Grupo com `convidado_por [1,3]`, acompanhante sem nome preservado, chopp barrado para criança.
 
-### 3. **O risco central: falha de carga** — e três bugs que ele revelou
-
-Simulei removendo a policy de leitura pública (falha real de RLS, não stub de rede).
-
-**Primeira medição** — o beco sem saída foi evitado, mas o convite ficou incoerente:
+### Countdown nos três estados
 ```json
-{ "erroVisivel": true, "formularioOculto": true, "chipsVazios": 0,
-  "carrosselDisplay": "" }
+{ "eHoje": { "estado": "e-hoje", "countdownOculto": true,
+             "aviso": "É hoje! 🎉", "heroVisivel": true, "formVisivel": true } }
 ```
-O carrossel **reapareceu por cima do erro**: o load das fotos resolve depois do da festa e
-sobrescrevia o estado de falha. Você tem 2 fotos no bucket, então isso era visível de verdade.
-
-**Segunda medição** — corrigido o carrossel, sobrou o aviso de prazo:
 ```json
-{ "erroVisivel": true, "carrosselDisplay": "none", "avisoPrazoVisivel": true }
+{ "passou": { "estado": "passou", "countdownVisivel": false,
+              "aviso": "A festa já aconteceu. 💜",
+              "dataGerada": "Domingo, 2 de agosto de 2026, às 20h",
+              "heroVisivel": true, "formVisivel": true } }
 ```
-Mesma causa, sentido oposto: o `status_rsvp` tinha resolvido **antes** da falha, então a flag não
-alcançava.
+No "é hoje" o `data_texto` do banco continuou mandando (override manual), e no "passou" — com o
+campo limpo — a data saiu **gerada** da ISO. Os dois caminhos exercitados.
 
-A correção precisou dos dois lados: uma flag para quem chega depois **e** limpeza no
-`falhaConvite` para quem já chegou.
-
-**Terceira medição** — um estado só:
+### Falha de carga: um estado só
 ```json
-{ "erroVisivel": true, "heroVisivel": false, "formularioVisivel": false,
-  "carrosselVisivel": false, "avisoPrazoVisivel": false, "encerradoVisivel": false,
-  "chips": 0 }
+{ "falhaDeCarga": { "erro": true, "hero": false, "secaoOnde": false,
+                    "secaoFotos": false, "secaoRsvp": false, "rodape": true, "chips": 0 } }
 ```
 
-### 4. Mais duas corridas, no admin
-
-Os rótulos dos aniversariantes vêm da `festa`, e `carregarAniversariantes` rodava em paralelo
-com `carregarConvite` — pegava o fallback:
-```json
-{ "blocosAniversariantes": ["Aniversariante 1 (id 1)", "Aniversariante 2 (id 2)", "Aniversariante 3 (id 3)"],
-  "colunaConvidou": ["BrunoBocão"] }
+### O admin não herdou nada
 ```
-A coluna funcionava (mais lenta, chegava depois), os blocos não. Serializei: a `festa` carrega
-**primeiro e sozinha**, e só então os dependentes.
-
-A mesma corrida existia no salvar. Depois do `await`:
-```json
-{ "blocos": ["Bruninho II (id 1)", "Braz (id 2)", "Bocão (id 3)"],
-  "seletorPagador": ["—", "Bruninho II", "Braz", "Bocão"],
-  "colunaConvidou": ["Bruninho IIBocão"] }
+admin.html sem a classe pagina-convite ✅
+admin.html sem Fredoka ✅
 ```
+A trava que o review pediu: paleta e fontes escopadas em `.pagina-convite`, e o `admin.html` não
+tem a classe nem carrega as fontes novas.
 
-### 5. Edição refletida no site público
-Editei **todos** os campos no admin e recarreguei o convite:
-```json
-{ "titulo": "Aniversário dos Três",
-  "subtituloVisivel": true, "subtitulo": "Vem que tem chopp!",
-  "dataGerada": "Domingo, 15 de novembro de 2026, às 19h30",
-  "local": "Sítio do Vô — Estrada Velha, km 4",
-  "linkMapa": "https://maps.google.com/?q=teste",
-  "nomesNoHero": ["Bruninho II", "Braz", "Bocão"],
-  "chips": ["1:Bruninho II", "2:Braz", "3:Bocão"],
-  "countdown": "contagem / 104 dias" }
+### Base restaurada
 ```
-`data_texto` estava `NULL` no banco → gerado da data, no fuso de São Paulo.
-
-### 6. Renomear não quebra confirmação
+festa: 'Festa dos 160 anos', 2026-10-31 14:00 UTC, 'Sábado, 31 de outubro de 2026, às 11h', atualizado_em NULL
+config (dados do Bruno): prazo 2026-10-02, preço 10.00, taxa 2.500
+pessoas: Bruno(1), Braz(2), Bocão(3)
+rsvps: 0
+policies festa: admin edita festa · festa leitura publica
 ```
-rsvp: ['Convidado Teste', [1, 3]]   <- gravado quando o id 1 se chamava Bruno
-nomes agora: ['Bruninho II', 'Braz', 'Bocão']
-```
-O `convidado_por` continua `[1,3]`; só o rótulo mudou.
+Seus dados intactos; o `atualizado_em` da festa segue `NULL`, então a trava do reset continua
+liberando.
 
-### 7. Anon não grava a `festa`
-```
-anon UPDATE titulo: HTTP 204
-titulo no banco: 'Aniversário dos Três'
--> INTACTO ✅
-```
-O `204` pela quarta fatia seguida.
+## Decisões aplicadas
 
-### 8. Trava do reset protege a `festa`
-```
-com a festa editada: abortou -> ABORTADO: public.festa foi editada pelo painel (titulo, data, local ou nomes)
-```
-Isolei o gatilho limpando os da `config` antes — é a `festa` mesmo que dispara. Com
-`atualizado_em` NULL o script liberaria, que é o comportamento desejado: recriar é livre até
-alguém editar o convite.
-
-### 9. Base restaurada
-```
-config: os seus valores, conferidos contra o backup
-pessoas: Bruno(1), Braz(2), Bocão(3) — nunca tocados
-festa: 'Festa dos 160 anos', atualizado_em NULL (volta ao seed)
-rsvps: 0        admins: Bocão, Braz, Bruno, Rosaura
-auth.users: as 4 contas reais, 0 temporários
-policies da festa: admin edita festa (UPDATE) · festa leitura publica (SELECT)
-```
-
-## Uma inconsistência que corrigi de passagem
-
-O rateio rotulava as contas com `pessoas.nome`, que é o **snapshot** de quando o aniversariante
-foi cadastrado. Renomear no Convite não propagaria até alguém re-salvar a outra seção — a conta
-mostraria "Bruno" enquanto o convite já dizia "Bruninho".
-
-Agora a `festa` é a fonte única do nome em toda a UI (contas do rateio, saldos do acerto e as
-transferências), com o snapshot só de reserva.
-
-## Estado do produto
-
-O convite é **editável pela tela**: título, subtítulo, data, local, mapa e os três nomes, sem
-`git push`. O `config.js` ficou só com as chaves do Supabase.
+- **Título como H1**, em gradiente branco→azul→vermelho, com a equação logo abaixo como apoio
+  gráfico. O `<title>` da aba passou a usar o título da festa — melhora o preview no WhatsApp.
+- **Idades constantes** (`IDADES = [40, 50, 70]`) e o **160 como soma**. Dois literais podem
+  discordar; uma soma não.
+- **Confete no hero em CSS puro**, sem markup e sem JS, para o astral sobreviver à paleta
+  fechada — como o review pediu. Não compete com o `#confetti`, que é a animação de sucesso.
+- **Equação no mobile:** os três em cima, o total embaixo, e o `=` escondido em vez de espremido
+  na borda — o defeito que apontei no mockup.
 
 ## Notas para a próxima fatia
 
-- **Nomes dos aniversariantes têm duas moradas** hoje: `festa.nome_aniv_*` (fonte da verdade) e
-  `pessoas.nome` (snapshot, usado como reserva). Funciona, mas vale considerar tirar o `nome` da
-  linha de aniversariante — ele nunca deveria divergir.
-- A `festa` inaugurou a leitura pública. Se um dia entrar mais coisa lá, vale reconferir que
-  continua sendo só o que o convidado já vê.
-- Produtização (multi-tenant) segue como conversa à parte, não como fatia.
+- **`IDADES` é a única coisa do convite que ainda vive no código.** Se um dia virar produto,
+  é o próximo candidato a ir para a `festa` — schema aditivo.
+- A `.pagina-convite` remapeia as variáveis globais. Se o admin ganhar um restyle, o caminho já
+  está aberto: mesma técnica, classe própria.
 - Ainda pendente: rotacionar a senha do Postgres.
 
 ---
@@ -183,8 +157,5 @@ O convite é **editável pela tela**: título, subtítulo, data, local, mapa e o
 
 | | |
 |---|---|
-| Commit da fatia (o código) | `22352466bcdc93a7685fbd902db01f0fb6dca106` |
+| Commit da fatia (o código) | `d658a974ecfc07488ba44b8a7010db78a584c81d` |
 | Commit deste `status.md` | logo em seguida, na `main` |
-
-> Gravar o hash pós-push dentro de um arquivo versionado muda o hash — por isso os dois são
-> distintos. O `fechou` deve conferir **`origin/main == main`**.
