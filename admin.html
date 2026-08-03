@@ -103,6 +103,32 @@
       </form>
     </details>
 
+    <!-- Estimativa de compra -->
+    <details class="admin-secao config-secao" id="estSecao">
+      <summary><h2>Estimativa de compra 🛒</h2></summary>
+
+      <p class="campo-dica">
+        O que comprar, a partir de quem já confirmou — aniversariantes inclusive. Números para
+        passar ao fornecedor. <strong>Não é a conta final</strong>: o custo abaixo usa os preços
+        de referência da config, não o que foi gasto de verdade.
+      </p>
+
+      <p class="msg-toast err" id="estAvisoAniv" hidden></p>
+
+      <h3 class="est-titulo">Bebidas (litros)</h3>
+      <div class="stats" id="estVolumes"></div>
+
+      <h3 class="est-titulo">Pizzas (por pessoa)</h3>
+      <div class="stats" id="estPizzas"></div>
+
+      <h3 class="est-titulo">Custo aproximado</h3>
+      <div class="stats" id="estCusto"></div>
+      <p class="campo-dica" id="estAvisoPrecos" hidden></p>
+
+      <h3 class="est-titulo">Quem consome o quê</h3>
+      <div class="stats" id="estContagens"></div>
+    </details>
+
     <!-- Estatísticas -->
     <div class="stats" id="stats"></div>
 

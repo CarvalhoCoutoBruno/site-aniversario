@@ -132,6 +132,8 @@
       toastConfig("Não consegui carregar a configuração.", "err");
       return;
     }
+    ultimaConfig = data;   // a estimativa usa a config SALVA, não os inputs
+    atualizarEstimativa();
     for (const [col] of CAMPOS_PRECO) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 2, 2);
     for (const [col] of CAMPOS_TAXA) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 0, 3);
     $("#cfgPrazo").value = dataDoPrazo(data.prazo_confirmacao);
@@ -374,6 +376,82 @@
     carregarRSVPs(); // a contagem "cadastrados: N/3" vive nas estatísticas
   });
 
+  /* ================= ESTIMATIVA DE COMPRA =================
+     Só leitura: nenhuma escrita no banco nesta seção.
+
+     ⚠️ Coordenação. Os carregadores rodam em PARALELO no mostrarPainel,
+     e a estimativa precisa de config + pessoas juntas. Calcular dentro
+     de um deles rodaria com metade do estado, de forma intermitente
+     conforme a ordem em que as promessas resolvem. Por isso cada um
+     guarda a sua parte e chama atualizarEstimativa(), que não faz nada
+     enquanto faltar alguma: quem chega por último dispara.
+
+     A config usada é a SALVA (a linha do banco), não a dos inputs —
+     estimativa não deve refletir edição não salva.                   */
+
+  let ultimaConfig = null;
+  let ultimasPessoas = null;
+
+  const fmtLitros = (n) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+
+  function cartao(valor, rotulo) {
+    return `<div class="stat"><b>${esc(String(valor))}</b><span>${esc(rotulo)}</span></div>`;
+  }
+
+  function atualizarEstimativa() {
+    if (!ultimaConfig || !ultimasPessoas) return; // guarda de completude
+    const e = Calculo.estimativa(ultimasPessoas, ultimaConfig);
+    const c = e.contagens;
+
+    $("#estVolumes").innerHTML = [
+      cartao(fmtLitros(e.litrosChopp) + " L", "Chopp"),
+      cartao(fmtLitros(e.litrosRefri) + " L", "Refrigerante"),
+      cartao(fmtLitros(e.litrosAgua) + " L", "Água"),
+    ].join("");
+
+    $("#estPizzas").innerHTML = [
+      cartao(e.pizzaAdultos, "Pizzas de adulto"),
+      cartao(e.pizzaCriancas, "Pizzas de criança"),
+    ].join("");
+
+    $("#estCusto").innerHTML = cartao(Calculo.formatarBRL(e.custoEstimado), "Custo aproximado");
+
+    $("#estContagens").innerHTML = [
+      cartao(c.totalPessoas, "Pessoas"),
+      cartao(c.adultos, "Adultos"),
+      cartao(c.criancas, "Crianças"),
+      cartao(c.chopp, "Bebem chopp"),
+      cartao(c.refri, "Bebem refri"),
+      cartao(c.agua, "Bebem água"),
+    ].join("");
+
+    // Com os preços ainda nas sementes (0), o custo sai zerado. Os
+    // volumes seguem úteis; a tela avisa em vez de deixar o organizador
+    // achar que a conta quebrou.
+    const precos = ["preco_litro_chopp", "preco_litro_refri", "preco_litro_agua",
+                    "preco_pizza_adulto", "preco_pizza_crianca"];
+    const semPreco = precos.every((k) => Number(ultimaConfig[k]) === 0);
+    const avisoPrecos = $("#estAvisoPrecos");
+    avisoPrecos.hidden = !semPreco;
+    if (semPreco) {
+      avisoPrecos.textContent =
+        "Os preços de referência ainda estão zerados na configuração — por isso o custo dá R$ 0,00. Os volumes acima já valem.";
+    }
+
+    // Aniversariante não cadastrado não consome nada no cálculo, e o
+    // resultado fica plausível e errado. Conto na própria lista para não
+    // depender de outro carregador (mesma corrida).
+    const cadastrados = ultimasPessoas.filter((p) => p.papel === "aniversariante").length;
+    const aviso = $("#estAvisoAniv");
+    aviso.hidden = cadastrados >= 3;
+    if (cadastrados < 3) {
+      const faltam = 3 - cadastrados;
+      aviso.textContent =
+        `Só ${cadastrados} de 3 aniversariantes cadastrados — falta o consumo de ` +
+        `${faltam === 1 ? "1 deles" : faltam + " deles"} nesta conta.`;
+    }
+  }
+
   /* ================= CONFIRMAÇÕES =================
      Lê o schema novo: rsvps + pessoas por FK. As telas de config,
      aniversariantes, estimativa e fechamento são as Fatias 2 a 5 —
@@ -392,6 +470,8 @@
       if (!porGrupo.has(pessoa.rsvp_id)) porGrupo.set(pessoa.rsvp_id, []);
       porGrupo.get(pessoa.rsvp_id).push(pessoa);
     }
+    ultimasPessoas = p.data || [];   // TODAS: as de grupo e as 3 de aniversariante
+    atualizarEstimativa();
     render(g.data || [], porGrupo, aniversariantes);
   }
 

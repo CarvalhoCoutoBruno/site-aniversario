@@ -312,3 +312,8 @@ tr:last-child td { border-bottom: none; }
 /* ---- Fatia 3: aniversariantes ---- */
 .aniv-bloco legend small { font-weight: 400; color: var(--ink-soft); }
 .aniv-bloco .pessoa-prefs { margin-top: .4rem; }
+
+/* ---- Fatia 4: estimativa ---- */
+.est-titulo { font-size: 1rem; margin: 1.4rem 0 .1rem; color: var(--ink-soft);
+              text-transform: uppercase; letter-spacing: .05em; }
+.est-titulo:first-of-type { margin-top: .8rem; }
