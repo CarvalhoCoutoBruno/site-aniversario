@@ -48,23 +48,60 @@
     }
   }
 
+  /* As idades não existem em dado nenhum — nem no config.js antigo, nem
+     na tabela festa. Ficam aqui porque esta festa é esta festa; virar
+     schema seria fatia à parte.
+
+     ⚠️ A posição amarra idade e nome: IDADES[i] é a idade de
+     nomes[i]. Renomear no painel é seguro; REORDENAR desalinha — o
+     mesmo risco que a ordem já carrega para o rateio, agora visível no
+     convite.
+
+     O total do hero é a SOMA, não um literal: dois números escritos à
+     mão podem discordar; uma soma não. */
+  const IDADES = [40, 50, 70];
+
   function montarConvite(f) {
     $("#festaTitulo").textContent = f.titulo;
+    document.title = f.titulo;   // melhora o preview do link no WhatsApp
 
     const sub = $("#festaSubtitulo");
     sub.textContent = f.subtitulo || "";
     sub.hidden = !f.subtitulo;
 
     // data_texto em branco: gera a partir da data, no fuso de São Paulo
-    $("#festaData").textContent = f.data_texto || textoDaData(f.data);
+    const dataTexto = f.data_texto || textoDaData(f.data);
+    $("#festaData").textContent = dataTexto;
+
+    $("#cardData").textContent = dataTexto;
+    $("#cardLocal").textContent = f.local;
 
     const localEl = $("#festaLocal");
-    localEl.textContent = f.local;
-    if (f.local_mapa) localEl.href = f.local_mapa;
-    else localEl.removeAttribute("href");
+    if (f.local_mapa) {
+      localEl.href = f.local_mapa;
+      localEl.hidden = false;
+    } else {
+      localEl.removeAttribute("href");
+      localEl.hidden = true;   // sem link, o botão do mapa não aparece
+    }
+    $("#secaoOnde").hidden = false;
 
     const nomes = [f.nome_aniv_1, f.nome_aniv_2, f.nome_aniv_3];
-    $("#heroNomes").innerHTML = nomes.map((n) => `<li>${esc(n)}</li>`).join("");
+    const total = IDADES.reduce((a, b) => a + b, 0);
+    $("#heroNomes").innerHTML =
+      nomes.map((n, i) => `
+        <div class="eq-item">
+          <b class="eq-num">${IDADES[i]}</b>
+          <span class="eq-nome">${esc(n)}</span>
+        </div>`).join('<span class="eq-op" aria-hidden="true">+</span>') +
+      `<span class="eq-op" aria-hidden="true">=</span>
+       <div class="eq-item eq-total">
+         <b class="eq-num">${total}</b>
+         <span class="eq-nome">anos de festa</span>
+       </div>`;
+
+    $("#rodapeFesta").textContent =
+      `${f.titulo} · ${nomes.join(", ")} · ${new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(new Date(f.data))}`;
 
     // O value é o ID (posição), nunca o nome: é o que o banco grava em
     // convidado_por e o que liga o convidado ao aniversariante que
@@ -90,6 +127,13 @@
     conviteFalhou = true;
     $("#conviteCarregando").hidden = true;
     $("#hero-conteudo").hidden = true;
+    // Esconde as SEÇÕES inteiras, não só o conteúdo: com o layout novo
+    // cada uma tem título próprio ("Momentos", "Confirmar presença"),
+    // que apareceriam sobre o vazio — a mesma incoerência que o
+    // fail-loud existe para evitar.
+    $("#secaoOnde").hidden = true;
+    $("#secaoFotos").hidden = true;
+    $("#confirmar").hidden = true;
     $("#carrossel").style.display = "none";
     $("#carrosselVazio").hidden = true;
     $("#rsvpForm").hidden = true;
@@ -189,6 +233,7 @@
     // reexibiria o carrossel por cima do estado de erro, deixando o
     // convite meio quebrado — que é o que a falha existe para evitar.
     if (conviteFalhou) return;
+    $("#secaoFotos").hidden = false;
     if (!urls.length) {
       $("#carrossel").style.display = "none";
       $("#carrosselVazio").hidden = false;

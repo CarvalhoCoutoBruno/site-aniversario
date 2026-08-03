@@ -3,48 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Convite de Aniversário</title>
+  <title>Convite</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<!-- A classe escopa paleta e fontes do convite. O admin.html usa o mesmo
+     style.css e não pode herdar nada disto. -->
+<body class="pagina-convite">
   <div class="confetti" id="confetti" aria-hidden="true"></div>
 
-  <!-- ===================== HERO / CONVITE ===================== -->
+  <!-- ===================== HERO ===================== -->
   <header class="hero">
     <div class="hero-inner">
       <p class="carregando" id="conviteCarregando">Carregando o convite…</p>
 
       <div id="hero-conteudo" hidden>
-      <p class="hero-eyebrow">🎉 Você está convidado 🎉</p>
-      <h1 class="hero-title" id="festaTitulo"></h1>
-      <p class="hero-sub" id="festaSubtitulo" hidden></p>
+        <p class="hero-eyebrow">🎉 Você está convidado 🎉</p>
+        <h1 class="hero-title" id="festaTitulo"></h1>
+        <p class="hero-sub" id="festaSubtitulo" hidden></p>
 
-      <ul class="hero-nomes" id="heroNomes"><!-- aniversariantes --></ul>
+        <!-- a equação 40 + 50 + 70 = 160, montada pelo main.js -->
+        <div class="equacao" id="heroNomes"></div>
 
-      <div class="hero-info">
-        <div class="info-card">
-          <span class="info-ico">📅</span>
+        <div class="datapill">
+          <span aria-hidden="true">📅</span>
           <span id="festaData">—</span>
         </div>
-        <div class="info-card">
-          <span class="info-ico">📍</span>
-          <a id="festaLocal" href="#" target="_blank" rel="noopener">—</a>
+
+        <div class="countdown" id="countdown" aria-label="Contagem regressiva">
+          <div class="cd-box"><b id="cdDias">0</b><span>dias</span></div>
+          <div class="cd-box"><b id="cdHoras">0</b><span>horas</span></div>
+          <div class="cd-box"><b id="cdMin">0</b><span>min</span></div>
+          <div class="cd-box"><b id="cdSeg">0</b><span>seg</span></div>
         </div>
-      </div>
 
-      <div class="countdown" id="countdown" aria-label="Contagem regressiva">
-        <div class="cd-box"><b id="cdDias">0</b><span>dias</span></div>
-        <div class="cd-box"><b id="cdHoras">0</b><span>horas</span></div>
-        <div class="cd-box"><b id="cdMin">0</b><span>min</span></div>
-        <div class="cd-box"><b id="cdSeg">0</b><span>seg</span></div>
-      </div>
+        <p class="festa-estado" id="festaEstado" hidden></p>
 
-      <p class="festa-estado" id="festaEstado" hidden></p>
-
-      <a href="#confirmar" class="btn btn-primary btn-lg">Confirmar presença ↓</a>
+        <a href="#confirmar" class="btn btn-primary btn-lg">Confirmar presença 🎉</a>
       </div>
 
       <div class="convite-erro" id="conviteErro" hidden>
@@ -55,24 +52,52 @@
     </div>
   </header>
 
-  <!-- ===================== CARROSSEL ===================== -->
-  <section class="carrossel-secao">
-    <div class="carrossel" id="carrossel" aria-label="Fotos">
-      <div class="carrossel-track" id="carrosselTrack"><!-- slides --></div>
-      <button class="car-nav prev" id="carPrev" aria-label="Anterior">‹</button>
-      <button class="car-nav next" id="carNext" aria-label="Próxima">›</button>
-      <div class="car-dots" id="carDots"></div>
+  <!-- ===================== QUANDO & ONDE ===================== -->
+  <section class="secao" id="secaoOnde" hidden>
+    <div class="secao-inner">
+      <p class="kicker">Quando &amp; onde</p>
+      <h2 class="secao-titulo">Anota aí</h2>
+
+      <div class="cards-info">
+        <div class="card-info">
+          <span class="card-ico" aria-hidden="true">🗓️</span>
+          <b id="cardData">—</b>
+        </div>
+        <div class="card-info">
+          <span class="card-ico" aria-hidden="true">📍</span>
+          <b id="cardLocal">—</b>
+          <a id="festaLocal" href="#" target="_blank" rel="noopener" class="link-mapa">Abrir no mapa 🗺️</a>
+        </div>
+      </div>
     </div>
-    <p class="carrossel-vazio" id="carrosselVazio" hidden>
-      As fotos aparecerão aqui assim que forem adicionadas. 📸
-    </p>
+  </section>
+
+  <!-- ===================== CARROSSEL ===================== -->
+  <section class="secao carrossel-secao" id="secaoFotos">
+    <div class="secao-inner">
+      <p class="kicker">Memórias</p>
+      <h2 class="secao-titulo">Momentos</h2>
+
+      <div class="carrossel" id="carrossel" aria-label="Fotos">
+        <div class="carrossel-track" id="carrosselTrack"><!-- slides --></div>
+        <button class="car-nav prev" id="carPrev" aria-label="Anterior">‹</button>
+        <button class="car-nav next" id="carNext" aria-label="Próxima">›</button>
+        <div class="car-dots" id="carDots"></div>
+      </div>
+      <p class="carrossel-vazio" id="carrosselVazio" hidden>
+        As fotos aparecerão aqui assim que forem adicionadas. 📸
+      </p>
+    </div>
   </section>
 
   <!-- ===================== FORMULÁRIO RSVP ===================== -->
   <section class="rsvp" id="confirmar">
     <div class="rsvp-inner">
+      <p class="kicker">Bora?</p>
       <h2 class="secao-titulo">Confirmar presença</h2>
-      <p class="secao-sub">Preencha para você e para quem vem com você.</p>
+      <p class="secao-sub">
+        Conta quem vem com você e o que cada um vai querer beber e comer. Rapidinho.
+      </p>
 
       <!-- Mostrado no lugar do formulário quando o prazo já passou -->
       <div class="rsvp-encerrado" id="rsvpEncerrado" hidden>
@@ -82,7 +107,6 @@
       </div>
 
       <form id="rsvpForm" novalidate>
-        <!-- Responsável -->
         <div class="campo">
           <label for="responsavel">Seu nome *</label>
           <input type="text" id="responsavel" name="responsavel" required placeholder="Nome de quem está confirmando" />
@@ -97,13 +121,11 @@
           </small>
         </div>
 
-        <!-- Quais aniversariantes convidaram -->
         <fieldset class="campo">
           <legend>Quem te convidou? * <small>(pode marcar mais de um)</small></legend>
           <div class="chips" id="chipsAniversariantes"></div>
         </fieldset>
 
-        <!-- Pessoas (responsável + acompanhantes) -->
         <div class="pessoas-bloco">
           <div class="pessoas-cabecalho">
             <h3>Quem vai? 🎈</h3>
@@ -114,7 +136,6 @@
           <p class="campo-dica" id="limiteAcompanhantes" hidden>Máximo de 5 acompanhantes.</p>
         </div>
 
-        <!-- Recado -->
         <div class="campo">
           <label for="mensagem">Recado ou restrição alimentar (opcional)</label>
           <textarea id="mensagem" name="mensagem" rows="3" maxlength="500"
@@ -130,7 +151,8 @@
   </section>
 
   <footer class="rodape">
-    <p>Feito com 💜 para a festa. <a href="admin.html">Área do organizador</a></p>
+    <p id="rodapeFesta"></p>
+    <p class="rodape-admin"><a href="admin.html">Área do organizador</a></p>
   </footer>
 
   <!-- Template de card de pessoa (clonado via JS) -->

@@ -345,22 +345,279 @@ tr:last-child td { border-bottom: none; }
                      border-radius: 12px; padding: .7rem 1rem; font-size: 1.05rem; }
 .config-campo span small { font-weight: 400; color: var(--ink-soft); }
 
-/* ---- Fatia 7: estado da festa (hoje / já aconteceu) ---- */
-.festa-estado {
-  font-family: "Fraunces", serif;
-  font-size: clamp(1.6rem, 5vw, 2.4rem);
-  margin: 1.5rem 0;
-  color: var(--brand);
-}
-
 /* ---- Fatia 7: compartilhar o acerto ---- */
 .acerto-texto { width: 100%; margin-top: .8rem; font-family: inherit;
                 font-size: .9rem; padding: .7rem; border-radius: 12px;
                 border: 1.5px solid var(--line); background: var(--bg-soft); color: var(--ink); }
 
-/* ---- Fatia 8: estados de carga do convite ---- */
-.carregando { color: var(--ink-soft); font-size: 1.1rem; padding: 3rem 0; }
-.convite-erro { text-align: center; padding: 3rem 1rem; }
-.convite-erro .big { font-size: 3rem; line-height: 1; }
-.convite-erro h2 { margin: .8rem 0 .4rem; }
-.convite-erro p { color: var(--ink-soft); margin: 0; }
+
+/* =====================================================================
+   CONVITE — pele própria (Fatia 9)
+   =====================================================================
+   Tudo aqui é escopado em .pagina-convite. O admin.html usa o mesmo
+   arquivo e NÃO pode herdar paleta nem fonte daqui: as classes
+   compartilhadas (.btn, .chip, .campo, .msg-toast, .stat, .selo,
+   .conta-aniv) seguem definidas fora deste bloco.
+
+   Paleta: preto + azul + vermelho. O clima de festa vem do confete, do
+   gradiente e dos números grandes — não de cores claras.
+   ===================================================================== */
+.pagina-convite {
+  --cv-preto: #0a0c12;
+  --cv-preto-2: #12161f;
+  --cv-azul: #3b82f6;          /* acento sobre o hero escuro */
+  /* Azul escuro para texto sobre fundo claro: o #3b82f6 dá razão de
+     contraste 3.46, abaixo do mínimo AA (4.5) para texto normal.
+     Medido, não estimado — ver a tabela no status.md. */
+  --cv-azul-texto: #2563eb;
+  --cv-azul-claro: #7cb1ff;
+  --cv-vermelho: #ef4444;
+  --cv-vermelho-claro: #ff7a7a;
+  --cv-claro: #f7f8fb;
+  --cv-tinta: #12161f;
+  --cv-tinta-suave: #4a5164;
+  --cv-linha: #dfe3ec;
+
+  /* Remapeia as variáveis GLOBAIS dentro do convite. Sem isto, os
+     componentes compartilhados (input, textarea, .chip, .pessoa-card,
+     .carrossel) continuam lendo o :root — que o @media
+     prefers-color-scheme deixa escuro, e o convite fica com campos
+     pretos sobre seção clara. Declarar no <body> vence o herdado do
+     :root para toda a subárvore, inclusive no modo escuro. */
+  --bg: var(--cv-claro);
+  --bg-soft: #ffffff;
+  --ink: var(--cv-tinta);
+  --ink-soft: var(--cv-tinta-suave);
+  --line: var(--cv-linha);
+  --brand: var(--cv-azul-texto);
+  --brand-2: var(--cv-vermelho);
+  --shadow: 0 18px 50px -22px rgba(10, 12, 18, .35);
+
+  background: var(--cv-claro);
+  color: var(--cv-tinta);
+  font-family: "Nunito", system-ui, sans-serif;
+}
+
+.pagina-convite h1, .pagina-convite h2, .pagina-convite h3,
+.pagina-convite .eq-num, .pagina-convite .cd-box b {
+  font-family: "Fredoka", "Nunito", sans-serif;
+  letter-spacing: -.01em;
+}
+
+/* ---- hero ---- */
+.pagina-convite .hero {
+  background:
+    radial-gradient(1100px 520px at 20% -10%, rgba(59,130,246,.30), transparent 60%),
+    radial-gradient(900px 480px at 85% 0%, rgba(239,68,68,.22), transparent 62%),
+    linear-gradient(180deg, var(--cv-preto) 0%, var(--cv-preto-2) 100%);
+  color: #fff;
+  padding: 3.5rem 1.2rem 4rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.pagina-convite .hero-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+
+.pagina-convite .hero-eyebrow {
+  font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  font-size: .78rem; color: var(--cv-azul-claro); margin: 0 0 1rem;
+}
+.pagina-convite .hero-title {
+  font-size: clamp(2.1rem, 7vw, 3.6rem);
+  line-height: 1.05; margin: 0;
+  background: linear-gradient(100deg, #fff 20%, var(--cv-azul-claro) 60%, var(--cv-vermelho-claro) 95%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pagina-convite .hero-sub {
+  color: #d7dbe6; font-size: 1.05rem; margin: .7rem 0 0;
+}
+
+/* ---- a equação 40 + 50 + 70 = 160 ---- */
+.pagina-convite .equacao {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: .5rem .7rem; margin: 2rem 0 1.8rem;
+}
+.pagina-convite .eq-item {
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(255,255,255,.14);
+  border-radius: 16px; padding: .75rem 1.1rem; min-width: 96px;
+}
+.pagina-convite .eq-num {
+  display: block; font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1;
+  color: var(--cv-azul-claro);
+}
+.pagina-convite .eq-nome {
+  display: block; font-size: .85rem; font-weight: 700; color: #fff; margin-top: .25rem;
+}
+.pagina-convite .eq-op {
+  font-family: "Fredoka", sans-serif; font-size: 1.4rem; color: #98a0b5;
+}
+.pagina-convite .eq-total { border-color: rgba(239,68,68,.5); background: rgba(239,68,68,.12); }
+.pagina-convite .eq-total .eq-num { color: var(--cv-vermelho-claro); }
+
+/* no mobile: os três em cima, o total embaixo — sem operador órfão */
+@media (max-width: 560px) {
+  .pagina-convite .equacao { gap: .4rem; }
+  .pagina-convite .eq-item { min-width: 84px; padding: .6rem .8rem; flex: 1 1 26%; }
+  .pagina-convite .eq-total { flex-basis: 100%; margin-top: .3rem; }
+  .pagina-convite .eq-op { font-size: 1.1rem; }
+  /* o "=" ficaria espremido na borda; o card do total já se destaca sozinho */
+  .pagina-convite .eq-op:last-of-type { display: none; }
+}
+
+/* ---- pílula da data ---- */
+.pagina-convite .datapill {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: rgba(255,255,255,.08); border: 1.5px solid rgba(255,255,255,.16);
+  border-radius: 999px; padding: .6rem 1.2rem; font-weight: 700; color: #fff;
+}
+
+/* ---- countdown ---- */
+.pagina-convite .countdown {
+  display: flex; justify-content: center; flex-wrap: wrap; gap: .7rem; margin: 2rem 0;
+}
+.pagina-convite .cd-box {
+  background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.14);
+  border-radius: 14px; padding: .8rem 1rem; min-width: 78px;
+}
+.pagina-convite .cd-box b {
+  display: block; font-size: 1.9rem; line-height: 1; color: #fff;
+}
+.pagina-convite .cd-box span {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: #a9b1c6;
+}
+.pagina-convite .festa-estado {
+  font-family: "Fredoka", sans-serif; font-size: clamp(1.6rem, 5vw, 2.2rem);
+  margin: 1.6rem 0; color: var(--cv-vermelho-claro);
+}
+
+/* ---- botões do convite ---- */
+.pagina-convite .btn-primary {
+  background: linear-gradient(100deg, var(--cv-azul) 0%, var(--cv-vermelho) 100%);
+  color: #fff; border: none; font-family: "Fredoka", sans-serif; font-weight: 600;
+  box-shadow: 0 14px 34px -14px rgba(59,130,246,.8);
+}
+.pagina-convite .btn-primary:hover { filter: brightness(1.08); }
+.pagina-convite .btn-ghost {
+  border-color: var(--cv-linha); color: var(--cv-tinta);
+}
+
+/* ---- seções claras ---- */
+.pagina-convite .secao { padding: 3.5rem 1.2rem; }
+.pagina-convite .secao-inner { max-width: 900px; margin: 0 auto; }
+.pagina-convite .kicker {
+  text-align: center; font-weight: 800; letter-spacing: .16em;
+  text-transform: uppercase; font-size: .74rem; color: var(--cv-azul-texto); margin: 0 0 .3rem;
+}
+.pagina-convite .secao-titulo {
+  text-align: center; font-size: clamp(1.6rem, 4.5vw, 2.2rem); margin: 0 0 1.6rem;
+  color: var(--cv-tinta);
+}
+.pagina-convite .secao-sub { text-align: center; color: var(--cv-tinta-suave); margin: -1rem 0 1.8rem; }
+
+.pagina-convite .cards-info {
+  display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.pagina-convite .card-info {
+  background: #fff; border: 1.5px solid var(--cv-linha); border-radius: 18px;
+  padding: 1.4rem; text-align: center;
+}
+.pagina-convite .card-ico { font-size: 1.8rem; display: block; margin-bottom: .5rem; }
+.pagina-convite .card-info b { display: block; font-size: 1.02rem; line-height: 1.45; }
+.pagina-convite .link-mapa {
+  display: inline-block; margin-top: .8rem; font-weight: 700; color: var(--cv-azul-texto);
+}
+
+/* ---- carrossel ---- */
+.pagina-convite .carrossel { border-radius: 20px; border: 1.5px solid var(--cv-linha); }
+.pagina-convite .car-nav {
+  background: rgba(10,12,18,.72); color: #fff; border: none;
+}
+.pagina-convite .car-dots button { background: var(--cv-linha); }
+.pagina-convite .car-dots button.ativo { background: var(--cv-azul); }
+.pagina-convite .carrossel-vazio { text-align: center; color: var(--cv-tinta-suave); }
+
+/* ---- RSVP ---- */
+.pagina-convite .rsvp { background: #fff; padding: 3.5rem 1.2rem 4.5rem; border-top: 1.5px solid var(--cv-linha); }
+.pagina-convite .rsvp-inner { max-width: 640px; margin: 0 auto; }
+.pagina-convite .chip.marcado {
+  background: var(--cv-azul); border-color: var(--cv-azul); color: #fff;
+}
+.pagina-convite .pessoa-card { border-color: var(--cv-linha); background: var(--cv-claro); }
+.pagina-convite .pessoa-card.responsavel { border-color: var(--cv-azul); }
+.pagina-convite .pessoa-rotulo { color: var(--cv-tinta-suave); }
+.pagina-convite .pessoa-card.responsavel .pessoa-rotulo { color: var(--cv-azul); }
+
+/* ---- estados de carga ---- */
+.pagina-convite .carregando { color: #a9b1c6; font-size: 1.05rem; padding: 3rem 0; }
+.pagina-convite .convite-erro { text-align: center; padding: 2.5rem 1rem; color: #fff; }
+.pagina-convite .convite-erro .big { font-size: 3rem; line-height: 1; }
+.pagina-convite .convite-erro h2 { margin: .8rem 0 .4rem; color: #fff; }
+.pagina-convite .convite-erro p { color: #c3c9d8; margin: 0; }
+
+.pagina-convite .rsvp-encerrado { border-color: var(--cv-linha); }
+.pagina-convite .rsvp-encerrado h3 { color: var(--cv-tinta); }
+.pagina-convite .rsvp-encerrado p { color: var(--cv-tinta-suave); }
+
+/* ---- rodapé ---- */
+.pagina-convite .rodape {
+  background: var(--cv-preto); color: #c3c9d8; text-align: center;
+  padding: 2.2rem 1.2rem; font-size: .9rem;
+}
+.pagina-convite .rodape #rodapeFesta { font-weight: 700; color: #fff; margin: 0 0 .4rem; }
+.pagina-convite .rodape a { color: var(--cv-azul-claro); }
+.pagina-convite .rodape-admin { margin: 0; font-size: .82rem; opacity: .75; }
+
+/* ---- confete: azul, vermelho e branco ---- */
+.pagina-convite .confetti i:nth-child(3n)   { background: var(--cv-azul) !important; }
+.pagina-convite .confetti i:nth-child(3n+1) { background: var(--cv-vermelho) !important; }
+.pagina-convite .confetti i:nth-child(3n+2) { background: #ffffff !important; }
+
+/* ---- confete decorativo do hero ----
+   O review pediu que o astral de festa sobrevivesse à paleta fechada.
+   Feito em CSS puro (sem markup e sem JS) para não competir com o
+   #confetti, que é a animação de sucesso do RSVP. */
+.pagina-convite .hero::before,
+.pagina-convite .hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-repeat: no-repeat;
+}
+.pagina-convite .hero::before {
+  background-image:
+    radial-gradient(6px 6px at 8% 12%,  var(--cv-azul) 98%, transparent),
+    radial-gradient(5px 5px at 22% 30%, var(--cv-vermelho) 98%, transparent),
+    radial-gradient(7px 7px at 88% 16%, var(--cv-vermelho) 98%, transparent),
+    radial-gradient(5px 5px at 74% 8%,  #fff 98%, transparent),
+    radial-gradient(6px 6px at 94% 42%, var(--cv-azul) 98%, transparent),
+    radial-gradient(4px 4px at 14% 62%, #fff 98%, transparent),
+    radial-gradient(6px 6px at 6% 84%,  var(--cv-vermelho) 98%, transparent),
+    radial-gradient(5px 5px at 92% 76%, #fff 98%, transparent);
+  opacity: .75;
+}
+/* quadradinhos girados, para não virar só bolinha */
+.pagina-convite .hero::after {
+  background-image:
+    linear-gradient(45deg, var(--cv-azul) 50%, transparent 50%),
+    linear-gradient(45deg, var(--cv-vermelho) 50%, transparent 50%),
+    linear-gradient(45deg, #fff 50%, transparent 50%),
+    linear-gradient(45deg, var(--cv-azul) 50%, transparent 50%);
+  background-size: 11px 11px, 9px 9px, 10px 10px, 8px 8px;
+  background-position: 16% 20%, 82% 34%, 30% 78%, 68% 88%;
+  opacity: .6;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pagina-convite .hero::before { animation: cv-flutua 9s ease-in-out infinite alternate; }
+  .pagina-convite .hero::after  { animation: cv-flutua 11s ease-in-out infinite alternate-reverse; }
+}
+@keyframes cv-flutua {
+  from { transform: translateY(-6px); }
+  to   { transform: translateY(6px); }
+}
+
+/* o CTA do hero é um <a>: sem sublinhado de link */
+.pagina-convite .btn { text-decoration: none; }
+
+/* [hidden] é display:none na folha do navegador — e qualquer `display`
+   de autor o vence. O .countdown tem display:flex, então ficava visível
+   (zerado) ao lado do "É hoje!". Esta regra devolve a precedência. */
+.pagina-convite [hidden] { display: none !important; }
