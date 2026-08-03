@@ -1,33 +1,34 @@
-# Review — Fatia 4
+# Review — Fatia 5
 
-**Veredito: aprovado, sem ajustes.** Plano forte, e o risco que você mediu é o certo.
+**Veredito: aprovado, sem ajustes.** Plano forte, e a pré-verificação foi exatamente a que eu faria.
 
-## O catch da corrida
-Ótimo. Os 3 carregadores rodam em paralelo no `mostrarPainel()` e nenhum guardava o que
-carregou; calcular a estimativa dentro de um deles rodaria com metade do estado, de forma
-intermitente — o clássico "passa no teste, falha na máquina". Guardar `ultimaConfig` /
-`ultimasPessoas` e disparar `atualizarEstimativa()` só quando os dois chegaram (guarda de
-completude; quem chega por último dispara) é a solução certa.
-
-Aprovo também:
-- **Usar a config salva** (do banco), não os inputs — a estimativa não deve refletir edição não salva.
-- **N/3 contado direto da lista** (`filter papel==='aniversariante'`), fugindo da mesma corrida.
-- Ter **verificado o `numeric`→string** (`"18.50"`): é o gotcha que zeraria/`NaN` em silêncio;
-  bom ter batido contra dados na forma que o banco devolve.
+## O que gostei
+- **O ×6,5 batendo ao centavo** (Bruno 650 / Braz 50 / Bocão 0, `confere=true`) — o caso da spec
+  §4.2 confirmado contra o módulo antes de escrever tela.
+- **"Esquecer os grupos falha alto":** não passar `ultimosGrupos` → todo convidado vira "sem
+  dono", é **descartado** (não redistribuído), Bruno paga 100 de 700, selo vermelho. É a prova de
+  que o coração da fatia (o wiring dos grupos) grita se errar. Ainda assim provar o caminho certo
+  no verify é o correto — "grita" só ajuda quem olha.
+- **Os 3 estados do selo**, com o caso sutil coberto: chopp só (refri/agua NULL) fica **cinza
+  mesmo com as somas coincidindo** (10000=10000), porque `fechamentoCompleto` é falso. Verde
+  exige as duas condições — não só a soma. Perfeito.
+- **`recomputar()` estendendo a guarda de completude** da Fatia 4 pra exigir também os grupos,
+  com os dois carregadores chamando ele — reaproveita o padrão certo.
+- **Vazio = `NULL` aqui** (invertido da Fatia 2, de propósito): o `parseNumeroBR` já distingue
+  vazio de inválido, então é só trocar o ramo. A tabelinha deixa claro.
 
 ## A decisão em aberto
-**Mostrar a estimativa zerada com 0 confirmações** (em vez de esconder a seção): sim, concordo.
-Some a dúvida "será que quebrou?" e é coerente com as outras seções sempre presentes.
+**Mostrar a diferença em R$ no selo vermelho:** sim, entra. Sem ela o organizador sabe que algo
+está errado mas não por quanto — e o valor da diferença costuma apontar direto pro item digitado
+errado. É informação pra agir, não ruído.
 
-## Nota leve (não bloqueia)
-Enquanto os preços de referência estiverem em 0 (sementes), o **custo aproximado sai 0** — é
-esperado, e os **volumes/pizzas seguem úteis** pro fornecedor mesmo assim. Só não estranhar.
+## Fora de escopo, corretamente
+"Quem deve a quem" e o link `wa.me` ficam pra Fatia 6 (§9 da ET) — a Fatia 5 exibe as 3 contas, e
+está certo assim.
 
 ## Verify
-Cobre certo — o **#2 (apagar os 3 aniversariantes → volumes caem o que eles consomem →
-recadastrar → volta)** é o que mais importa: sem ele a estimativa esqueceria os aniversariantes e
-ficaria plausível-e-errada. O **#4 (`custo_real_*` bem diferente não move a estimativa)** prova
-que usa os preços de referência, e o **#5 (estado do banco idêntico antes/depois)** confirma o
-read-only.
+Cobre o que importa: o ×6,5, o compartilhado 50/50, pizza real x referência, o órfão (vermelho +
+diferença), o incompleto (cinza mesmo com somas iguais), o **update estreito** (campos da Fatia 2
+intactos) e o negativo de RLS pelo **estado do banco**.
 
 Pode `executa`.

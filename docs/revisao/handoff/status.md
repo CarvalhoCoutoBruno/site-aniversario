@@ -1,12 +1,12 @@
-# Status — Fatia 4: estimativa de compra
+# Status — Fatia 5: fechamento e rateio
 
-**Fatia fechada.** Aprovada sem ajustes. Todos os números conferidos contra a conta na mão, e a
-prova de que a estimativa conta os aniversariantes feita nos dois sentidos (tirar e recolocar).
+**Fatia fechada.** Aprovada sem ajustes, com a diferença em R$ no selo vermelho confirmada pelo
+review. O caso do ×6,5 da regra de negócio fecha ponta a ponta pela tela.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-4-estimativa` → merge `--ff-only` → apagada |
-| Commit da fatia | `f4b2fab7fda3b539959532acab9b031381e19e42` |
+| Branch | `feat/fatia-5-fechamento` → merge `--ff-only` → apagada |
+| Commit da fatia | `81961c802f0fe60a668efa2b3290cadee754dbd4` |
 | `./verify.sh` | **VERDE** — 41/41, sem regressão |
 
 ## `./verify.sh`
@@ -26,138 +26,137 @@ Coerência
 VERDE — verificação estática ok. Falta a integrada (navegador + banco).
 ```
 
-## Base de teste
+## Base de teste — o padrão do ×6,5
 
-6 pessoas: 2 grupos (Ana + filha criança; Beto) e os 3 aniversariantes.
+Grupo `G5` com `convidado_por=[1]` e 5 pessoas no chopp; grupo `Compartilhado` com
+`convidado_por=[1,2]` e 1 pessoa no chopp; os 3 aniversariantes, com Bruno no chopp.
 
 ```
-BASE MONTADA (tipo, papel, agua, refri, chopp, pizza):
-   ['crianca', 'acompanhante',   True,  True,  False, True ]
-   ['adulto',  'aniversariante', False, True,  True,  True ]   Bocão
-   ['adulto',  'aniversariante', True,  False, False, False]   Braz
-   ['adulto',  'aniversariante', False, False, True,  True ]   Bruno
-   ['adulto',  'principal',      True,  False, True,  True ]   Ana
-   ['adulto',  'principal',      False, True,  True,  False]   Beto
+consumidores de chopp = 7 (esperado 7)
+grupos: (['Compartilhado', [1, 2]], ['G5', [1]])
 ```
 
-Taxas 2,0 / 0,6 / 0,5. Preços de referência 18,50 / 6,00 / 3,00 / 45,90 / 24,50.
-**`custo_real_*` populados de propósito com valores absurdos** (9999,99 / 8888,88 / 7777,77)
-para o teste #4.
+Preços de referência da Fatia 2 preenchidos (18,50 / 6,00 / 3,00 / 45,90 / 24,50) e prazo
+definido — para provar depois que o fechamento não os toca.
 
 ## Verificação integrada — saída crua
 
-### 1. Números conferidos contra a conta na mão
+### 1. Estado inicial: sem custo lançado → selo cinza
 ```json
-{ "volumes": ["Chopp = 8 L", "Refrigerante = 1,8 L", "Água = 1,5 L"],
-  "pizzas": ["Pizzas de adulto = 3", "Pizzas de criança = 1"],
-  "custo": ["Custo aproximado = R$ 325,50"],
-  "contagens": ["Pessoas = 6", "Adultos = 5", "Crianças = 1",
-                "Bebem chopp = 4", "Bebem refri = 3", "Bebem água = 3"],
-  "avisoAnivOculto": true, "avisoPrecosOculto": true }
+{ "seloAntesDeLancar": { "classe": "selo cinza",
+    "texto": "Fechamento incompleto — lance o custo real de chopp, refrigerante e água para fechar as contas." },
+  "contas": [ {"nome":"Bruno","total":"R$ 0,00"}, {"nome":"Braz","total":"R$ 0,00"}, {"nome":"Bocão","total":"R$ 0,00"} ],
+  "camposVazios": ["", "", "", "", ""] }
 ```
 
-Conferência manual:
-- chopp: 4 adultos × 2,0 = **8 L** ✓
-- refri: 3 pessoas × 0,6 = **1,8 L** ✓
-- água: 3 pessoas × 0,5 = **1,5 L** ✓
-- custo: 8×18,50 + 1,8×6 + 1,5×3 + 3×45,90 + 1×24,50 = **R$ 325,50** ✓
-
-### 2. **A prova de que conta os aniversariantes** — nos dois sentidos
-
-Removendo só o Bocão (chopp + refri + pizza, adulto):
+### 2. **O ×6,5 pela tela** — lançando `custo_real_chopp = 700,00`
 ```json
-{ "volumes": ["Chopp = 6 L", "Refrigerante = 1,2 L", "Água = 1,5 L"],
-  "pizzas": ["Pizzas de adulto = 2", "Pizzas de criança = 1"],
-  "custo": "Custo aproximado = R$ 239,00",
-  "avisoAniv": "Só 2 de 3 aniversariantes cadastrados — falta o consumo de 1 deles nesta conta." }
+{ "msg": "Fechamento salvo. ✅",
+  "contas": [
+   { "nome": "Bruno", "total": "R$ 650,00", "itens": ["Chopp: R$ 650,00"] },
+   { "nome": "Braz",  "total": "R$ 50,00",  "itens": ["Chopp: R$ 50,00"] },
+   { "nome": "Bocão", "total": "R$ 0,00",   "itens": [] } ],
+  "totais": ["Total gasto = R$ 700,00", "Total rateado = R$ 700,00"],
+  "selo": { "classe": "selo verde", "texto": "✓ As contas fecham: a soma das 3 é exatamente o total gasto." } }
 ```
-Chopp 8 → 6 L e refri 1,8 → 1,2 L: exatamente o que ele consumia. **A água ficou em 1,5 L**,
-porque o Bocão não bebia água — o número não caiu "por cair".
 
-Removendo os três:
+7 consumidores → C = R$ 100,00. Bruno = 5 + 0,5 + 1 = **6,5 unidades** = R$ 650,00. Braz leva a
+meia unidade do convidado compartilhado = R$ 50,00. É o número da regra de negócio §4.2, ao
+centavo, agora pelo caminho real (tela → RPC → banco → cálculo → tela).
+
+### 3. **Update estreito** — campos da Fatia 2 intactos
+```
+CAMPOS DA FATIA 2, apos salvar o fechamento:
+  precos referencia: 18.50 6.00 3.00 45.90 24.50
+  taxas            : 2.000 0.600 0.500
+  prazo            : 2026-10-21 02:59:59+00:00
+  -> INTACTOS ✅
+
+CAMPOS DA FATIA 5 (gravados agora): [Decimal('700.00'), Decimal('0.00'), Decimal('0.00'), None]
+```
+
+### 4. Caso órfão → selo vermelho **com a diferença**
+Lançando `custo_real_refri = 120,00` numa base onde ninguém bebe refri:
 ```json
-{ "volumes": ["Chopp = 4 L", "Refrigerante = 1,2 L", "Água = 1 L"],
-  "pizzas": ["Pizzas de adulto = 1", "Pizzas de criança = 1"],
-  "custo": "Custo aproximado = R$ 154,60",
-  "contagens": ["Pessoas = 3", "Adultos = 2", "Crianças = 1",
-                "Bebem chopp = 2", "Bebem refri = 2", "Bebem água = 2"],
-  "aviso": "Só 0 de 3 aniversariantes cadastrados — falta o consumo de 3 deles nesta conta." }
+{ "selo": "selo vermelho",
+  "texto": "✗ A soma das contas não bate com o total gasto — diferença de R$ 120,00. Sobrou custo sem ninguém para ratear: confira se lançou algo que ninguém consumiu.",
+  "totais": ["Total gasto = R$ 820,00", "Total rateado = R$ 700,00"],
+  "contas": ["Bruno = R$ 650,00", "Braz = R$ 50,00", "Bocão = R$ 0,00"] }
 ```
+A diferença (R$ 120,00) é **exatamente** o valor órfão — aponta direto para o item digitado
+errado, que era o argumento para mostrá-la.
 
-Recadastrando os três:
+### 5. Fechamento incompleto → cinza **mesmo com as somas coincidindo**
+Apagando refri e água, sobra só o chopp lançado:
 ```json
-{ "voltouAoOriginal": { "volumes": ["Chopp = 8 L", "Refrigerante = 1,8 L", "Água = 1,5 L"],
-                        "pizzas": ["Pizzas de adulto = 3", "Pizzas de criança = 1"],
-                        "custo": "Custo aproximado = R$ 325,50" },
-  "avisoAnivOculto": true }
+{ "selo": "selo cinza",
+  "texto": "Fechamento incompleto — lance o custo real de chopp, refrigerante e água para fechar as contas.",
+  "totais": ["Total gasto = R$ 700,00", "Total rateado = R$ 700,00"] }
 ```
+**700 = 700 e o selo continua cinza.** Se o selo comparasse só os totais, este caso passaria por
+verde estando incompleto. Verde exige as duas condições.
 
-Sem isso a estimativa ficaria **plausível e errada** — o organizador compraria 4 L de chopp em
-vez de 8 e só descobriria na festa.
-
-### 3. Aviso N/3
-Aparece com 2 de 3 e com 0 de 3 (textos acima), some com 3 de 3 (`avisoAnivOculto: true`).
-
-### 4. Usa os **preços de referência**, não o custo real
-Com os preços zerados e `custo_real_chopp = 9999,99` no banco:
+### 6. Pizza real x referência
+Com Bruno comendo pizza:
 ```json
-{ "comPrecosZerados": {
-    "volumes": ["Chopp = 8 L", "Refrigerante = 1,8 L", "Água = 1,5 L"],
-    "custo": "Custo aproximado = R$ 0,00",
-    "avisoPrecos": "Os preços de referência ainda estão zerados na configuração — por isso o
-                    custo dá R$ 0,00. Os volumes acima já valem." } }
+{ "comPrecoReal_60": { "total": "R$ 710,00", "itens": ["Chopp: R$ 650,00", "Pizza: R$ 60,00"] },
+  "totais": ["Total gasto = R$ 760,00", "Total rateado = R$ 760,00"],
+  "semPrecoReal_referencia": { "total": "R$ 695,90", "itens": ["Chopp: R$ 650,00", "Pizza: R$ 45,90"] },
+  "selo": "selo verde" }
 ```
-Se a estimativa usasse `custo_real_*`, jamais daria zero. Os volumes seguem corretos, que é o
-que importa para o fornecedor — como o review antecipou na nota leve.
+Com `preco_real_pizza_adulto = 60,00` entra o real; em branco cai na referência de 45,90 — como
+o `precoPizza` já fazia.
 
-> Um falso negativo do meu próprio script: a asserção `=== "R$ 0,00"` deu `false` mesmo com a
-> tela mostrando `R$ 0,00`. O `Intl.NumberFormat` usa **espaço não-quebrável** (código 160)
-> entre o símbolo e o número:
-> ```json
-> { "custoBruto": "R$ 0,00", "codigosDosCaracteres": [82, 36, 160, 48],
->   "normalizado": "R$ 0,00", "ehZero": true }
-> ```
-> Fica o registro: comparar string de moeda formatada exige normalizar o espaço.
+> **Um tropeço meu no método de teste:** na primeira tentativa a pizza não aparecia. Eu tinha
+> ligado o `come_pizza` do Bruno direto no banco, mas a tela guarda `ultimasPessoas` em memória e
+> o save do fechamento só recarrega a `config` — o que está certo, porque salvar o fechamento não
+> muda as pessoas. Bastou o "↻ Atualizar". Erro do meu procedimento, não do código.
 
-### 5. Nenhuma escrita no banco
-Hash do estado de `pessoas` antes de abrir a estimativa e depois de abrir + recarregar duas
-vezes:
+### 7. Negativo (RLS) — provado pelo estado do banco
 ```
-hash do estado de pessoas ANTES:  d6ced08390d3bae9995c625a0955eb8e
-hash do estado de pessoas DEPOIS: d6ced08390d3bae9995c625a0955eb8e
-  -> IDENTICO ✅ (a estimativa nao escreveu nada)
-  custo_real_chopp intacto: 9999.99
+anon SELECT config:  []
+anon UPDATE custo_real (tentando zerar): HTTP 204
+--- prova pelo estado do banco (nao pelo HTTP) ---
+  custo_real_chopp        = 700.00 (o anon tentou zerar)
+  preco_real_pizza_adulto = None (o anon tentou zerar)
+  -> INTACTO ✅
 ```
+O `204` de novo. Terceira fatia seguida em que o `UPDATE` anônimo "sucede" sobre zero linhas.
 
-### 6. Base restaurada
+### 8. Base restaurada
 ```
 rsvps = 0
 pessoas = 0
 admins = 4
-config = [2.000, 0.600, 0.500, 0.00, None, None]
+config = [2.000, 0.600, 0.500, 0.00, None, None, None]
 auth.users = ['bruno.carvalho@gmail.com','brazrs@gmail.com','rscouto47@hotmail.com','jhboca@hotmail.com']
 ```
 Usuário temporário apagado.
 
-## O que a implementação resolveu
+## O que a implementação fez
 
-**A corrida.** Os carregadores rodam em paralelo e nenhum guardava o que carregava. Agora
-`carregarConfig` e `carregarRSVPs` guardam a sua parte e chamam `atualizarEstimativa()`, que
-retorna cedo enquanto faltar alguma — quem chega por último dispara o cálculo. O "↻ Atualizar"
-recalcula de graça, porque já chama os dois.
+- **`ultimosGrupos`** guardado ao lado de `ultimasPessoas`; `recomputar()` estende a guarda de
+  completude da Fatia 4 para exigir os três (config + pessoas + grupos) e dispara estimativa e
+  rateio juntos.
+- **Update estreito** dos 5 campos de fechamento + `atualizado_em`. Nunca um objeto amplo.
+- **Vazio = `NULL`** aqui, invertido em relação à Fatia 2 — de propósito: lá vazio era
+  esquecimento, aqui é "ainda não fechei".
+- **Selo em três estados**, com a razão escrita e, no vermelho, a diferença em reais.
 
-**Um ajuste durante a verificação:** o aviso do N/3 dizia "o consumo dos outros 1 não está nesta
-conta". Corrigido para tratar singular e plural.
+## Estado do produto
 
-## Notas para a próxima fatia (5 — fechamento e rateio)
+Com esta fatia, o ciclo completo do modelo está no ar: convite → RSVP → cadastro dos
+aniversariantes → config → estimativa de compra → fechamento e rateio.
 
-- `Calculo.rateio(pessoas, config, grupos)` está pronto e testado; devolve `porAniversariante`
-  com detalhe por item, `totalRateado`, `custoRealTotal`, `fechamentoCompleto` e `confere`.
-- **A Fatia 5 precisa dos `grupos`** (`rsvps` com `convidado_por`), não só das pessoas — é o elo
-  que define quem banca quem. O `carregarRSVPs` já busca `g.data`; hoje guardo só as pessoas em
-  `ultimasPessoas`, então vai precisar guardar os grupos também.
-- `parseNumeroBR` e `fmtNumeroBR` do `admin.js` servem para os `custo_real_*` digitados.
-- O selo `confere` fica verde só com os três `custo_real_*` preenchidos **e** a soma batendo.
+## Notas para a Fatia 6 (polimento)
+
+- **Countdown no passado:** hoje trava em zero; combinar "É hoje!" no dia e esconder depois.
+- **README:** ainda manda publicar arrastando a pasta no Netlify — obsoleto desde o começo.
+- **HANDOFF.md:** descreve o estado de julho, antes de todo o modelo de rateio.
+- **"Quem deve a quem"** e o link `wa.me`: continuam em aberto na §9 da ET. O rateio produz 3
+  contas, mas quem pagou o fornecedor foi provavelmente uma pessoa só — falta decidir se o
+  painel mostra o acerto entre eles ou se isso se resolve fora do sistema.
+- **Dedup por contato** já está no schema desde a Fatia 0; nada a fazer.
 - Ainda pendente do Bruno: rotacionar a senha do Postgres.
 
 ---
@@ -166,7 +165,7 @@ conta". Corrigido para tratar singular e plural.
 
 | | |
 |---|---|
-| Commit da fatia (o código) | `f4b2fab7fda3b539959532acab9b031381e19e42` |
+| Commit da fatia (o código) | `81961c802f0fe60a668efa2b3290cadee754dbd4` |
 | Commit deste `status.md` | logo em seguida, na `main` |
 
 > Gravar o hash pós-push dentro de um arquivo versionado muda o hash — por isso os dois são
