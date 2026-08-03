@@ -1,133 +1,131 @@
-# Plano — Fatia 5: fechamento e rateio
+# Plano — Fatia 6: acerto (quem deve a quem)
 
-Branch: `feat/fatia-5-fechamento`
+Branch: `feat/fatia-6-acerto`
 
-## O que verifiquei antes de planejar
+## O que validei antes de planejar
 
-### 1. O caso do ×6,5 da spec bate com o módulo
+### O algoritmo fecha, e é mínimo
 
-Montei o cenário exato da regra de negócio §4.2 — 5 convidados só do Bruno + 1 compartilhado
-Bruno/Braz + o próprio Bruno, todos no chopp, `custo_real_chopp = 700,00`:
-
-```
-COM grupos:
-  Bruno (id 1) = R$ 650,00
-  Braz  (id 2) = R$ 50,00
-  Bocão (id 3) = R$ 0,00
-  totalRateado=70000 custoRealTotal=70000 confere=true
-```
-
-7 consumidores → C = R$ 100,00. Bruno = 5 + 0,5 + 1 = **6,5 unidades** = R$ 650,00; Braz leva a
-meia unidade do compartilhado. É o número da spec, ao centavo.
-
-### 2. Esquecer os `grupos` falha **alto**, não em silêncio
-
-O item 1 do escopo (guardar `ultimosGrupos`) é o coração da fatia. Testei o que acontece se eu
-não passar os grupos:
+Prototipei o acerto e rodei contra o caso do ×6,5 e contra cenários aleatórios:
 
 ```
-SEM passar grupos:
-  Bruno = R$ 100,00
-  Braz  = R$ 0,00
-  Bocão = R$ 0,00
-  totalRateado=10000 custoRealTotal=70000 confere=false
+caso do x6,5 — Bruno pagou o chopp de 700,00:
+  aniv 1: deve=65000 pagou=70000 saldo=-5000
+  aniv 2: deve=5000  pagou=0     saldo=5000
+  aniv 3: deve=0     pagou=0     saldo=0
+  soma dos saldos = 0
+  transferencias: [{"de":2,"para":1,"valor":5000}]
+
+20.000 cenarios aleatorios:
+  falhas = 0
+  maximo de transferencias = 2 (esperado <= 2)
 ```
 
-Sem os grupos, todo convidado vira "consumo sem dono" e é **descartado** em vez de
-redistribuído — exatamente o que o `calculo.js` foi desenhado para fazer. Resultado: R$ 100 de
-R$ 700 rateados e **selo vermelho**. O erro se denuncia.
+Guloso — casar o maior devedor com o maior credor — é **ótimo para 3 pessoas**: com soma zero,
+três saldos não-nulos exigem no mínimo 2 transferências, e o guloso dá exatamente 2.
 
-Isso me deixa mais tranquilo: se eu errar o wiring, a tela grita. Ainda assim vou provar o
-caminho certo no verify, porque "grita" só ajuda quem olha.
+### O `rateio` não expõe o que o acerto precisa
 
-### 3. Os três estados do selo
+Os custos por item (`custos.chopp/refri/agua` e `totalPizza`) são **variáveis internas** do
+`rateio`. O prompt pede para reaproveitá-los "não recomputar de forma divergente" — então vou
+**adicionar `custosPorItem` ao retorno do `rateio`**. Mudança aditiva; as 41 asserções continuam
+valendo e serão re-rodadas.
 
-```
-  so chopp lancado (refri/agua NULL)   -> CINZA (incompleto)       rateado=10000 total=10000
-  os tres lancados, tudo consumido     -> VERDE                    rateado=15000 total=15000
-  orfao: refri lancado, ninguem bebe   -> VERMELHO (soma != total) rateado=15000 total=23000
-  os tres em zero                      -> VERDE                    rateado=0     total=0
-```
+Consequência boa: o `acerto` recebe o **resultado do rateio** e os `pago_por_*`, e mais nada.
+Menos parâmetros, zero chance de os dois lados divergirem sobre quanto custou o chopp.
 
-Repare no primeiro: as somas **coincidem** (10000 = 10000) e mesmo assim o selo é cinza, porque
-`fechamentoCompleto` é falso. Verde exige as duas condições, como o prompt pede — não basta a
-soma bater.
+### O `status` precisa olhar o `confere`, não só os pagadores
 
-### 4. Pizza real x referência
-```
-  so referencia (45,90)    -> Bruno paga R$ 45,90
-  real preenchido (60,00)  -> Bruno paga R$ 60,00
-```
+Achado que não estava explícito no prompt: se o rateio **não confere** (caso órfão — custo
+lançado para item que ninguém consome), então `Σ deve = totalRateado` mas `Σ pagou =
+custoRealTotal`, e os dois diferem. Resultado: `Σ saldo ≠ 0` e **as transferências não zeram os
+saldos**.
+
+Se eu checasse só "todo item tem pagador", esse caso produziria um acerto silenciosamente
+errado — alguém transferiria um valor que não quita nada.
+
+Então: **`completo` = `rateio.confere` E nenhum item com custo > 0 sem pagador.** As duas
+condições, pelo mesmo motivo que o selo verde da Fatia 5 exige duas.
+
+## O ponto que quero levantar: o custo do reset está subindo
+
+Esta fatia adiciona 4 colunas em `config`. Pela política do projeto (sem migrations de errata),
+isso significa **recriar o schema** rodando o `supabase-setup.sql`, que dá `drop table` em
+`config`, `pessoas` e `rsvps`.
+
+Hoje isso é gratuito: a base está zerada e a `config` está nas sementes. **É provavelmente a
+última vez que é gratuito.** Duas coisas mudaram desde que a política foi escrita:
+
+1. A `config` agora guarda **dados reais do organizador** — preços, prazo, custo real gasto.
+   A `admins` sobrevive ao reset de propósito; a `config` não.
+2. A trava do reset olha **só `rsvps`**. Uma base com `rsvps` vazio mas `config` preenchida
+   passa pela trava e perde os preços e o fechamento em silêncio.
+
+Não vou resolver isso por conta própria — é decisão de arquitetura. Mas registro que, depois do
+lançamento, o `supabase-setup.sql` vira uma arma apontada para os dados. **Sugestão:** estender a
+trava para abortar também se `config` tiver `custo_real_*` ou preços preenchidos. São ~6 linhas
+no bloco de reset. Se o review achar que cabe aqui, incluo; se preferir na 7, tudo bem.
 
 ## Implementação
 
-### `js/admin.js`
-- `ultimosGrupos` ao lado de `ultimasPessoas`; `carregarRSVPs` guarda `g.data`.
-- `recomputar()` substitui a chamada direta a `atualizarEstimativa()`: mesma guarda de
-  completude, agora exigindo também os grupos, e dispara estimativa **e** rateio. Os dois
-  carregadores passam a chamar `recomputar()`.
-- `carregarFechamento()` popula os 5 inputs a partir da `config` já carregada.
-- `salvarFechamento()` — **update estreito**, só os 5 campos + `atualizado_em`.
-- `atualizarRateio()` — chama `Calculo.rateio(ultimasPessoas, ultimaConfig, ultimosGrupos)` e
-  pinta as 3 contas, os totais e o selo.
+### Schema (`supabase-setup.sql`)
+4 colunas em `config`: `pago_por_chopp`, `pago_por_refri`, `pago_por_agua`, `pago_por_pizza` —
+`smallint`, NULL por padrão, com `CHECK (x is null or x between 1 and 3)`.
 
-### Validação — **vazio é válido aqui**
+> Uso `CHECK` simples aqui, não o padrão `CASE` que precisei em `aniversariante_id_coerente`. Lá
+> o `CASE` era necessário porque a expressão podia avaliar para `NULL` e o `CHECK` só rejeita em
+> `FALSE`. Aqui `x is null or ...` nunca devolve `NULL`, então está seguro. Vou testar mesmo
+> assim, incluindo o valor 4 e o 0.
 
-Invertida em relação à Fatia 2, e de propósito: lá vazio era esquecimento, aqui vazio significa
-"ainda não fechei" e vira `NULL`. O `parseNumeroBR` já distingue `vazio` de `invalido`, então é
-só trocar o ramo:
+### `js/calculo.js`
+- `rateio` passa a devolver `custosPorItem: { chopp, refri, agua, pizza }` (centavos).
+- `acerto(resultadoRateio, pagoPor)` → `{ saldos, transferencias, status, faltaPagador }`.
+  - `saldos`: `[{ aniversarianteId, nome, deve, pagou, saldo }]`
+  - `transferencias`: `[{ de, para, valor }]`, ≤ 2
+  - `status`: `"completo"` | `"incompleto"`, com `motivo` legível
 
-| Entrada | Fatia 2 (config) | Fatia 5 (fechamento) |
-|---|---|---|
-| vazio | recusa | **`NULL`** |
-| inválido | recusa | recusa |
-| negativo | recusa | recusa |
-| acima da faixa | recusa | recusa |
+### `tests/calculo.test.js`
+Seção nova: o ×6,5 do acerto (Braz → Bruno R$ 50,00), `Σ saldo = 0` e **as transferências zeram
+os saldos** em milhares de cenários aleatórios, o caso órfão barrando o status, item sem pagador,
+e o teto de 2 transferências. Mutação para confirmar que os testes têm dente.
 
-### `admin.html`
-Seção em `<details>`, depois da estimativa. Um bloco de inputs (3 custos + 2 preços reais de
-pizza, estes marcados como opcionais), o botão salvar, e abaixo o resultado: as 3 contas com
-detalhe por item, os totais e o selo.
+### `admin.html` / `js/admin.js`
+Bloco **Acerto** dentro da seção de fechamento: um `<select>` "pago por" por item, com o valor do
+item ao lado (vindo do `custosPorItem`, não digitado); o quadro deve/pagou/saldo por
+aniversariante; e as transferências em frase ("Braz → Bruno: R$ 50,00").
 
-### Selo
-Três estados visuais, com a razão escrita ao lado:
-- **cinza** — "fechamento incompleto: faltam custos"
-- **verde** — "as contas fecham"
-- **vermelho** — "a soma das contas não bate com o total gasto", com a diferença em reais
+Estados: fechamento incompleto → "feche o custo real primeiro"; falta pagador → "indique quem
+pagou: chopp"; completo → mostra o acerto.
 
-O vermelho é o caso órfão (custo lançado para item que ninguém consome). Mostrar a **diferença**
-ajuda a achar o erro de digitação — é a informação que falta para agir.
+Salvar: **update estreito** dos 4 `pago_por_*` + `atualizado_em`.
 
 ## Fora de escopo
-Estimativa, config de preços/taxas/prazo (não edito esses campos aqui), formulário público, e o
-polimento da Fatia 6 — incluindo o "quem deve a quem" e o link `wa.me`, que continuam em aberto
-na §9 da ET.
+Preços/taxas/prazo (Fatia 2), `custo_real_*` (Fatia 5 — o `pago_por` é aditivo), formulário
+público, e o polimento mecânico (countdown, README, HANDOFF), que fica para a Fatia 7.
 
 ## Verify
 
-`./verify.sh` verde (o `calculo.js` não muda; 41/41).
+`./verify.sh` verde **com as asserções novas** (a contagem sobe de 41).
 
 Integrada, com saída crua no `status.md`:
 
-1. base com o padrão do ×6,5 (5 convidados de [1], 1 compartilhado [1,2], os 3 aniversariantes)
-   → lançar `custo_real_chopp = 700,00` → **Bruno R$ 650,00 / Braz R$ 50,00 / Bocão R$ 0,00**,
-   conferido na mão, `Σ = custoRealTotal`, selo **verde**;
-2. o convidado compartilhado dividido **50/50** — visível no detalhe por item;
-3. **pizza real x referência:** com `preco_real_pizza_adulto` preenchido, entra; vazio, cai no
-   de referência;
-4. **caso órfão:** lançar custo de item que ninguém consome → selo **vermelho** com a diferença,
-   sem quebrar;
-5. **fechamento incompleto:** com 2 dos 3 custos → selo **cinza**, mesmo se as somas coincidirem;
-6. **update estreito:** preços de referência, taxas e prazo **intactos** após salvar o
-   fechamento — provado por `SELECT`;
-7. **negativo (RLS):** anon não lê nem grava `config` — provado pelo **estado do banco**, não
-   pelo HTTP (a lição dos `204`);
-8. restaurar a base ao fim.
+1. base do ×6,5 → marcar **Bruno pagou o chopp** → saldos −50 / +50 / 0 → **Braz → Bruno
+   R$ 50,00**, conferido na mão, `Σ saldo = 0`;
+2. **reconciliação:** aplicar as transferências e provar que os saldos zeram;
+3. **falta pagador:** item com custo e `pago_por` NULL → status incompleto nomeando o item, sem
+   acerto falso;
+4. **caso órfão:** rateio não confere → acerto **não** aparece, mesmo com todos os pagadores
+   marcados (é o achado acima);
+5. **fechamento incompleto** → acerto adia;
+6. **`CHECK` do domínio:** `pago_por = 4` e `= 0` rejeitados no banco; `NULL` aceito;
+7. **update estreito:** `custo_real_*` e os campos da Fatia 2 intactos após salvar — por `SELECT`;
+8. **negativo (RLS):** anon não lê nem grava — pelo estado do banco;
+9. restaurar a base ao fim.
 
 ## Para o review
 
-Uma decisão que tomei: **mostrar a diferença em reais no selo vermelho**, não só o aviso. Sem
-ela o organizador sabe que algo está errado mas não por quanto — e o valor da diferença
-costuma apontar direto para o item digitado errado. Se achar ruído, tiro.
+1. **A trava do reset** (seção acima): estendo agora para proteger a `config`, ou fica na 7?
+2. Confirmar o **`status` gated no `confere`** — é mais restritivo que o prompt pedia, e faz o
+   acerto sumir em casos onde o prompt só falava de pagador faltando.
 
 Parado, sem implementar, aguardando `review.md`.
