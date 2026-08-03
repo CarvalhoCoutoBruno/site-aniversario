@@ -6,7 +6,7 @@ aprovado no review — resolveu o item 3 junto, pela causa.
 | | |
 |---|---|
 | Branch | `chore/fatia-10-polimento-visual` → merge `--ff-only` → apagada |
-| Commit da fatia | `PREENCHER` |
+| Commit da fatia | `9093cca66e7b8fba3038bc536338c3eebbdf3d82` |
 | `./verify.sh` | **VERDE** — 63 asserções, sem alteração |
 
 ## Item 1 — data duplicada
@@ -109,5 +109,5 @@ O convite está pronto para o go-live. Falta, do seu lado:
 
 | | |
 |---|---|
-| Commit da fatia (o código) | `PREENCHER` |
+| Commit da fatia (o código) | `9093cca66e7b8fba3038bc536338c3eebbdf3d82` |
 | Commit deste `status.md` | logo em seguida, na `main` |
