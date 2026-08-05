@@ -1,7 +1,8 @@
 # Fatia — Área do organizador (admin)
 
-Mockup de referência: `Admin Organizador.dc.html` (design session). Tweaks: `tela`
-(painel/login) e `faseContas` (pendente/nao-confere/falta-pagador/completo).
+Mockup de referência: **`mockups/admin-organizador.html`** — arquivo autônomo, abre no
+navegador sem servidor. Tweaks: `tela` (painel/login) e `faseContas`
+(pendente/nao-confere/falta-pagador/completo).
 
 Substitui o visual de `admin.html`. **`js/calculo.js` não muda** — o mockup foi
 desenhado a partir dele. `js/admin.js` muda por causa da navegação em abas.

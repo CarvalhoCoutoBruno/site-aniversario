@@ -1,11 +1,14 @@
 # Fatia — Convite (redesign "Cartaz de boteco")
 
-Mockup de referência: `Convite Boteco.dc.html` (design session). Abre no navegador; os
-estados trocam pelo painel de Tweaks (prop `estado`).
+Mockup de referência: **`mockups/convite-boteco.html`** — arquivo autônomo, abre no navegador
+sem servidor. É a fonte de layout, espaçamento e hierarquia. Os 7 estados trocam pelo painel
+de Tweaks no topo (prop `estado`).
 
 Substitui o visual de `index.html` + o bloco `.pagina-convite` de `css/style.css`.
-**Não muda contrato de dados, nem `js/main.js`, nem o schema.** É troca de pele + duas
-mudanças de UX marcadas abaixo com ⚠.
+
+**Correção (o cabeçalho anterior estava errado):** isto **não é só pele**. O contrato de dados
+e o schema ficam intactos, mas `js/main.js` **muda** — os itens ⚠ 2, 3 e 4 da seção 5 são
+comportamento, não CSS. Trate-os como itens de plano, não como estilo.
 
 ---
 
@@ -34,15 +37,18 @@ Fontes (Google Fonts):
 
 | Par | Ratio | Uso |
 |---|---|---|
-| `#14110d` sobre `#f4efe2` | 15.4:1 | corpo, títulos |
+| `#14110d` sobre `#f4efe2` | 16.4:1 | corpo, títulos |
 | `#6b665d` sobre `#f4efe2` | 4.99:1 | secundário ≥14px ✔ AA |
 | `#8a5a12` sobre `#f4efe2` | 5.16:1 | rótulos mono 11px ✔ |
 | `#b52a20` sobre `#f4efe2` | 5.55:1 | rótulos vermelhos pequenos ✔ |
-| `#d8352a` sobre `#f4efe2` | 4.13:1 | ⚠ **só ≥24px bold** (AA large) |
+| `#d8352a` ↔ `#f4efe2` | 4.10:1 | ⚠ **só ≥24px bold** (AA large) — vale nos dois sentidos |
+| `#1d4ed8` sobre `#f4efe2` | 5.84:1 | links ✔ AA texto normal |
 | `#e8a33d` sobre `#14110d` | 8.8:1 | rótulo sobre bloco escuro ✔ |
-| `#f4efe2` sobre `#d8352a` | 3.7:1 | ⚠ só no botão Confirmar (23px Anton) |
 
-Regra prática: `#d8352a` nunca em texto abaixo de 24px. Use `#b52a20`.
+Contraste é simétrico: o par vermelho/creme é **4.10:1** tanto para texto vermelho sobre papel
+quanto para o botão Confirmar (texto creme sobre vermelho). Passa em AA large com folga.
+
+Regra prática: `#d8352a` nunca em texto abaixo de 24px. Use `#b52a20` (5.55:1).
 
 ## 3. Regras de mobile (o bug do print)
 
@@ -83,7 +89,9 @@ pós-submit; `carregando`/`erro` são o fetch da config.
 4. **Contador de pessoas ao vivo** no rodapé do formulário ("3 pessoas").
 5. Seção renomeada: "Momentos" → **"Fotos da festa"**, com legenda assumindo que as
    imagens são geradas por IA ("Nenhuma destas fotos aconteceu. Ainda.").
-6. Local corrigido em todo lugar: **Salão Grande** (era "Salão 3").
+6. Local corrigido: **Salão Grande** (era "Salão 3"). ⚠ Isto é **dado, não código** — o endereço
+   vive na tabela `festa` e é editado pelo painel. Corrija pelo admin ou rode o `UPDATE` nesta
+   fatia; não hardcode no HTML.
 
 ## 6. Preview de link no WhatsApp (novo)
 
@@ -97,9 +105,9 @@ pós-submit; `carregando`/`erro` são o fetch da config.
 <meta name="twitter:card" content="summary_large_image" />
 ```
 
-A imagem 1200×630 deve repetir o hero: papel creme, "CENTO E SESSENTA ANOS" em Anton
-(vermelho no "ANOS"), e a linha mono `40 + 50 + 70 · 31.10.2026 · 11H`. O mockup tem a
-simulação da conversa no fim da página.
+**A imagem já está pronta:** `mockups/og-160.png` (1200×630, exportada do design). É só
+publicar e apontar a `og:image` para ela. O mockup do convite tem a simulação da conversa no
+fim da página.
 
 ## 7. Ordem sugerida de implementação
 
