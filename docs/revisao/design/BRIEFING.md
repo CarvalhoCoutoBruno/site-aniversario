@@ -1,7 +1,7 @@
 # Briefing de design — site-aniversario
 
 > Para uma sessão de design entrar no projeto sem precisar garimpar.
-> Estado em 2026-08-03, commit `cd701cd`.
+> Estado em 2026-08-05, depois da Fatia 11 (pele "cartaz de boteco").
 
 ## O que é
 
@@ -58,30 +58,27 @@ Dentro desse escopo, as variáveis **globais** também são remapeadas (`--bg`, 
 
 ## Sistema visual atual
 
-**Paleta** (preto + azul + vermelho, escolhida pelo Bruno):
+**Paleta** (cartaz de boteco — papel creme, traço preto, vermelho e azul):
 
 ```
---cv-preto: #0a0c12     --cv-azul: #3b82f6        (acento sobre o hero escuro)
---cv-preto-2: #12161f   --cv-azul-texto: #2563eb  (azul para texto sobre claro)
---cv-claro: #f7f8fb     --cv-azul-claro: #7cb1ff
---cv-tinta: #12161f     --cv-vermelho: #ef4444
---cv-tinta-suave: #4a5164   --cv-vermelho-claro: #ff7a7a
---cv-linha: #dfe3ec
+--cv-tinta: #14110d      --cv-vermelho:     #d8352a   (SÓ display >= 24px)
+--cv-papel: #f4efe2      --cv-vermelho-txt: #b52a20   (vermelho para texto < 24px)
+--cv-papel-2: #ffffff    --cv-azul:  #1d4ed8
+--cv-papel-3: #fbf9f3    --cv-ambar: #e8a33d   (rótulo sobre bloco escuro)
+--cv-mudo: #6b665d       --cv-mudo-2: #8a5a12  (rótulos "Dia"/"Onde")
+--cv-corpo: #37332c      --cv-linha: #dcd5c4
 ```
 
-**Existem dois azuis de propósito.** O `#3b82f6` reprovou no contraste AA sobre fundo claro
-(3,46 — o mínimo é 4,5), então texto azul sobre claro usa `#2563eb` (4,87). O tom original só
-aparece sobre o hero escuro.
+**Existem dois vermelhos de propósito.** O `#d8352a` sobre o papel dá **4,10:1** — passa em AA
+large (>= 24px bold), não em AA para texto normal. Abaixo de 24px usa-se o `#b52a20` (5,51:1).
 
-**Fontes:** `Fredoka` (títulos, números) + `Nunito` (corpo), por `<link>`.
-*O painel usa Fraunces + Inter — não misturar.*
+**Fontes:** `Anton` (display, uppercase) + `Space Grotesk` (corpo) + `DM Mono` (rótulos
+técnicos, countdown, notas). *O painel usa Fraunces + Inter — não misturar.*
 
-**Estrutura do convite:** hero escuro (título → equação 40+50+70=160 → pílula da data →
-countdown → CTA) · seção clara "onde" · carrossel de fotos · formulário de RSVP · rodapé escuro.
-
-O confete do hero é **CSS puro** (`::before`/`::after` com `radial-gradient`), sem markup e sem
-JS. Abaixo de 560px a densidade cai e as partículas vão para as bordas — no mobile elas caíam
-sobre o título.
+**Estrutura:** coluna única de **460px** em papel creme, centralizada sobre fundo preto. Blocos
+escuros pontuais: fotos, barra do total, cabeçalho dos cards de pessoa e rodapé. O hero é claro,
+alinhado à esquerda, com textura de pontos em CSS puro — **não existe mais hero escuro**, e o
+endereço vive dentro dele, numa ficha `Dia / Onde`.
 
 ## Restrições duras
 
@@ -92,17 +89,18 @@ O `main.js` escreve nestes elementos. **Se um sumir do HTML, o convite quebra:**
 ```
 #conviteCarregando #hero-conteudo #conviteErro #festaTitulo #festaSubtitulo #heroNomes
 #festaData #countdown #cdDias #cdHoras #cdMin #cdSeg #festaEstado
-#secaoOnde #cardLocal #festaLocal
-#secaoFotos #carrossel #carrosselTrack #carrosselVazio #carPrev #carNext #carDots
+#secaoOnde #cardLocal #festaLocal   (agora DENTRO do hero, não mais uma seção)
+#secaoFotos #carrossel #carrosselTrack #carrosselVazio #carDots
 #confirmar #rsvpForm #rsvpEncerrado #rsvpEncerradoTexto #responsavel #contato
 #chipsAniversariantes #pessoasLista #addPessoa #limiteAcompanhantes #mensagem
 #contadorMensagem #prazoAberto #btnEnviar #formStatus #tplPessoa #rodapeFesta #confetti
+#ctaTopo #totalPessoas #rsvpSucesso #sucessoResumo #sucessoLista #btnAgenda #btnMudar
 ```
 
 Reorganizar, aninhar e re-estilizar: à vontade. Renomear ou remover: não, sem ajustar o
 `main.js` junto.
 
-### 2. Seis estados precisam continuar funcionando
+### 2. Sete estados precisam continuar funcionando
 
 O convite não é uma página só. Tem:
 
@@ -110,9 +108,12 @@ O convite não é uma página só. Tem:
 2. **erro de carga** — se os dados não vierem, **só o erro e o rodapé aparecem**. Nada de hero
    pela metade ao lado de formulário escondido. Esta regra já quebrou três vezes;
 3. **countdown contando** / 4. **"É hoje!"** / 5. **"A festa já aconteceu"**;
-6. **"confirmações encerradas"** — quando o organizador define prazo e ele passa.
+6. **"confirmações encerradas"** — quando o organizador define prazo e ele passa, **ou** quando
+   a festa já aconteceu (os dois fecham o formulário; o primeiro a fechar escreve o texto);
+7. **"enviado"** — tela de sucesso, que substitui o convite mas **não destrói o formulário**:
+   "mudar minha confirmação" precisa dele de volta preenchido.
 
-Mais o carrossel vazio e o sucesso do RSVP (com confete animado).
+Mais o carrossel vazio e o confete do sucesso.
 
 ### 3. O conteúdo é editável — nada de hardcodar
 
@@ -153,14 +154,16 @@ nas regras do banco. Não é preciso configurar nada para ver o convite.
 
 | Decisão | Por quê |
 |---|---|
-| Título como `<h1>` visível, com a equação como apoio | o Bruno quer o nome da festa no topo |
-| Data só no pill do hero | aparecia duas vezes, com a string idêntica |
-| Seção "onde" com um bloco só | dois cards baixos deixavam a seção com cara de inacabada |
-| Carrossel `2/1` no desktop | `16/10` dava 562px — um terço da tela |
-| Confete nas bordas no mobile | caía sobre o título e sobre os cards |
+| Coluna de 460px, sem layout de desktop | o convite é peça de celular; duas layouts dobram a manutenção |
+| Endereço dentro do hero | a seção separada repetia a data e ficava com cara de inacabada |
+| Carrossel sem setas, com dots | numa coluna de 460px as setas roubam a foto; o gesto é arrastar |
+| Chopp para criança continua bloqueado | a constraint do banco manda, não o mockup |
+| `<select>` de relação removido | vazava da tela a 390px e o valor nunca foi lido |
+| Card do responsável sem nome nem tipo | o nome vem do campo de cima; convite não é mandado para criança |
 
-O mockup roxo em `docs/revisao/design/mockup-convite.html` é **histórico**: a paleta foi trocada
-para preto/azul/vermelho depois dele.
+O mockup vigente é `docs/revisao/design/convite/mockups/convite-boteco.html`. O
+`mockup-convite.html` na raiz de `design/` é **histórico** (paleta roxa), e a pele
+preto/azul/vermelho das Fatias 9 e 10 também já foi superada.
 
 ## Como trabalhamos
 
