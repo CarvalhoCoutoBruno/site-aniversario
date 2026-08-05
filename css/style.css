@@ -787,3 +787,77 @@ tr:last-child td { border-bottom: none; }
 .pagina-convite .rodape #rodapeFesta { margin: 0; }
 .pagina-convite .rodape-admin { margin: 0; }
 .pagina-convite .rodape a { color: var(--cv-ambar); }
+
+/* ---------------------------------------------------------------------
+   ESTADOS DE TELA CHEIA — carregando, erro, sucesso
+   --------------------------------------------------------------------- */
+.pagina-convite .carregando {
+  min-height: 70vh; display: grid; place-items: center;
+  padding: 40px 24px; text-align: center;
+}
+.pagina-convite .carregando b {
+  display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 68px; line-height: .9;
+  animation: cv-pulso 1.4s ease-in-out infinite;
+}
+.pagina-convite .carregando p {
+  margin: 14px 0 0; letter-spacing: .2em; color: var(--cv-mudo);
+}
+@keyframes cv-pulso { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+@media (prefers-reduced-motion: reduce) {
+  .pagina-convite .carregando b { animation: none; }
+}
+
+.pagina-convite .convite-erro {
+  text-align: center;
+  border: 3px solid var(--cv-tinta); background: var(--cv-papel-2);
+  padding: 30px 22px; margin: 30px 0;
+  box-shadow: 6px 6px 0 var(--cv-vermelho);
+}
+.pagina-convite .convite-erro .big {
+  font-family: "Anton", Impact, sans-serif; font-size: 40px; line-height: 1;
+  text-transform: uppercase; color: var(--cv-vermelho);
+}
+.pagina-convite .convite-erro p {
+  margin: 12px 0 20px; font-size: 15px; line-height: 1.55; color: var(--cv-corpo);
+}
+.pagina-convite .convite-erro .btn-cta { margin: 0; font-size: 19px; padding: 15px; }
+
+/* ---- sucesso ---- */
+.pagina-convite .rsvp-sucesso {
+  min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
+  padding: 36px 22px;
+}
+.pagina-convite .cartao-ok {
+  border: 3px solid var(--cv-tinta); background: var(--cv-papel-2);
+  box-shadow: 7px 7px 0 var(--cv-azul);
+}
+.pagina-convite .cartao-ok-faixa {
+  background: var(--cv-tinta); color: var(--cv-papel);
+  padding: 12px 18px; letter-spacing: .2em;
+}
+.pagina-convite .cartao-ok-corpo { padding: 26px 20px 28px; }
+.pagina-convite .cartao-ok h2 { margin: 0 0 10px; font-size: 46px; line-height: .88; }
+.pagina-convite .cartao-ok #sucessoResumo {
+  margin: 0 0 20px; font-size: 15.5px; line-height: 1.5; color: var(--cv-corpo);
+}
+.pagina-convite .lista-ok {
+  border-top: 2px dashed var(--cv-tinta); border-bottom: 2px dashed var(--cv-tinta);
+  padding: 14px 0; margin-bottom: 20px; display: grid; gap: 8px; font-size: 14.5px;
+}
+.pagina-convite .linha-ok { display: flex; justify-content: space-between; gap: 12px; }
+.pagina-convite .linha-ok span { color: var(--cv-mudo); }
+.pagina-convite .btn-agenda {
+  display: block; text-align: center; text-decoration: none;
+  background: var(--cv-azul); color: var(--cv-papel);
+  font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 19px; text-transform: uppercase; padding: 15px;
+  box-shadow: 4px 4px 0 var(--cv-tinta); margin-bottom: 10px;
+}
+.pagina-convite .btn-mudar {
+  display: block; width: 100%; text-align: center; cursor: pointer;
+  border: 2px solid var(--cv-tinta); border-radius: 0; background: transparent;
+  color: var(--cv-tinta); font-family: inherit; font-weight: 700;
+  font-size: 15px; padding: 13px;
+}
+.pagina-convite .cartao-ok .campo-dica { display: block; margin: 16px 0 0; letter-spacing: .04em; }

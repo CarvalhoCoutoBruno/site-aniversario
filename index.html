@@ -25,7 +25,10 @@
   <!-- ===================== HERO ===================== -->
   <header class="hero">
     <div class="hero-inner">
-      <p class="carregando" id="conviteCarregando">Carregando o convite…</p>
+      <div class="carregando" id="conviteCarregando">
+        <b>160</b>
+        <p class="mono">abrindo o convite</p>
+      </div>
 
       <div id="hero-conteudo" hidden>
         <p class="hero-eyebrow mono">Convocação oficial</p>
@@ -144,6 +147,25 @@
       <p class="campo-dica prazo-aberto mono" id="prazoAberto" hidden></p>
       <p class="form-status" id="formStatus" role="status"></p>
     </form>
+  </section>
+
+  <!-- Tela de sucesso. Substitui o convite inteiro, mas NÃO destrói o
+       formulário: "mudar minha confirmação" precisa dele de volta com o
+       que foi preenchido. -->
+  <section class="rsvp-sucesso" id="rsvpSucesso" hidden>
+    <div class="cartao-ok">
+      <div class="cartao-ok-faixa mono">Confirmação registrada</div>
+      <div class="cartao-ok-corpo">
+        <h2>Tá<br>anotado</h2>
+        <p id="sucessoResumo"></p>
+        <div class="lista-ok" id="sucessoLista"></div>
+        <a class="btn-agenda" id="btnAgenda" download="festa.ics" hidden>Salvar na agenda 📅</a>
+        <button type="button" class="btn-mudar" id="btnMudar">Mudar minha confirmação</button>
+        <p class="campo-dica mono">
+          Precisa mudar algo? Confirme de novo com o mesmo contato que a gente substitui.
+        </p>
+      </div>
+    </div>
   </section>
 
   <footer class="rodape">

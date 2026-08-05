@@ -32,6 +32,7 @@
   let alvo = NaN;          // instante da festa; só existe depois do load
   let cronometro = null;
   let conviteFalhou = false;
+  let rsvpFechado = false;
   let festa = null;        // a linha da tabela `festa`, para quem precisa dela depois
 
   async function carregarFesta() {
@@ -220,8 +221,11 @@
         aviso.innerHTML = `<b>Acabou 🍕</b>
           <p>A festa já rolou e foi boa demais. Em breve as fotos reais entram
              aqui no lugar das inventadas.</p>`;
-        // Com a festa passada o CTA "Tô dentro" não leva a lugar nenhum.
+        // Com a festa passada o CTA "Tô dentro" não leva a lugar nenhum,
+        // e confirmar presença para um sábado que já foi também não.
         $("#ctaTopo").hidden = true;
+        fecharFormulario("A festa<br>já rolou",
+          "Não dá mais para confirmar — mas em breve as fotos reais entram no lugar das inventadas.");
       }
       return;
     }
@@ -323,7 +327,7 @@
       const st = Array.isArray(data) ? data[0] : data;
       if (!st) return;
       if (conviteFalhou) return; // não mexer na tela de erro
-      if (st.aberto === false) fecharFormulario(st.prazo);
+      if (st.aberto === false) fecharFormulario("Prazo<br>encerrado", textoDoPrazo(st.prazo));
       else if (st.prazo) avisarPrazo(st.prazo);
     } catch (e) {
       console.warn("Falha ao checar o prazo:", e);
@@ -333,24 +337,34 @@
   // Aberto mas com data marcada: sem isto o convidado não vê prazo
   // nenhum, e o prazo perde justamente a urgência que o justifica.
   function avisarPrazo(prazo) {
+    if (rsvpFechado) return;   // a festa pode já ter passado antes desta resposta chegar
     const d = new Date(prazo);
     if (isNaN(d)) return;
     const el = $("#prazoAberto");
-    el.textContent = `⏳ Confirme até ${d.toLocaleDateString("pt-BR")}.`;
+    el.textContent = `Confirme até ${d.toLocaleDateString("pt-BR")}`;
     el.hidden = false;
   }
 
-  function fecharFormulario(prazo) {
+  /* Duas coisas fecham o formulário: o prazo e a festa já ter acontecido.
+     O primeiro a fechar escreve o texto — e como o tick() roda síncrono
+     e o status_rsvp() é assíncrono, "a festa já rolou" ganha do prazo,
+     que é a precedência certa: não adianta falar de prazo depois da
+     festa. */
+  function fecharFormulario(titulo, texto) {
+    if (rsvpFechado) return;
+    rsvpFechado = true;
     $("#rsvpForm").hidden = true;
-    const aviso = $("#rsvpEncerrado");
-    if (prazo) {
-      const d = new Date(prazo);
-      if (!isNaN(d)) {
-        $("#rsvpEncerradoTexto").textContent =
-          `O prazo para confirmar presença terminou em ${d.toLocaleDateString("pt-BR")}.`;
-      }
-    }
-    aviso.hidden = false;
+    $("#rsvpEncerrado").querySelector("h3").innerHTML = titulo;
+    $("#rsvpEncerradoTexto").textContent = texto;
+    $("#rsvpEncerrado").hidden = false;
+    $("#prazoAberto").hidden = true;
+  }
+
+  function textoDoPrazo(prazo) {
+    const d = new Date(prazo);
+    return isNaN(d)
+      ? "O prazo para confirmar presença já passou."
+      : `As confirmações fecharam em ${d.toLocaleDateString("pt-BR")} — a pizza já foi encomendada.`;
   }
   checarPrazo();
 
@@ -546,7 +560,7 @@
 
     // sucesso: o botão NÃO volta a habilitar
     btn.textContent = "Confirmado!";
-    sucesso();
+    sucesso(pessoas);
   });
 
   // As exceptions do criar_rsvp já são escritas para o convidado ler.
@@ -559,16 +573,87 @@
     return "Não conseguimos salvar sua confirmação. Tente de novo em instantes.";
   }
 
-  function sucesso(msg) {
+  /* A tela de sucesso substitui o convite, mas o formulário continua no
+     DOM: "mudar minha confirmação" precisa dele de volta com tudo que
+     foi preenchido. Por isso escondemos as seções em vez de trocar o
+     innerHTML — o que a versão anterior fazia e tornava a volta
+     impossível. */
+  function sucesso(pessoas) {
+    const nomes = pessoas.map((p, i) => ({
+      papel: i === 0 ? "Você" : "Acompanhante",
+      nome: p.nome || "sem nome",
+      tipo: p.tipo === "crianca" ? "criança" : "adulto",
+    }));
+
+    const dia = festa && festa.data
+      ? new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric" })
+          .format(new Date(festa.data))
+      : null;
+    const quantos = pessoas.length === 1 ? "1 lugar" : `${pessoas.length} lugares`;
+    $("#sucessoResumo").innerHTML =
+      `Guardamos <b>${esc(quantos)}</b>${dia ? ` no dia ${esc(dia)}` : ""}. Já estamos contando as pizzas.`;
+
+    $("#sucessoLista").innerHTML = nomes.map((n) => `
+      <div class="linha-ok">
+        <span>${esc(n.papel)}</span>
+        <b>${esc(n.nome)} · ${esc(n.tipo)}</b>
+      </div>`).join("");
+
+    prepararAgenda();
+
+    $(".hero").hidden = true;
+    $("#secaoFotos").hidden = true;
+    $("#confirmar").hidden = true;
+    $("#rsvpSucesso").hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
     dispararConfete();
-    const sec = $("#confirmar");
-    sec.innerHTML = `
-      <div class="rsvp-inner sucesso">
-        <div class="big">🎉</div>
-        <h2>Presença confirmada!</h2>
-        <p>${esc(msg || "Obrigado! Já anotamos tudo. Nos vemos na festa. 🥳")}</p>
-      </div>`;
-    sec.scrollIntoView({ behavior: "smooth" });
+  }
+
+  $("#btnMudar").addEventListener("click", () => {
+    $("#rsvpSucesso").hidden = true;
+    $(".hero").hidden = false;
+    $("#secaoFotos").hidden = false;
+    $("#confirmar").hidden = false;
+    // o envio anterior desabilitou o botão de propósito; reabrindo, ele volta
+    const btn = $("#btnEnviar");
+    btn.disabled = false;
+    btn.textContent = "Confirmar";
+    $("#formStatus").textContent = "";
+    $("#confirmar").scrollIntoView({ behavior: "smooth" });
+  });
+
+  /* .ics gerado na hora. Dois cuidados que o review pediu:
+     - o carimbo sai em UTC com o sufixo Z, então o horário é inequívoco
+       e não depende do fuso de quem abre o arquivo. Esta é a mesma
+       armadilha que já nos custou um dia inteiro de diferença no prazo;
+     - Blob URL em vez de data: URI, que o Safari do iPhone trata mal. */
+  function prepararAgenda() {
+    const botao = $("#btnAgenda");
+    if (!festa || !festa.data) return;
+    const ini = new Date(festa.data);
+    if (isNaN(ini)) return;
+
+    const fim = new Date(ini.getTime() + 4 * 3600e3);   // 4h é o palpite; o convidado ajusta
+    const carimbo = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const escapa = (s) => String(s).replace(/([,;\\])/g, "\\$1").replace(/\r?\n/g, "\\n");
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//site-aniversario//PT-BR",
+      "BEGIN:VEVENT",
+      `UID:festa-${ini.getTime()}@site-aniversario`,
+      `DTSTAMP:${carimbo(new Date())}`,
+      `DTSTART:${carimbo(ini)}`,
+      `DTEND:${carimbo(fim)}`,
+      `SUMMARY:${escapa(festa.titulo || "Festa")}`,
+      festa.local ? `LOCATION:${escapa(festa.local)}` : null,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n") + "\r\n";
+
+    botao.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    botao.hidden = false;
   }
 
   /* ================= HELPERS ================= */
@@ -594,7 +679,7 @@
 
   function dispararConfete() {
     const wrap = $("#confetti");
-    const cores = ["#8b3ffb", "#ff4d8d", "#ffb020", "#17b26a", "#3b82f6"];
+    const cores = ["#d8352a", "#1d4ed8", "#e8a33d", "#14110d"];
     for (let i = 0; i < 90; i++) {
       const c = document.createElement("i");
       c.style.left = Math.random() * 100 + "vw";
