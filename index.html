@@ -28,16 +28,24 @@
       <p class="carregando" id="conviteCarregando">Carregando o convite…</p>
 
       <div id="hero-conteudo" hidden>
-        <p class="hero-eyebrow">🎉 Você está convidado 🎉</p>
+        <p class="hero-eyebrow mono">Convocação oficial</p>
         <h1 class="hero-title" id="festaTitulo"></h1>
         <p class="hero-sub" id="festaSubtitulo" hidden></p>
 
         <!-- a equação 40 + 50 + 70 = 160, montada pelo main.js -->
         <div class="equacao" id="heroNomes"></div>
 
-        <div class="datapill">
-          <span aria-hidden="true">📅</span>
-          <span id="festaData">—</span>
+        <!-- ONDE / QUANDO — a antiga seção "Anota o endereço" virou esta
+             ficha dentro do hero. O id sobrevive porque o fail-loud
+             depende dele; o que mudou foi o lugar, não o contrato. -->
+        <div class="ficha" id="secaoOnde" hidden>
+          <span class="ficha-rot mono">Dia</span>
+          <b id="festaData">—</b>
+          <span class="ficha-rot mono">Onde</span>
+          <span class="ficha-onde">
+            <b id="cardLocal">—</b>
+            <a id="festaLocal" href="#" target="_blank" rel="noopener" class="link-mapa">abrir no mapa →</a>
+          </span>
         </div>
 
         <div class="countdown" id="countdown" aria-label="Contagem regressiva">
@@ -47,35 +55,20 @@
           <div class="cd-box"><b id="cdSeg">0</b><span>seg</span></div>
         </div>
 
-        <p class="festa-estado" id="festaEstado" hidden></p>
+        <!-- duas caras, escolhidas pelo data-tipo que o tick() escreve:
+             carimbo torto em "e-hoje", bloco branco em "passou" -->
+        <div class="festa-estado" id="festaEstado" hidden></div>
 
-        <a href="#confirmar" class="btn btn-primary btn-lg">Confirmar presença 🎉</a>
+        <a href="#confirmar" class="btn-cta" id="ctaTopo">Tô dentro →</a>
       </div>
 
       <div class="convite-erro" id="conviteErro" hidden>
-        <div class="big">😕</div>
-        <h2>Não consegui carregar o convite</h2>
-        <p>Parece que a conexão falhou. Recarregue a página para tentar de novo.</p>
+        <div class="big">POXA</div>
+        <p>O convite não quis carregar. Deve ser a internet — nada a ver com você.</p>
+        <a href="." class="btn-cta">Tentar de novo</a>
       </div>
     </div>
   </header>
-
-  <!-- ===================== ONDE =====================
-       A data vive no hero (pill + countdown). Esta seção responde só
-       "onde": repetir a data aqui era a mesma frase duas vezes. -->
-  <section class="secao" id="secaoOnde" hidden>
-    <div class="secao-inner">
-      <p class="kicker">É aqui 📍</p>
-      <h2 class="secao-titulo">Anota o endereço</h2>
-
-      <div class="card-lugar">
-        <b id="cardLocal">—</b>
-        <a id="festaLocal" href="#" target="_blank" rel="noopener" class="btn btn-ghost link-mapa">
-          Abrir no mapa 🗺️
-        </a>
-      </div>
-    </div>
-  </section>
 
   <!-- ===================== CARROSSEL ===================== -->
   <section class="secao carrossel-secao" id="secaoFotos">

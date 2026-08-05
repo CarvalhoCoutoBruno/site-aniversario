@@ -32,6 +32,7 @@
   let alvo = NaN;          // instante da festa; só existe depois do load
   let cronometro = null;
   let conviteFalhou = false;
+  let festa = null;        // a linha da tabela `festa`, para quem precisa dela depois
 
   async function carregarFesta() {
     if (!sb) return falhaConvite();
@@ -62,7 +63,16 @@
   const IDADES = [40, 50, 70];
 
   function montarConvite(f) {
-    $("#festaTitulo").textContent = f.titulo;
+    festa = f;
+
+    // A última palavra do título sai em vermelho. Feito por script e não
+    // com <br> fixo porque o título vem do banco e é editável — um corte
+    // escrito à mão no HTML quebraria no primeiro título diferente.
+    const titulo = String(f.titulo || "");
+    const corte = titulo.lastIndexOf(" ");
+    $("#festaTitulo").innerHTML = corte > 0
+      ? `${esc(titulo.slice(0, corte))} <span class="fim">${esc(titulo.slice(corte + 1))}</span>`
+      : esc(titulo);
     document.title = f.titulo;   // melhora o preview do link no WhatsApp
 
     const sub = $("#festaSubtitulo");
@@ -94,10 +104,10 @@
           <b class="eq-num">${IDADES[i]}</b>
           <span class="eq-nome">${esc(n)}</span>
         </div>`).join('<span class="eq-op" aria-hidden="true">+</span>') +
-      `<span class="eq-op" aria-hidden="true">=</span>
+      `<span class="eq-op eq-igual" aria-hidden="true">=</span>
        <div class="eq-item eq-total">
          <b class="eq-num">${total}</b>
-         <span class="eq-nome">anos de festa</span>
+         <span class="eq-nome">de festa</span>
        </div>`;
 
     $("#rodapeFesta").textContent =
@@ -179,6 +189,16 @@
     return hoje < dia ? "contagem" : hoje === dia ? "e-hoje" : "passou";
   }
 
+  // "11h, Salão Grande. Corre." — hora e local saem do banco, não do
+  // texto do mockup: os dois são editáveis pelo painel.
+  function chamadaDeHoje() {
+    if (!festa) return "Corre!";
+    const hora = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(new Date(festa.data)).replace(":00", "h").replace(":", "h");
+    return festa.local ? `${hora}, ${festa.local}. Corre.` : `${hora}. Corre.`;
+  }
+
   function tick() {
     const cd = $("#countdown");
     if (isNaN(alvo)) { cd.hidden = true; return; }
@@ -191,7 +211,18 @@
       cd.hidden = true;
       const aviso = $("#festaEstado");
       aviso.hidden = false;
-      aviso.textContent = estado === "e-hoje" ? "É hoje! 🎉" : "A festa já aconteceu. 💜";
+
+      if (estado === "e-hoje") {
+        aviso.dataset.tipo = "hoje";
+        aviso.innerHTML = `<b>É hoje!</b><p>${esc(chamadaDeHoje())}</p>`;
+      } else {
+        aviso.dataset.tipo = "passou";
+        aviso.innerHTML = `<b>Acabou 🍕</b>
+          <p>A festa já rolou e foi boa demais. Em breve as fotos reais entram
+             aqui no lugar das inventadas.</p>`;
+        // Com a festa passada o CTA "Tô dentro" não leva a lugar nenhum.
+        $("#ctaTopo").hidden = true;
+      }
       return;
     }
 

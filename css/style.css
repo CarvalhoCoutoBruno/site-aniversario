@@ -444,3 +444,135 @@ tr:last-child td { border-bottom: none; }
    de autor o vence. O .countdown tem display:flex, então ficava visível
    (zerado) ao lado do "É hoje!". Esta regra devolve a precedência. */
 .pagina-convite [hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------------
+   HERO — cartaz. Alinhado à esquerda, como pôster colado em poste.
+   --------------------------------------------------------------------- */
+.pagina-convite .hero {
+  position: relative;
+  padding: 28px 20px 32px;
+  border-bottom: 3px solid var(--cv-tinta);
+  overflow: hidden;
+}
+/* textura de pontos: substitui o confete decorativo da pele anterior.
+   CSS puro, sem markup e sem JS. */
+.pagina-convite .hero::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  opacity: .07;
+  background-image: radial-gradient(var(--cv-tinta) 1px, transparent 1px);
+  background-size: 5px 5px;
+}
+.pagina-convite .hero-inner { position: relative; }
+
+.pagina-convite .hero-eyebrow {
+  display: inline-block; margin: 0 0 14px;
+  border: 2px solid var(--cv-vermelho-txt);
+  color: var(--cv-vermelho-txt);
+  padding: 5px 10px;
+  letter-spacing: .2em;
+  transform: rotate(-2deg);
+}
+
+.pagina-convite .hero-title {
+  margin: 0;
+  font-size: 66px; line-height: .84; letter-spacing: -.02em;
+}
+/* a última palavra em vermelho — aplicada pelo main.js, não por <br>
+   fixo, porque o título vem do banco e é editável */
+.pagina-convite .hero-title .fim { color: var(--cv-vermelho); }
+
+.pagina-convite .hero-sub {
+  margin: 14px 0 0;
+  font-size: 15px; line-height: 1.5; font-weight: 500; max-width: 32ch;
+}
+
+/* ---- a equação 40 + 50 + 70 = 160 ---- */
+.pagina-convite .equacao {
+  display: flex; align-items: flex-end; gap: 6px;
+  margin: 24px 0 0; padding: 15px 0;
+  border-top: 2px dashed var(--cv-tinta);
+  border-bottom: 2px dashed var(--cv-tinta);
+}
+.pagina-convite .eq-item { flex: 1; text-align: center; }
+.pagina-convite .eq-num {
+  display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 35px; line-height: 1;
+}
+.pagina-convite .eq-nome {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+}
+.pagina-convite .eq-op {
+  font-family: "Anton", Impact, sans-serif; font-size: 20px;
+  padding-bottom: 16px; color: var(--cv-azul);
+}
+.pagina-convite .eq-igual { color: var(--cv-vermelho); }
+.pagina-convite .eq-total {
+  flex: 1.15; background: var(--cv-vermelho); color: var(--cv-papel);
+  padding: 5px 2px; transform: rotate(1.5deg);
+}
+.pagina-convite .eq-total .eq-nome { font-size: 10px; letter-spacing: .04em; }
+
+/* ---- ficha Dia / Onde ---- */
+.pagina-convite .ficha {
+  display: grid; grid-template-columns: auto 1fr; gap: 8px 14px;
+  margin: 20px 0 0; font-size: 15px;
+}
+.pagina-convite .ficha-rot {
+  letter-spacing: .12em; color: var(--cv-mudo-2); padding-top: 4px;
+}
+.pagina-convite .ficha b { font-weight: 700; }
+.pagina-convite .link-mapa {
+  display: inline-block; margin-top: 8px;
+  min-height: 44px; line-height: 44px;   /* alvo de toque */
+  font-weight: 700; font-size: 14px; color: var(--cv-azul);
+  text-decoration: none; border-bottom: 2px solid var(--cv-azul);
+}
+
+/* ---- countdown ---- */
+.pagina-convite .countdown {
+  display: flex; gap: 5px; margin: 22px 0 0;
+  font-family: "DM Mono", ui-monospace, monospace;
+}
+.pagina-convite .cd-box {
+  flex: 1; border: 2px solid var(--cv-tinta); padding: 9px 2px; text-align: center;
+}
+.pagina-convite .cd-box b {
+  display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 23px; line-height: 1;
+}
+.pagina-convite .cd-box span {
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+}
+
+/* ---- os dois avisos de estado da festa ---- */
+.pagina-convite .festa-estado { margin: 22px 0 0; }
+.pagina-convite .festa-estado[data-tipo="hoje"] {
+  background: var(--cv-vermelho); color: var(--cv-papel); text-align: center;
+  padding: 18px 14px; transform: rotate(-1deg);
+  box-shadow: 5px 5px 0 var(--cv-tinta);
+}
+.pagina-convite .festa-estado[data-tipo="passou"] {
+  border: 3px solid var(--cv-tinta); background: var(--cv-papel-2); padding: 18px 16px;
+}
+.pagina-convite .festa-estado b {
+  display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  text-transform: uppercase; line-height: .95;
+}
+.pagina-convite .festa-estado[data-tipo="hoje"] b { font-size: 40px; }
+.pagina-convite .festa-estado[data-tipo="passou"] b { font-size: 30px; line-height: 1; }
+.pagina-convite .festa-estado p { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+.pagina-convite .festa-estado[data-tipo="passou"] p {
+  margin-top: 8px; font-size: 14.5px; line-height: 1.5; font-weight: 400; color: var(--cv-corpo);
+}
+
+/* ---- o botão do cartaz: bloco preto com sombra dura ---- */
+.pagina-convite .btn-cta {
+  display: block; margin: 20px 0 0;
+  background: var(--cv-tinta); color: var(--cv-papel);
+  text-align: center; text-decoration: none;
+  font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 22px; letter-spacing: .02em; text-transform: uppercase;
+  padding: 17px; border: none; cursor: pointer; width: 100%;
+  box-shadow: 5px 5px 0 var(--cv-vermelho);
+}
+.pagina-convite .btn-cta:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-vermelho); }
