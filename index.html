@@ -6,13 +6,21 @@
   <title>Convite</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Anton (display) + Space Grotesk (corpo) + DM Mono (rótulos técnicos).
+       O admin.html tem <link> próprio, com Fraunces + Inter: as duas
+       tipografias não se misturam. -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <!-- A classe escopa paleta e fontes do convite. O admin.html usa o mesmo
      style.css e não pode herdar nada disto. -->
 <body class="pagina-convite">
   <div class="confetti" id="confetti" aria-hidden="true"></div>
+
+  <!-- A coluna do convite. Fica dentro de um wrapper porque o fundo da
+       página é preto e a coluna é creme: sem ele, o creme seria por
+       bloco e as emendas vazariam preto. -->
+  <div class="folha">
 
   <!-- ===================== HERO ===================== -->
   <header class="hero">
@@ -151,6 +159,8 @@
     <p id="rodapeFesta"></p>
     <p class="rodape-admin"><a href="admin.html">Área do organizador</a></p>
   </footer>
+
+  </div><!-- /.folha -->
 
   <!-- Template de card de pessoa (clonado via JS) -->
   <template id="tplPessoa">
