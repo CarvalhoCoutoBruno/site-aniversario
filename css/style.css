@@ -576,3 +576,59 @@ tr:last-child td { border-bottom: none; }
   box-shadow: 5px 5px 0 var(--cv-vermelho);
 }
 .pagina-convite .btn-cta:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-vermelho); }
+
+/* ---------------------------------------------------------------------
+   FOTOS — bloco escuro no meio da coluna creme.
+   --------------------------------------------------------------------- */
+.pagina-convite .secao-fotos {
+  padding: 28px 20px;
+  background: var(--cv-tinta);
+  color: var(--cv-papel);
+}
+.pagina-convite .secao-fotos .kicker {
+  margin: 0 0 4px; color: var(--cv-ambar); letter-spacing: .18em;
+}
+.pagina-convite .secao-fotos .secao-titulo {
+  margin: 0 0 16px; font-size: 34px; line-height: .95;
+}
+
+.pagina-convite .carrossel {
+  position: relative; overflow: hidden;
+  aspect-ratio: 4 / 5;
+  border: 3px solid var(--cv-papel);
+  background: var(--cv-escuro-2);
+}
+.pagina-convite .carrossel-track {
+  display: flex; height: 100%;
+  transition: transform .6s cubic-bezier(.6,.05,.2,1);
+}
+.pagina-convite .carrossel-track .slide { min-width: 100%; height: 100%; }
+.pagina-convite .carrossel-track .slide img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.pagina-convite .carrossel-legenda {
+  position: absolute; bottom: 0; left: 0; right: 0; margin: 0;
+  padding: 12px;
+  background: linear-gradient(transparent, rgba(20,17,13,.92));
+  font-size: 10px; letter-spacing: .1em;
+}
+
+/* Fora da moldura: os dots são a única navegação por clique, então
+   precisam de alvo de toque. O quadradinho visível tem 10px; o botão
+   tem 30px, com background-clip mantendo a diferença invisível. */
+.pagina-convite .car-dots {
+  display: flex; gap: 2px; justify-content: center; padding-top: 8px;
+}
+.pagina-convite .car-dots button {
+  width: 30px; height: 30px; padding: 10px;
+  border: none; border-radius: 0; cursor: pointer;
+  background: rgba(244,239,226,.4);
+  background-clip: content-box;
+}
+.pagina-convite .car-dots button.ativo { background: var(--cv-papel); background-clip: content-box; }
+
+.pagina-convite .carrossel-vazio {
+  margin: 0; padding: 28px 0 4px; text-align: center;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 12px; line-height: 1.7; color: var(--cv-claro-2);
+}

@@ -288,10 +288,27 @@
   function ir(i) { idx = (i + slides.length) % slides.length; atualizar(); }
   function reiniciarAuto() {
     clearInterval(auto);
-    if (slides.length > 1) auto = setInterval(() => ir(idx + 1), 4000);
+    if (slides.length > 1) auto = setInterval(() => ir(idx + 1), 5000);
   }
-  $("#carPrev").addEventListener("click", () => { ir(idx - 1); reiniciarAuto(); });
-  $("#carNext").addEventListener("click", () => { ir(idx + 1); reiniciarAuto(); });
+
+  /* As setas laterais saíram com a pele nova, então os dots são a única
+     navegação por clique. O arrasto cobre o gesto que o dedo já espera
+     numa faixa de foto. 40px de limiar para não confundir com a rolagem
+     vertical da página. */
+  (function ligarArrasto() {
+    const alvoCar = $("#carrossel");
+    let x0 = null;
+    alvoCar.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    alvoCar.addEventListener("touchend", (e) => {
+      if (x0 === null || slides.length < 2) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      x0 = null;
+      if (Math.abs(dx) < 40) return;
+      ir(dx < 0 ? idx + 1 : idx - 1);
+      reiniciarAuto();
+    }, { passive: true });
+  })();
+
   carregarFotos();
 
   /* ================= PRAZO DE CONFIRMAÇÃO =================

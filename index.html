@@ -71,21 +71,23 @@
   </header>
 
   <!-- ===================== CARROSSEL ===================== -->
-  <section class="secao carrossel-secao" id="secaoFotos">
-    <div class="secao-inner">
-      <p class="kicker">Memórias</p>
-      <h2 class="secao-titulo">Momentos</h2>
+  <section class="secao-fotos" id="secaoFotos">
+    <p class="kicker mono">Registros do futuro</p>
+    <h2 class="secao-titulo">Fotos da festa</h2>
 
-      <div class="carrossel" id="carrossel" aria-label="Fotos">
-        <div class="carrossel-track" id="carrosselTrack"><!-- slides --></div>
-        <button class="car-nav prev" id="carPrev" aria-label="Anterior">‹</button>
-        <button class="car-nav next" id="carNext" aria-label="Próxima">›</button>
-        <div class="car-dots" id="carDots"></div>
-      </div>
-      <p class="carrossel-vazio" id="carrosselVazio" hidden>
-        As fotos aparecerão aqui assim que forem adicionadas. 📸
-      </p>
+    <!-- Sem setas: numa coluna de 460px elas roubam área da foto e o
+         gesto natural é arrastar. Os dots ficam ABAIXO da moldura, não
+         sobre ela, para não disputar espaço com a legenda e para caberem
+         com alvo de toque de verdade. -->
+    <div class="carrossel" id="carrossel" aria-label="Fotos">
+      <div class="carrossel-track" id="carrosselTrack"><!-- slides --></div>
+      <p class="carrossel-legenda mono">Nenhuma destas fotos aconteceu. Ainda.</p>
     </div>
+    <div class="car-dots" id="carDots"></div>
+
+    <p class="carrossel-vazio" id="carrosselVazio" hidden>
+      As fotos entram aqui assim que forem adicionadas.
+    </p>
   </section>
 
   <!-- ===================== FORMULÁRIO RSVP ===================== -->
