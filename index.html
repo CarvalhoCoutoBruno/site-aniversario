@@ -11,6 +11,18 @@
        tipografias não se misturam. -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Preview do link no WhatsApp, que é por onde o convite chega.
+       ⚠️ Este é o ÚNICO lugar do convite com conteúdo escrito à mão:
+       o WhatsApp não executa JavaScript, então não há como puxar da
+       tabela `festa` como o resto da página faz. Mudou a data ou o
+       local no painel? Estas quatro linhas precisam mudar junto. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Festa dos 160 anos — Bruno, Braz e Bocão" />
+  <meta property="og:description" content="Sáb 31/10 às 11h, Salão Grande. Confirma aí quantos vêm e o que vão querer." />
+  <meta property="og:image" content="https://carvalhocoutobruno.github.io/site-aniversario/og-160.png" />
+  <meta property="og:url" content="https://carvalhocoutobruno.github.io/site-aniversario/" />
+  <meta name="twitter:card" content="summary_large_image" />
 </head>
 <!-- A classe escopa paleta e fontes do convite. O admin.html usa o mesmo
      style.css e não pode herdar nada disto. -->
