@@ -92,6 +92,52 @@ Como só o Claude Code faz git de escrita, subir o arquivo escrito pelo Cowork f
 
 **Antes de revisar, confira de que fatia é o arquivo** — a primeira linha diz. `prompt.md` e `plano.md` são sobrescritos a cada rodada, então ler o arquivo errado é uma falha silenciosa.
 
+## A fase de Design
+
+Existe uma terceira sessão, **Design**, e ela **não é uma ponta do ciclo** — é uma fase que roda
+**antes** dele. O protocolo em [WORKFLOW.md](../WORKFLOW.md) não mudou: `próxima`, `planeja`,
+`revisa`, `executa` e `fechou` seguem idênticos, entre Cowork e Claude Code.
+
+A primeira tentativa foi outra: pôr o Design como terceira ponta, entregando um `prompt-design.md`
+por fatia em paralelo ao `prompt.md`. Foi revertida porque trabalho de design não fecha por
+gatilho determinístico — fecha por aprovação humana, com variações lado a lado e "não gostei
+disso". Isso não cabe num slot de arquivo sobrescrito a cada rodada. O detalhe está em
+[../design/WORKFLOW-DESIGN.md](../design/WORKFLOW-DESIGN.md).
+
+**O que a fase entrega**, por superfície, em `docs/revisao/design/<superfície>/`:
+
+| Arquivo | O quê |
+|---|---|
+| `prompt-design.md` | Tokens, contraste medido, estados, regras de mobile, ⚠ no que é comportamento e não estilo. |
+| `mockups/*.html` | Mockup autônomo. É a **fonte de layout, espaçamento e hierarquia**. |
+| `assets/*` | Imagens que o código não sabe gerar (og:image, ícones). |
+
+Nome descritivo por superfície (`convite/`, `admin/`), nunca slot fixo — duas superfícies na fila
+se atropelariam. Isso é o oposto do `prompt.md`, que é efêmero de propósito.
+
+**A sessão de Design não tem git.** O pacote chega por chat ou por zip e é o Claude Code que
+commita. Deixar o pacote fora do repo recria o buraco de sincronia da Fatia 2, com a diferença de
+que aqui o arquivo perdido é a especificação inteira de uma tela.
+
+### Ler o mockup sem abrir o navegador
+
+Os mockups vêm como bundle autoextraível com React, e o HTML+CSS original — com os valores
+exatos — está numa string JSON na penúltima linha do arquivo:
+
+```bash
+python3 -c "import json,sys;print(json.loads(open(sys.argv[1]).read().split(chr(10))[381]))" \
+  docs/revisao/design/convite/mockups/convite-boteco.html
+```
+
+Isso evita estimar espaçamento a olho, que é exatamente o que o Claude Code **não** pode fazer.
+
+### A fronteira, na prática
+
+O Claude Code decide nome de classe, estrutura do JS, como quebra as funções e a ordem dos
+commits. Ele **não** decide espaçamento, cor, tamanho de fonte nem hierarquia: se o mockup não
+cobre um caso, a pergunta vai para o `plano.md` e o trabalho para naquele ponto — inventar vira
+divergência silenciosa, que só aparece na conferência de fidelidade, tarde demais.
+
 ## Convenções deste repo
 
 - Branch por rodada: `feat/`, `fix/` ou `chore/` + a fatia (ex.: `feat/fatia-2-config`), apagada após o merge.
@@ -117,6 +163,7 @@ Não há doc de estado separado. Existia um `CONTINUIDADE.md`, mas sem dono defi
 | Estado da fatia: o que entregou, evidência crua, hash pós-push, o que sobrou | `status.md` | é o canal Claude Code → Cowork que o protocolo já define |
 | Backlog e fatiamento | com o Cowork, materializado no `prompt.md` | é ele quem fatia por risco |
 | Gotchas de ambiente, receita de verificação, convenções | **este arquivo** | durável; sobreviver à rotação do `status.md` |
+| Especificação visual de uma tela | `docs/revisao/design/<superfície>/` | entregue pela fase de Design, por superfície e não por fatia |
 | Modelo de dados e decisões de negócio | ET e regras de negócio | já versionados |
 
 Regra prática: se vale para **esta** fatia, vai no `status.md`; se vale para **todas**, vem para cá.
