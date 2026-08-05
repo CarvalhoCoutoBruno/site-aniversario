@@ -19,8 +19,4 @@ window.CONFIG = {
     anonKey: "sb_publishable_K86bohNhtKvfzytzszn_YA_UlNN2iDL",
     bucketFotos: "fotos",
   },
-
-  // Rótulos sugeridos no seletor de acompanhante — puramente visual,
-  // não vira dado no banco.
-  relacoes: ["Esposa", "Marido", "Filho(a)", "Acompanhante"],
 };

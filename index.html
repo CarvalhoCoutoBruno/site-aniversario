@@ -92,62 +92,58 @@
 
   <!-- ===================== FORMULÁRIO RSVP ===================== -->
   <section class="rsvp" id="confirmar">
-    <div class="rsvp-inner">
-      <p class="kicker">Bora?</p>
-      <h2 class="secao-titulo">Confirmar presença</h2>
-      <p class="secao-sub">
-        Conta quem vem com você e o que cada um vai querer beber e comer. Rapidinho.
-      </p>
+    <p class="kicker mono">Sem enrolação</p>
+    <h2 class="secao-titulo">Confirma aí</h2>
+    <p class="secao-sub">Leva 40 segundos. É pra gente saber quanta pizza pedir.</p>
 
-      <!-- Mostrado no lugar do formulário quando o prazo já passou -->
-      <div class="rsvp-encerrado" id="rsvpEncerrado" hidden>
-        <div class="big">⏰</div>
-        <h3>Confirmações encerradas</h3>
-        <p id="rsvpEncerradoTexto">O prazo para confirmar presença já passou.</p>
+    <!-- Mostrado no lugar do formulário quando o prazo passou, ou quando
+         a festa já aconteceu. O texto de cada caso vem do main.js. -->
+    <div class="rsvp-encerrado" id="rsvpEncerrado" hidden>
+      <h3>Prazo<br>encerrado</h3>
+      <p id="rsvpEncerradoTexto">O prazo para confirmar presença já passou.</p>
+    </div>
+
+    <form id="rsvpForm" novalidate>
+      <label class="campo" for="responsavel">
+        <span class="campo-rot">Seu nome</span>
+        <input type="text" id="responsavel" name="responsavel" required placeholder="quem tá confirmando" />
+      </label>
+
+      <label class="campo" for="contato">
+        <span class="campo-rot">WhatsApp ou e-mail</span>
+        <input type="text" id="contato" name="contato" required placeholder="(51) 90000-0000" />
+        <small class="campo-dica">
+          É por aqui que a gente te acha. Confirmando de novo com o mesmo
+          contato, a resposta anterior é <strong>substituída</strong>.
+        </small>
+      </label>
+
+      <fieldset class="campo">
+        <legend class="campo-rot">Quem te chamou</legend>
+        <div class="chips" id="chipsAniversariantes"></div>
+      </fieldset>
+
+      <div id="pessoasLista"><!-- cards de pessoa --></div>
+      <button type="button" class="btn-somar" id="addPessoa">+ levar mais alguém</button>
+      <p class="campo-dica" id="limiteAcompanhantes" hidden>Máximo de 5 acompanhantes.</p>
+
+      <label class="campo" for="mensagem">
+        <span class="campo-rot">Recado ou restrição <em>(opcional)</em></span>
+        <textarea id="mensagem" name="mensagem" rows="3" maxlength="500"
+                  placeholder="alergia, restrição, ou só um recado"></textarea>
+        <small class="campo-dica contador" id="contadorMensagem" hidden></small>
+      </label>
+
+      <!-- contador ao vivo: quem adiciona 4 pessoas perde a conta -->
+      <div class="barra-total">
+        <span class="mono">Total</span>
+        <b id="totalPessoas">1 pessoa</b>
       </div>
 
-      <form id="rsvpForm" novalidate>
-        <div class="campo">
-          <label for="responsavel">Seu nome *</label>
-          <input type="text" id="responsavel" name="responsavel" required placeholder="Nome de quem está confirmando" />
-        </div>
-
-        <div class="campo">
-          <label for="contato">WhatsApp ou e-mail *</label>
-          <input type="text" id="contato" name="contato" required placeholder="(00) 00000-0000" />
-          <small class="campo-dica">
-            É por aqui que a gente fala com você. Confirmando de novo com o mesmo
-            contato, a confirmação anterior é <strong>substituída</strong>.
-          </small>
-        </div>
-
-        <fieldset class="campo">
-          <legend>Quem te convidou? * <small>(pode marcar mais de um)</small></legend>
-          <div class="chips" id="chipsAniversariantes"></div>
-        </fieldset>
-
-        <div class="pessoas-bloco">
-          <div class="pessoas-cabecalho">
-            <h3>Quem vai? 🎈</h3>
-            <p>Adicione você e seus acompanhantes com as preferências de cada um.</p>
-          </div>
-          <div id="pessoasLista"><!-- cards de pessoa --></div>
-          <button type="button" class="btn btn-ghost" id="addPessoa">+ Adicionar acompanhante</button>
-          <p class="campo-dica" id="limiteAcompanhantes" hidden>Máximo de 5 acompanhantes.</p>
-        </div>
-
-        <div class="campo">
-          <label for="mensagem">Recado ou restrição alimentar (opcional)</label>
-          <textarea id="mensagem" name="mensagem" rows="3" maxlength="500"
-                    placeholder="Alergia, restrição, ou só um recado 💌"></textarea>
-          <small class="campo-dica contador" id="contadorMensagem" hidden></small>
-        </div>
-
-        <p class="campo-dica prazo-aberto" id="prazoAberto" hidden></p>
-        <button type="submit" class="btn btn-primary btn-lg" id="btnEnviar">Confirmar presença 🎉</button>
-        <p class="form-status" id="formStatus" role="status"></p>
-      </form>
-    </div>
+      <button type="submit" class="btn-enviar" id="btnEnviar">Confirmar</button>
+      <p class="campo-dica prazo-aberto mono" id="prazoAberto" hidden></p>
+      <p class="form-status" id="formStatus" role="status"></p>
+    </form>
   </section>
 
   <footer class="rodape">
@@ -157,37 +153,38 @@
 
   </div><!-- /.folha -->
 
-  <!-- Template de card de pessoa (clonado via JS) -->
+  <!-- Template de card de pessoa (clonado via JS).
+       Bebida e comida agora vivem numa lista só ("Vai querer"): o
+       payload não muda, os data-bebida/data-comida continuam os mesmos.
+       O <select> de relação saiu — era ele que vazava da tela a 390px,
+       e o valor dele nunca foi lido por ninguém. -->
   <template id="tplPessoa">
     <div class="pessoa-card">
-      <span class="pessoa-rotulo"></span>
       <div class="pessoa-topo">
-        <input type="text" class="p-nome" placeholder="Nome (opcional)" />
-        <select class="p-relacao"></select>
-        <button type="button" class="p-remover" aria-label="Remover" title="Remover">✕</button>
+        <b class="pessoa-rotulo"></b>
+        <span class="pessoa-tag mono">Adulto</span>
+        <button type="button" class="p-remover" aria-label="Remover acompanhante" title="Remover">✕</button>
       </div>
-      <div class="pessoa-prefs">
-        <div class="pref-grupo">
-          <span class="pref-titulo">🎂 Idade</span>
+      <div class="pessoa-corpo">
+        <input type="text" class="p-nome" placeholder="nome de quem vem com você" />
+
+        <div class="pref-grupo p-grupo-tipo">
+          <span class="pref-titulo mono">É</span>
           <div class="pref-chips p-tipo">
             <label class="chip marcado"><input type="radio" value="adulto" checked /><span>Adulto</span></label>
             <label class="chip"><input type="radio" value="crianca" /><span>Criança</span></label>
           </div>
         </div>
+
         <div class="pref-grupo">
-          <span class="pref-titulo">🥤 Bebidas</span>
-          <div class="pref-chips p-bebidas">
+          <span class="pref-titulo mono">Vai querer</span>
+          <div class="pref-chips p-prefs">
             <label class="chip"><input type="checkbox" data-bebida="bebe_agua" /><span>Água</span></label>
-            <label class="chip"><input type="checkbox" data-bebida="bebe_refri" /><span>Refrigerante</span></label>
+            <label class="chip"><input type="checkbox" data-bebida="bebe_refri" /><span>Refri</span></label>
             <label class="chip p-chip-chopp"><input type="checkbox" data-bebida="bebe_chopp" /><span>Chopp</span></label>
-          </div>
-          <small class="campo-dica p-aviso-chopp" hidden>Chopp só para adultos.</small>
-        </div>
-        <div class="pref-grupo">
-          <span class="pref-titulo">🍕 Comida</span>
-          <div class="pref-chips p-comida">
             <label class="chip"><input type="checkbox" data-comida="come_pizza" /><span>Pizza</span></label>
           </div>
+          <small class="campo-dica p-aviso-chopp" hidden>Chopp só para adulto.</small>
         </div>
       </div>
     </div>

@@ -632,3 +632,158 @@ tr:last-child td { border-bottom: none; }
   font-family: "DM Mono", ui-monospace, monospace;
   font-size: 12px; line-height: 1.7; color: var(--cv-claro-2);
 }
+
+/* ---------------------------------------------------------------------
+   RSVP
+   --------------------------------------------------------------------- */
+.pagina-convite .rsvp {
+  padding: 28px 20px 36px;
+  border-top: 3px solid var(--cv-tinta);
+  background: var(--cv-papel);
+}
+.pagina-convite .rsvp .kicker {
+  margin: 0 0 4px; color: var(--cv-vermelho-txt); letter-spacing: .18em;
+}
+.pagina-convite .rsvp .secao-titulo { margin: 0 0 5px; font-size: 34px; line-height: .95; }
+.pagina-convite .secao-sub { margin: 0 0 20px; font-size: 14px; color: #4a4640; }
+
+.pagina-convite form { display: flex; flex-direction: column; gap: 16px; }
+.pagina-convite .campo {
+  display: flex; flex-direction: column; gap: 6px;
+  border: none; padding: 0; margin: 0;
+}
+.pagina-convite .campo-rot {
+  font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 0;
+}
+.pagina-convite .campo-rot em {
+  font-style: normal; font-weight: 400; text-transform: none;
+  letter-spacing: 0; color: var(--cv-mudo);
+}
+.pagina-convite input[type=text],
+.pagina-convite input[type=tel],
+.pagina-convite textarea {
+  width: 100%; font-family: inherit; color: var(--cv-tinta);
+  background: var(--cv-papel-2);
+  border: 2px solid var(--cv-tinta); border-radius: 0;
+  padding: 13px 12px; box-shadow: none;
+}
+.pagina-convite input:focus, .pagina-convite textarea:focus { box-shadow: none; }
+.pagina-convite textarea { resize: vertical; }
+.pagina-convite .campo-dica {
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 11px; line-height: 1.6; color: var(--cv-mudo);
+}
+.pagina-convite .campo-dica strong { color: var(--cv-tinta); }
+.pagina-convite .prazo-aberto {
+  margin: 0; text-align: center; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--cv-mudo);
+}
+
+/* ---- chips: quadrados, traço grosso, azul quando marcado ---- */
+.pagina-convite .chips { display: flex; gap: 6px; }
+.pagina-convite .chips .chip { flex: 1; text-align: center; }
+.pagina-convite .pref-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pagina-convite .chip {
+  position: relative; cursor: pointer; user-select: none;
+  padding: 12px 14px; border-radius: 0;
+  font-size: 14px; font-weight: 600;
+  background: var(--cv-papel-2); border: 2px solid var(--cv-tinta);
+  color: var(--cv-tinta); transition: none;
+}
+.pagina-convite .chip:hover { border-color: var(--cv-tinta); }
+.pagina-convite .chip.marcado {
+  background: var(--cv-azul); border-color: var(--cv-azul); color: var(--cv-papel);
+}
+.pagina-convite .chip.desabilitado { opacity: .4; cursor: not-allowed; }
+.pagina-convite .p-tipo .chip, .pagina-convite .chips .chip { font-weight: 700; padding: 13px 4px; }
+
+/* ---- cards de pessoa ---- */
+.pagina-convite .pessoa-card {
+  border: 2px solid var(--cv-tinta); border-radius: 0;
+  background: var(--cv-papel-2); padding: 0; gap: 0;
+  display: block;
+}
+.pagina-convite .pessoa-topo {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 11px 12px; background: var(--cv-mudo); color: var(--cv-papel); gap: 8px;
+}
+.pagina-convite .pessoa-card.responsavel .pessoa-topo { background: var(--cv-tinta); }
+.pagina-convite .pessoa-rotulo {
+  font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 17px; text-transform: uppercase; color: inherit;
+}
+.pagina-convite .pessoa-tag { font-size: 10px; letter-spacing: .1em; }
+.pagina-convite .p-remover {
+  width: 44px; height: 30px; border: none; background: transparent;
+  color: var(--cv-papel); font-size: 17px; cursor: pointer; border-radius: 0;
+}
+.pagina-convite .pessoa-corpo {
+  padding: 13px; display: flex; flex-direction: column; gap: 14px;
+}
+.pagina-convite .pessoa-corpo .p-nome {
+  background: var(--cv-papel-3); border-color: var(--cv-linha);
+}
+.pagina-convite .pref-titulo {
+  display: block; margin-bottom: 8px; font-size: 10px;
+  letter-spacing: .12em; color: var(--cv-mudo); font-weight: 400;
+}
+.pagina-convite .p-aviso-chopp { display: block; margin-top: 8px; }
+
+/* ---- somar acompanhante ---- */
+.pagina-convite .btn-somar {
+  font-family: inherit; font-size: 15px; font-weight: 700; padding: 15px;
+  border: 2px dashed var(--cv-tinta); border-radius: 0;
+  background: transparent; color: var(--cv-tinta); cursor: pointer; width: 100%;
+}
+
+/* ---- barra do total ---- */
+.pagina-convite .barra-total {
+  background: var(--cv-tinta); color: var(--cv-papel);
+  padding: 14px; display: flex; justify-content: space-between; align-items: center;
+  font-family: "DM Mono", ui-monospace, monospace; font-size: 12px; letter-spacing: .06em;
+}
+.pagina-convite .barra-total .mono { color: var(--cv-claro-2); letter-spacing: .06em; }
+.pagina-convite .barra-total b {
+  font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 22px; letter-spacing: .02em;
+}
+
+/* ---- enviar ---- */
+.pagina-convite .btn-enviar {
+  display: block; width: 100%; border: none; cursor: pointer;
+  background: var(--cv-vermelho); color: var(--cv-papel);
+  font-family: "Anton", Impact, sans-serif; font-weight: 400;
+  font-size: 23px; text-transform: uppercase; padding: 18px;
+  box-shadow: 5px 5px 0 var(--cv-tinta);
+}
+.pagina-convite .btn-enviar:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-tinta); }
+.pagina-convite .btn-enviar:disabled { opacity: .6; cursor: progress; }
+
+.pagina-convite .form-status {
+  text-align: center; font-weight: 700; margin: 0; min-height: 1.2rem; font-size: 14px;
+}
+.pagina-convite .form-status.err { color: var(--cv-vermelho-txt); }
+
+/* ---- prazo encerrado ---- */
+.pagina-convite .rsvp-encerrado {
+  border: 3px solid var(--cv-tinta); border-radius: 0;
+  background: var(--cv-papel-2); padding: 24px 18px;
+  box-shadow: 6px 6px 0 var(--cv-mudo);
+}
+.pagina-convite .rsvp-encerrado h3 {
+  margin: 0; font-size: 32px; line-height: .95; color: var(--cv-tinta);
+}
+.pagina-convite .rsvp-encerrado p {
+  margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: var(--cv-corpo);
+}
+
+/* ---- rodapé ---- */
+.pagina-convite .rodape {
+  padding: 22px 20px 26px; background: var(--cv-tinta); color: var(--cv-rodape);
+  text-align: center; font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase; line-height: 2;
+}
+.pagina-convite .rodape #rodapeFesta { margin: 0; }
+.pagina-convite .rodape-admin { margin: 0; }
+.pagina-convite .rodape a { color: var(--cv-ambar); }

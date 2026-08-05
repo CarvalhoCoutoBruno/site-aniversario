@@ -365,22 +365,20 @@
 
     if (ehResponsavel) {
       node.classList.add("responsavel");
-      node.querySelector(".p-nome").placeholder = "Seu nome (mesmo acima)";
+      // O responsável não digita o nome duas vezes: o campo de cima já é
+      // o que o envio usa. E ele é sempre adulto — o convite não é
+      // mandado para criança —, então o tipo vira rótulo fixo em vez de
+      // escolha. O payload continua saindo com tipo "adulto".
+      node.querySelector(".p-nome").remove();
+      node.querySelector(".p-grupo-tipo").remove();
       node.querySelector(".p-remover").remove();
-    }
-
-    const sel = node.querySelector(".p-relacao");
-    if (ehResponsavel) {
-      sel.innerHTML = `<option value="Responsável">Eu (responsável)</option>`;
-      sel.disabled = true;
     } else {
-      sel.innerHTML = C.relacoes.map((r) => `<option>${esc(r)}</option>`).join("");
+      node.querySelector(".pessoa-tag").remove();
+      // rádios de tipo precisam de name único por card, senão viram um
+      // grupo só e marcar "criança" num card desmarca o outro
+      const grupo = uid("tipo");
+      $$(".p-tipo input", node).forEach((r) => (r.name = grupo));
     }
-
-    // rádios de tipo precisam de name único por card, senão viram um
-    // grupo só e marcar "criança" num card desmarca o outro
-    const grupo = uid("tipo");
-    $$(".p-tipo input", node).forEach((r) => (r.name = grupo));
 
     ativarChips(node);
     ligarRegraChopp(node);
@@ -397,9 +395,15 @@
     const chopp = card.querySelector('[data-bebida="bebe_chopp"]');
     const chipChopp = card.querySelector(".p-chip-chopp");
     const aviso = card.querySelector(".p-aviso-chopp");
+    const radioCrianca = card.querySelector('.p-tipo input[value="crianca"]');
+
+    // O card do responsável não tem escolha de tipo: ele é sempre adulto,
+    // e o chopp está liberado. Sem esta saída, o querySelector nulo
+    // derrubaria a IIFE inteira na construção do primeiro card.
+    if (!radioCrianca) return;
 
     function aplicar() {
-      const ehCrianca = card.querySelector('.p-tipo input[value="crianca"]').checked;
+      const ehCrianca = radioCrianca.checked;
       chopp.disabled = ehCrianca;
       chipChopp.classList.toggle("desabilitado", ehCrianca);
       aviso.hidden = !ehCrianca;
@@ -425,18 +429,23 @@
     });
   }
 
+  // Quem adiciona quatro pessoas perde a conta de quantas somou.
+  function atualizarTotal() {
+    const n = $$(".pessoa-card", lista).length;
+    $("#totalPessoas").textContent = n === 1 ? "1 pessoa" : `${n} pessoas`;
+  }
+
   function atualizarBotaoAdd() {
     const cheio = contarAcompanhantes() >= MAX_ACOMPANHANTES;
     $("#addPessoa").hidden = cheio;
     $("#limiteAcompanhantes").hidden = !cheio;
     renumerarCards();
+    atualizarTotal();
   }
 
-  // primeiro card = responsável, com o nome espelhando o campo de cima
-  const cardResp = novoCard(true);
-  lista.appendChild(cardResp);
-  const nomeResp = cardResp.querySelector(".p-nome");
-  $("#responsavel").addEventListener("input", (e) => { nomeResp.value = e.target.value; });
+  // primeiro card = responsável. O nome dele não é digitado aqui: vem do
+  // campo de cima, que é o que o envio já usava.
+  lista.appendChild(novoCard(true));
 
   $("#addPessoa").addEventListener("click", () => {
     if (contarAcompanhantes() >= MAX_ACOMPANHANTES) return;
@@ -463,19 +472,24 @@
 
   /* ================= ENVIO ================= */
   function lerPessoa(card, indice) {
-    const nome = card.querySelector(".p-nome").value.trim();
+    const campoNome = card.querySelector(".p-nome");
+    const nome = campoNome ? campoNome.value.trim() : "";
     const ehResponsavel = card.dataset.papel === "principal";
+    // O card do responsável não tem rádio de tipo: ele é sempre adulto.
+    const radioCrianca = card.querySelector('.p-tipo input[value="crianca"]');
     const p = {
       // Nome de acompanhante é OPCIONAL e a pessoa entra mesmo sem ele.
       // Descartar quem não tem nome (como o formulário antigo fazia)
       // some com um consumidor e desequilibra o rateio.
       nome: nome || (ehResponsavel ? "" : null),
-      tipo: card.querySelector('.p-tipo input[value="crianca"]').checked ? "crianca" : "adulto",
+      tipo: radioCrianca && radioCrianca.checked ? "crianca" : "adulto",
       papel: ehResponsavel ? "principal" : "acompanhante",
       bebe_agua: false, bebe_refri: false, bebe_chopp: false, come_pizza: false,
     };
-    $$(".p-bebidas input:checked", card).forEach((i) => { p[i.dataset.bebida] = true; });
-    $$(".p-comida input:checked", card).forEach((i) => { p[i.dataset.comida] = true; });
+    // Bebida e comida moram no mesmo contêiner agora; a leitura passou a
+    // ser pelos data-*, que não mudaram, e não pelo grupo em que estavam.
+    $$("[data-bebida]:checked", card).forEach((i) => { p[i.dataset.bebida] = true; });
+    $$("[data-comida]:checked", card).forEach((i) => { p[i.dataset.comida] = true; });
     if (p.tipo === "crianca") p.bebe_chopp = false; // cinto e suspensório
     return p;
   }
@@ -526,7 +540,7 @@
       // convidado ia embora achando que tinha confirmado.
       console.error(error);
       btn.disabled = false;
-      btn.textContent = "Confirmar presença 🎉";
+      btn.textContent = "Confirmar";
       return falha(status, mensagemDeErro(error));
     }
 
