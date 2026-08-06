@@ -7,8 +7,10 @@ porta por onde ainda se apagava de verdade está trancada — não encostada.
 |---|---|
 | Branch | `feat/fatia-18-lixeira` → merge `--ff-only` → apagada |
 | Commits | 3, os dois de código verdes no `./verify.sh` |
-| Schema, RPCs e a porta | *(hash abaixo)* |
-| Lixeira no painel | *(hash abaixo)* |
+| Schema, RPCs e a porta | `7867e9cafce3d2094fc69505690a11dca6a6da12` |
+| Lixeira no painel | `db9461f11f8d315d5e6e6d792e09553a3b05763f` |
+| Este status | `d2d336a72e36234cd13e83796206738aa22a352e` |
+| `main == origin/main` | **sim** |
 | `tests/calc.test.js` | 63 asserções, inalteradas — `js/calc.js` não foi tocado |
 | Invariantes no `verify.sh` | 8 → **9** |
 
