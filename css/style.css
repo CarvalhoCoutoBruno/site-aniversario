@@ -576,6 +576,56 @@ textarea { resize: vertical; }
    digita, e não numa ajuda escondida, porque a consequência é dele mas
    quem sente é o convidado. Borda à esquerda em vez de fundo forte: é
    aviso, não erro — ele lê antes de digitar, não depois de errar. */
+/* ---- a lixeira, no fim de "Quem vem" ----
+   Recuada e apagada de propósito: ela é arquivo, não é a lista. Se
+   competisse visualmente com os cards de quem vem, cobraria atenção
+   todo dia por uma tela que se usa duas vezes no ano — que é a mesma
+   razão de ela não ser uma aba. */
+.page-admin .trash {
+  margin-top: 28px;
+  border-top: 1px solid var(--ad-borda);
+  padding-top: 8px;
+}
+.page-admin .trash-top {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 4px; border: none; background: transparent;
+  text-align: left; cursor: pointer; font-family: inherit;
+  color: var(--ad-mudo); font-size: 15px;
+}
+.page-admin .trash-arrow { font-size: 11px; }
+.page-admin .trash-body { padding: 0 4px 8px; }
+
+.page-admin .trash-card {
+  background: var(--ad-fundo);
+  border: 1px solid var(--ad-borda);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-top: 10px;
+}
+.page-admin .trash-card-top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+}
+.page-admin .trash-who { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.page-admin .trash-meta { font-size: 12px; color: var(--ad-mudo); }
+.page-admin .trash-count { flex: 0 0 auto; color: var(--ad-mudo); }
+
+/* Quando saiu e por qual porta — é o que faz decidir entre "ela
+   desistiu" e "eu apaguei sem querer". */
+.page-admin .trash-when {
+  margin: 10px 0 0; font-size: 12px; color: var(--ad-mudo);
+}
+/* O aviso do reenvio ocupa o lugar do botão que não existe ali. */
+.page-admin .trash-note {
+  margin: 10px 0 0; font-size: 12px; color: var(--ad-mudo); font-style: italic;
+}
+.page-admin .trash-restore {
+  margin-top: 12px; cursor: pointer; font-family: inherit;
+  font-size: 14px; font-weight: 600; padding: 10px 14px;
+  border: 1px solid var(--ad-borda-2); border-radius: 10px;
+  background: var(--ad-card); color: var(--ad-tinta);
+}
+.page-admin .trash-restore:hover { border-color: var(--ad-tinta); }
+
 .page-admin .ct-freeze {
   margin: 0 0 14px;
   padding: 10px 12px;

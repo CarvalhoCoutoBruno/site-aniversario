@@ -652,6 +652,12 @@
   let lastGroups = null;
   let lastOverview = null;
 
+  // A lixeira, deliberadamente FORA das duas de cima. Nenhum cálculo lê
+  // estas: quem as consome é só o renderTrash(). Ver a cerca no
+  // loadRSVPs().
+  let lastDeleted = null;         // os grupos cancelados
+  let lastDeletedPeople = null;   // Map(rsvp_id -> pessoas), das canceladas
+
   const fmtLiters = (n) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 
   function cartao(amount, label) {
@@ -1130,6 +1136,28 @@
     const activePeople = (p.data || []).filter(
       (person) => person.role === "celebrant" || activeIds.has(person.rsvp_id),
     );
+
+    // A LIXEIRA SAI DAQUI, do complemento — não de uma segunda consulta.
+    // As canceladas já vieram nesta leitura e eram descartadas; agora são
+    // guardadas. Acrescentar um `.not("deleted_at","is",null)` quebraria
+    // a invariante de leitura única do verify.sh, e a invariante está
+    // certa.
+    //
+    // A CERCA, que não é disciplina e sim topologia: `lastGroups` e
+    // `lastPeople` continuam recebendo SÓ o ativo — são eles que
+    // alimentam estimativa, rateio e acerto. O cancelado mora em
+    // variáveis separadas, lidas só pelo renderTrash(). Dois mapas, duas
+    // telas, sem interseção. Pessoa de grupo cancelado entrar em
+    // lastPeople é o modo de falha da Fatia 17 voltando pela porta dos
+    // fundos.
+    const deletedGroups = (g.data || []).filter((r) => r.deleted_at != null);
+    const deletedIds = new Set(deletedGroups.map((r) => r.id));
+    const deletedByGroup = new Map();
+    for (const person of p.data || []) {
+      if (!deletedIds.has(person.rsvp_id)) continue;
+      if (!deletedByGroup.has(person.rsvp_id)) deletedByGroup.set(person.rsvp_id, []);
+      deletedByGroup.get(person.rsvp_id).push(person);
+    }
     // ----------------------------------------------------------------
 
     const byGroup = new Map();
@@ -1141,8 +1169,11 @@
     }
     lastPeople = activePeople;   // as de grupo ATIVO e as 3 de aniversariante
     lastGroups = activeGroups;    // o elo convidado -> pagante (invited_by)
+    lastDeleted = deletedGroups;        // SÓ a lixeira lê estes dois
+    lastDeletedPeople = deletedByGroup;
     recompute();
     render(activeGroups, byGroup, celebrants);
+    renderTrash();
   }
 
   /* ================= ABA RESUMO =================
@@ -1407,6 +1438,137 @@
     const num = whatsNumber(contact);
     if (!num) return `<span class="group-acao group-acao-dead">Contato: ${esc(contact)}</span>`;
     return `<a class="group-acao" href="https://wa.me/${encodeURIComponent(num)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>`;
+  }
+
+  /* ================= A LIXEIRA =================
+     Só lê lastDeleted / lastDeletedPeople. Não chama recompute(), não
+     toca lastGroups/lastPeople, e a contagem do título é a única
+     contagem que ela produz — nada daqui vaza para o Resumo, para as
+     Compras ou para as Contas. */
+
+  let trashOpen = false;
+
+  // Por qual porta a linha saiu. As três existem porque as três gravam
+  // deleted_at — e a terceira, o reenvio, é a que engana: ninguém saiu
+  // da lista, a pessoa está lá na versão nova.
+  const EXIT_DOOR = {
+    guest:  { label: "cancelou pelo link",        restorable: true  },
+    admin:  { label: "você tirou da lista",        restorable: true  },
+    resend: { label: "substituída por um reenvio", restorable: false },
+  };
+
+  // `null` é "não registrado", e a tela diz isso em vez de inventar.
+  // Hoje o banco recusa cancelar sem procedência (rsvps_deleted_pair),
+  // então só chega aqui linha criada por SQL num dia estranho.
+  const UNKNOWN_DOOR = { label: "saiu da lista", restorable: true };
+
+  function renderTrash() {
+    const rows = (lastDeleted || []).slice()
+      .sort((a, b) => String(b.deleted_at).localeCompare(String(a.deleted_at)));
+
+    // Sem nada dentro, o bloco não existe na tela.
+    $("#trashBlock").hidden = rows.length === 0;
+    if (!rows.length) { trashOpen = false; syncTrashOpen(); return; }
+
+    $("#trashTitle").textContent = `Fora da lista (${rows.length})`;
+    $("#trashList").innerHTML = rows.map(trashCard).join("");
+    $$("[data-restore]").forEach((b) =>
+      b.addEventListener("click", () => restoreGroup(b.dataset.restore)));
+    syncTrashOpen();
+  }
+
+  function trashCard(g) {
+    const door = EXIT_DOOR[g.deleted_by] || UNKNOWN_DOOR;
+    const people = (lastDeletedPeople && lastDeletedPeople.get(g.id)) || [];
+    const hosts = (g.invited_by || []).map((id) => celebrantName(id, "?" + id)).join(", ");
+    const rows = people.map((p, i) => {
+      const items = preferences(p);
+      return `<div class="person-row">
+        <span class="person-row-name">${esc(personName(p, i))}</span>
+        <span class="mono person-row-kind${p.age_group === "child" ? " child" : ""}">${p.age_group === "child" ? "criança" : "adulto"}</span>
+        <span class="mono person-row-items">${items.length ? esc(items.join(" · ").toLowerCase()) : "—"}</span>
+      </div>`;
+    }).join("");
+
+    return `<div class="trash-card">
+      <div class="trash-card-top">
+        <span class="trash-who">
+          <b>${esc(g.lead_name)}</b>
+          <span class="mono trash-meta">${esc(g.contact)}${hosts ? " · convidado por " + esc(hosts) : ""}</span>
+        </span>
+        <span class="mono trash-count">${people.length}</span>
+      </div>
+      ${rows}
+      ${g.notes ? `<p class="group-note">${esc(g.notes)}</p>` : ""}
+      <p class="mono trash-when">${esc(door.label)} em ${esc(fmtDateTime(g.deleted_at))}</p>
+      ${door.restorable
+        ? `<button type="button" class="trash-restore" data-restore="${esc(g.id)}">Trazer de volta</button>`
+        : `<p class="mono trash-note">A confirmação que vale é a mais recente — não há o que trazer de volta.</p>`}
+    </div>`;
+  }
+
+  function syncTrashOpen() {
+    $("#trashBody").hidden = !trashOpen;
+    $("#trashToggle").setAttribute("aria-expanded", String(trashOpen));
+    $("#trashToggle").querySelector(".trash-arrow").textContent = trashOpen ? "▲" : "▼";
+  }
+
+  $("#trashToggle").addEventListener("click", () => { trashOpen = !trashOpen; syncTrashOpen(); });
+
+  async function restoreGroup(id) {
+    const g = (lastDeleted || []).find((x) => x.id === id);
+    if (!g) return;
+    const people = (lastDeletedPeople && lastDeletedPeople.get(id)) || [];
+
+    // A COLISÃO, checada ANTES de chamar a RPC. Cenário provável: a
+    // pessoa cancelou, mudou de ideia e confirmou de novo — então já
+    // existe linha ativa com aquele contato, e o índice único parcial
+    // recusaria com 23505.
+    //
+    // Checar aqui não é para evitar o erro, é para a FRASE: com a linha
+    // ativa em mãos dá para dizer quem e quando, o que o erro do banco
+    // não sabe. E não custa consulta — contact_norm é coluna gerada e
+    // veio no select("*"), e a linha concorrente já está em lastGroups.
+    const conflito = (lastGroups || []).find((x) => x.contact_norm === g.contact_norm);
+    if (conflito) {
+      return trashToast(
+        `${conflito.lead_name} já confirmou de novo em ${fmtDateTime(conflito.created_at)}, ` +
+        "depois de sair da lista. Trazer esta de volta criaria duas confirmações para o mesmo " +
+        "contato — a que vale é a mais recente.", "err");
+    }
+
+    const nomes = people.map((p, i) => personName(p, i)).join(", ");
+    if (!confirm(`Trazer ${g.lead_name} e ${nomes || "o grupo"} de volta para a lista? ` +
+                 "Eles voltam a contar nas compras e no rateio.")) return;
+
+    const { error } = await sb.rpc("restore_rsvp", { p_id: id });
+    if (error) {
+      console.error(error);
+      // A rede para a corrida de verdade: o cliente pode estar velho —
+      // outra aba, outro organizador, ou o convidado reconfirmando entre
+      // o meu carregar e o meu clicar. Sem esta tradução, o painel
+      // mostraria despejo de Postgres.
+      if (error.code === "23505") {
+        return trashToast(
+          "Esse contato já confirmou de novo, depois de sair da lista. Trazer esta de volta " +
+          "criaria duas confirmações para a mesma pessoa. Atualize a lista para ver a atual.", "err");
+      }
+      return trashToast(error.message || "Não consegui trazer de volta.", "err");
+    }
+
+    // O aviso vai para a LISTA, não para a lixeira: é lá que a pessoa
+    // acabou de reaparecer. E se ela era o último item, a lixeira some
+    // inteira — junto com qualquer mensagem que estivesse dentro dela.
+    listToast(`${g.lead_name} está de volta na lista.`, "ok");
+    // Recarrega em vez de remendar: é o que garante que a lista, o
+    // Resumo, as Compras e as Contas mudem junto.
+    await loadRSVPs();
+  }
+
+  function trashToast(msg, classe) {
+    const el = $("#trashMsg");
+    el.className = "msg-toast" + (classe ? " " + classe : "");
+    el.textContent = msg;
   }
 
   function wireCards() {

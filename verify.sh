@@ -120,6 +120,31 @@ else
   ok "o excluir do painel passa pela RPC"
 fi
 
+# "Esta base não apaga linha de convidado."
+#
+# A propriedade se apoia em DUAS linhas do supabase-setup.sql, e uma
+# invariante que vigiasse só metade daria falsa sensação:
+#
+#   1. nenhuma política de DELETE em rsvps/people — sem ela o comando
+#      não encontra linha; mas
+#   2. o revoke do grant — sem ele o DELETE não dá ERRO, ele apaga zero
+#      linhas e devolve SUCESSO, que é o pior jeito de uma porta ficar
+#      fechada. E o Supabase concede `all` por default nas tabelas novas,
+#      então sem a linha no arquivo uma instalação do zero nasce com o
+#      grant de volta.
+#
+# A de fotos fica de fora do alvo de propósito: apagar foto é apagar
+# mesmo, e é outro assunto.
+politica=$(grep -nE 'create policy .* on public\.(rsvps|people)' -A2 supabase-setup.sql 2>/dev/null \
+  | grep -c 'for delete')
+if [ "$politica" -ne 0 ]; then
+  erro "supabase-setup.sql tem política de delete em rsvps/people — deleted_at é a única saída da lista"
+elif ! grep -qE '^revoke delete on public\.rsvps, public\.people from anon, authenticated;' supabase-setup.sql; then
+  erro "o revoke do grant de delete sumiu do supabase-setup.sql — instalação do zero nasceria podendo apagar"
+else
+  ok "rsvps/people sem política de delete e sem grant de delete"
+fi
+
 # Formatação de data/hora presa ao fuso da festa.
 #
 # Dois bugs desta família já passaram: o prazo avançando um dia (Fatia 7) e

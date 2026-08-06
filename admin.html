@@ -111,6 +111,31 @@
         <p>Nenhuma confirmação bate com essa busca.</p>
         <button type="button" class="ad-btn" id="btnClearSearch">Limpar busca e filtros</button>
       </div>
+
+      <!-- A lixeira. Vive aqui, no fim de "Quem vem", e NÃO é uma sexta
+           aba: aba é navegação, cobraria atenção de todo mundo para
+           sempre por uma tela que se usa duas vezes no ano. E ela só faz
+           sentido ao lado da lista de onde as linhas saíram.
+
+           O conteúdo é escrito pelo renderTrash(), que também esconde
+           tudo quando não há nada dentro — bloco vazio ocupando o fim da
+           aba o ano inteiro é ruído permanente. Fora da busca e dos
+           filtros de propósito: aqueles são lente sobre quem vem; aqui é
+           tudo, sempre. -->
+      <div class="trash" id="trashBlock" hidden>
+        <button type="button" class="trash-top" id="trashToggle" aria-expanded="false" aria-controls="trashBody">
+          <b id="trashTitle">Fora da lista</b>
+          <span class="trash-arrow" aria-hidden="true">&#9660;</span>
+        </button>
+        <div class="trash-body" id="trashBody" hidden>
+          <p class="res-note">
+            Nada é apagado de verdade — quem sai da lista fica aqui. Estes não contam em
+            nenhum número de nenhuma aba.
+          </p>
+          <div id="trashList"></div>
+          <p class="msg-toast" id="trashMsg"></p>
+        </div>
+      </div>
       </section>
 
       <!-- ---------- Compras (provisório até a Fatia 13) ---------- -->
