@@ -345,7 +345,7 @@
     const d = new Date(prazo);
     if (isNaN(d)) return;
     const el = $("#prazoAberto");
-    el.textContent = `Confirme até ${d.toLocaleDateString("pt-BR")}`;
+    el.textContent = `Confirme até ${dataCurta(d)}`;
     el.hidden = false;
   }
 
@@ -364,11 +364,20 @@
     $("#prazoAberto").hidden = true;
   }
 
+  /* O prazo é gravado como 23:59:59-03:00, então em qualquer fuso a
+     LESTE de São Paulo o instante já caiu no dia seguinte. Sem fixar o
+     fuso, um convidado em Lisboa lê "confirme até 02/10" para um prazo
+     que fecha dia 01 — a mesma armadilha que já nos custou um dia de
+     diferença na Fatia 7, aqui na formatação em vez de no cálculo. */
+  function dataCurta(d) {
+    return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(d);
+  }
+
   function textoDoPrazo(prazo) {
     const d = new Date(prazo);
     return isNaN(d)
       ? "O prazo para confirmar presença já passou."
-      : `As confirmações fecharam em ${d.toLocaleDateString("pt-BR")} — a pizza já foi encomendada.`;
+      : `As confirmações fecharam em ${dataCurta(d)} — a pizza já foi encomendada.`;
   }
   checarPrazo();
 
