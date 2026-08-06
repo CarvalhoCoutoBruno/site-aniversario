@@ -1,182 +1,182 @@
-# Status — Fatia 12: Admin, casca (abas + roteamento + login) e a aba Resumo
+# Status — Fatia 13: Admin, abas "Quem vem" e "Compras"
 
-**Fatia fechada.** Os dois ajustes do review entraram, as três perguntas foram implementadas
-conforme as respostas, e o invariante de fuso achou um bug de verdade no caminho.
+**Fatia fechada.** A tabela de 7 colunas morreu, as duas seções provisórias saíram, e a tabela de
+casos do WhatsApp — que o review pediu — achou um bug que a leitura do código não pegou.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-12-admin-casca` → merge `--ff-only` → apagada |
-| Commits | 5, cada um verde no `./verify.sh` |
-| Commit do código | `395403e` (último da branch) |
-| `origin/main` após o push | `19a6f098085d95f17fac2ba70b7daf446ff2ee58` |
+| Branch | `feat/fatia-13-admin-lista-compras` → merge `--ff-only` → apagada |
+| Commits | 4, cada um verde no `./verify.sh` |
 
-## O que entrou
+## O bug que a tabela de casos achou
 
-| Commit | O quê |
-|---|---|
-| `feat` | escopo `.pagina-admin`, tokens, fontes, **e o prefixo nas 68 regras herdadas** |
-| `feat` | casca: cabeçalho fixo, 5 abas, roteamento por hash, conteúdo de hoje redistribuído |
-| `feat` | login no visual novo + seletor cobrindo `email` e `password` |
-| `feat` | aba Resumo |
-| `chore` | `verify.sh` ganha o invariante de fuso |
+A regra do WhatsApp decide por **comprimento antes de prefixo**, e o review estava certo sobre o
+porquê: `55` é DDI do Brasil **e** DDD de Santa Maria. Isso funcionou de primeira.
 
-## Os dois ajustes do review
+O que **não** funcionou, e só apareceu ao escrever os 12 casos:
 
-### Ajuste 1 — o invariante de fuso, com as duas correções
-
-A regra ficou: nenhum `toLocaleDateString` / `toLocaleTimeString` / `Intl.DateTimeFormat` em
-`js/` sem `timeZone`. O `toLocaleString` genérico **ficou de fora** (o `fmtNumeroBR` e o
-`fmtLitros` o usam para número), e o `Intl.DateTimeFormat` **entrou** — sem ele o invariante
-protegeria o caminho antigo e deixaria aberto justamente o que passamos a usar.
-
-Precisou de uma terceira correção que só apareceu ao rodar: a primeira versão era `grep` de linha
-única e **acusou nove trechos corretos**, porque o objeto de opções quase sempre quebra em várias
-linhas. Virou `awk` com janela de 6 linhas.
-
-**E achou um bug real:** o `fmtData()` mostrava a hora de chegada de cada confirmação no fuso de
-**quem abre o painel**. São cinco organizadores; a resposta tem que ser a mesma para todos.
-Corrigido na mesma fatia.
-
-Testado plantando uma violação:
 ```
-✗ formatação de data/hora sem timeZone (usa o fuso de quem abre a página):
-      js/main.js:711:const x = new Date().toLocaleDateString("pt-BR");
+FALHA  "+34611223344"  ->  5534611223344   DDI estrangeiro: não adivinha
 ```
-e voltando a verde ao remover.
 
-### Ajuste 2 — prefixo em vez de inventário
+Um número espanhol tem 11 dígitos depois de tirar o `+`, cai na regra do celular brasileiro e
+vira uma conversa com um desconhecido no Brasil. **O `+` é declaração explícita de DDI e tem de
+vencer qualquer heurística de comprimento.** Corrigido, e a tabela fechou 12/12:
 
-As 68 regras herdadas do admin foram prefixadas com `.pagina-admin`. Não muda nada visualmente e
-elimina a pele órfã fora de escopo.
-
-**Mas o prefixo sozinho não bastou**, e a tela mostrou por quê: com os dois lados escopados, o
-empate de especificidade passa a ser decidido pela **ordem**, e o bloco novo estava *antes* do
-herdado. O cartão antigo do login (380px, centralizado, cantos arredondados) continuava vencendo
-o novo, com o seletor idêntico. Duas correções:
-
-- removidas as regras do `.login-box` antigo, que a pele nova substitui inteiras;
-- o bloco da Fatia 12 movido para **depois** das herdadas.
-
-É o mesmo problema da Fatia 11 aparecendo pela terceira vez — agora resolvido por ordem, que é
-determinística, em vez de por especificidade, que é acidente.
-
-## As três perguntas, implementadas
-
-**P1 — barra do prazo:** régua da primeira confirmação recebida até o prazo. Sem confirmação, sem
-barra. **Com o prazo vencido trava em 100%** e o texto vira "As confirmações estão encerradas" em
-vez de contar dias negativos — a borda que o review pediu.
-
-**P2 — modo escuro:** o painel é claro nos dois esquemas. Medição abaixo.
-
-**P3 — carimbo:** hora do último carregamento da sessão, no fuso da festa.
+```
+  ok "51995509956"        -> 5551995509956   a Rosaura
+  ok "55987654321"        -> 5555987654321   DDD 55 (Santa Maria)
+  ok "5187654321"         -> 555187654321    fixo, 10 dígitos
+  ok "5551995509956"      -> 5551995509956   já com DDI, 13
+  ok "555187654321"       -> 555187654321    já com DDI, 12
+  ok "(51) 99550-9956"    -> 5551995509956   com máscara
+  ok "+55 51 99550-9956"  -> 5551995509956   + com DDI brasileiro
+  ok "+34611223344"       -> 34611223344     + com DDI estrangeiro: respeita
+  ok "+123"               -> null            + curto demais
+  ok "rosaura@email.com"  -> null            e-mail
+  ok "99550"              -> null            curto
+  ok ""                   -> null            vazio
+```
 
 ## Verificação integrada
 
-### Guarda de completude — o teste da Fatia 4
-
-Com o `GET /rest/v1/pessoas` **pendurado para sempre** (interceptado no `fetch`, que é a camada
-real — a primeira tentativa, stubando o builder do supabase-js, não pegava porque
-`.select().order()` devolve outro builder):
-
-```json
-{ "config_carregou": true, "festa_carregou": true, "pessoas": "GET pendurado — nunca resolve",
-  "estCusto": 0, "estVolumes": 0, "fecTotais": 0, "fecContas": 0,
-  "resumoConfirmados": "0", "resumoGrupos": "0" }
+### O `href` de cada tipo de contato, na tela
+```
+Rosaura      51995509956             -> https://wa.me/5551995509956    "Chamar no WhatsApp"
+e-mail       teste13@exemplo.invalid -> mailto:teste13%40exemplo.invalid  "Enviar e-mail"
+inválido     5199<b>0000</b>1111     -> (sem link)  "Contato: 5199<b>0000</b>1111"
 ```
 
-Config e festa chegaram; **nada** calculou com o estado pela metade.
+### XSS — nome, contato e recado com carga
+```
+{ "alertasDisparados": 0, "imgsInjetadas": 0, "scriptsInjetados": 0 }
+nome  no card: "<img src=x onerror=alert(1)>Teste XSS"   (texto literal)
+recado no card: "recado com <script>alert('xss')</script> dentro"
+```
+`window.alert` foi substituído por um contador antes do login; ficou em zero.
+
+### Exclusão e o estado compartilhado — o risco 2
+
+Filtro **Bruno** e busca **"teste"** ativos na hora de excluir:
+
+```
+              antes            depois
+filtro        Bruno            Bruno       ← sobreviveu
+busca         "teste"          "teste"     ← sobreviveu
+cards         2                1
+Resumo        7 confirmados    6           ← sem recarregar
+Resumo        3 grupos         2
+Compras base  7 confirmados    6
+Compras       Pizza (adulto) 6 → 5 · Água 3,5 L → 3 L
+```
+
+Frase do confirm:
+```
+Apagar a confirmação de Teste Fatia 13 e a 1 pessoa do grupo? Isso não tem como desfazer.
+```
+
+Toast depois de apagar:
+```
+Apagado. O que sumiu:
+Teste Fatia 13 · teste13@exemplo.invalid
+convidado por: Bruno
+- Solo (adulto): Água, Pizza
+```
+
+E o cascade, conferido no banco:
+```
+'Teste Fatia 13' ainda existe? 0
+pessoas com nome 'Solo': 0
+pessoas órfãs: 0
+aniversariantes intactos: ['Bruno', 'Braz', 'JH Boca']
+```
+
+### Busca e filtros
+```
+busca "rosaura"                       -> [Rosaura]
+busca "solo" (nome de ACOMPANHANTE)   -> [Teste Fatia 13]     ← o nit do review, entrou
+filtro Com crianças                   -> [<img src=x onerror…]
+filtro JH Boca                        -> [Rosaura]
+filtro Braz (ninguém)                 -> semResultado: true, vazioBanco: false
+limpar busca e filtros                -> os 3 de volta
+```
+
+Os dois vazios são distintos: `#listaVazia` só aparece com o banco vazio, `#listaSemResultado`
+só quando há filtro ativo e nada casa.
+
+### Compras
+```
+Calculada sobre 6 confirmados, aniversariantes incluídos.
+Chopp 5 L · Refrigerante 0 L · Água 3 L · Pizza (adulto) 5 · Pizza (criança) 1
+Custo estimado: R$ 179,00
+```
+
+Texto do fornecedor (bate com a tela, sem preço, litro sem arredondar para barril):
+```
+Festa dos 160 anos — 31/10/2026, sábado, 11h
+Lista de compra
+
+Chopp: 5 L
+Refrigerante: 0 L
+Água: 3 L
+Pizza (adulto): 5
+Pizza (criança): 1
+
+Base: 6 confirmados
+```
+
+Clipboard negada (forcei a rejeição):
+```
+{ "msg": "Não consegui copiar sozinho — o texto está aí embaixo, selecionado.",
+  "textareaVisivel": true, "selecionado": true }
+```
 
 ### Modo escuro — idêntico
 ```
-claro : body rgb(236,234,229) · coluna rgb(247,246,243) · card rgb(20,17,13) · input rgb(255,255,255)
-escuro: body rgb(236,234,229) · coluna rgb(247,246,243) · card rgb(20,17,13) · input rgb(255,255,255)
+claro : body rgb(236,234,229) · card rgb(255,255,255) · busca rgb(255,255,255) · filtro rgb(20,17,13)
+escuro: body rgb(236,234,229) · card rgb(255,255,255) · busca rgb(255,255,255) · filtro rgb(20,17,13)
 diferenças: nenhuma
 ```
 
-### Convite intacto — comparação site contra site
-
-Servi uma cópia do estado **antes** da fatia em `/antes/` e comparei 45 elementos × 14
-propriedades computadas:
-
+### Convite intacto
 ```
-elementosComparados: 45 · propriedadesPorElemento: 14
-diferenças: 1  →  .car-dots button  (backgroundColor)
+elementosComparados: 44 · diferenças: NENHUMA
 ```
+Comparação site contra site (`/antes/` × atual), 44 elementos × 14 propriedades. Deixei os dots do
+carrossel de fora desta vez: eles alternam sozinhos a cada 5s e foram o único falso positivo da
+Fatia 12.
 
-A única diferença é **qual dot do carrossel está ativo** — ele avança sozinho a cada 5s, então
-depende do instante da medição. Confirmado lendo os três dots: o ativo é opaco, os outros a 40%,
-nos dois lados. Título do convite segue em `Anton, Impact, sans-serif`.
-
-### Não-regressão do que está em uso
-
-Editei e salvei **pelo painel**, com o formulário de verdade:
-
+### A Rosaura, ao fim
 ```
-antes:  preco_pizza_adulto = 20,00
-salvo:  "Configuração salva. ✅"  →  banco: Decimal('23.45')
-custo_real_chopp / pago_por_chopp: None / None   ← o update foi ESTREITO
-restaurado: 20,00
+rsvp:   'Rosaura', 51995509956, contato_norm 51995509956, convidado_por [3], 'Te amooooo',
+        criado_em 2026-08-06 00:47:54 UTC
+pessoa: 'Rosaura', adulto, principal, ordem 0, água + pizza
+total rsvps: 1 · pessoas órfãs: 0
+config: pizza 20.00 · prazo 01/10/2026 23:59:59 (São Paulo)
+admins: 4 (o temporário foi removido)
 ```
 
-O `update` não tocou em `custo_real_*` nem em `pago_por_*`. É o invariante do item 4 do prompt,
-provado em vez de afirmado.
+Os RSVPs de teste foram apagados **por nome**, nunca em bloco.
 
-Carregamento na aba Ajustes, direto por `#ajustes`:
-```
-{ "convite": {"titulo":"Festa dos 160 anos","local":"Salão Grande — Av. C…","aniv3":"JH Boca"},
-  "precoPizza": "20,00", "prazo": "2026-10-01", "blocosAniv": 3, "fotos": 3 }
-```
+## Decisões que ficam registradas
 
-**O prazo lido pela tela é 01/10/2026** — não pelo `::date`, que foi o que me enganou na Fatia 11.
-
-### Roteamento
-```
-inicial (sem hash)      → resumo
-clique em Contas        → #contas,  visível: contas
-hash mudado por fora    → #compras, visível: compras
-hash inválido           → #nao-existe, visível: resumo
-botão voltar            → #compras, visível: compras
-recarregar em #ajustes  → abre em Ajustes
-```
-
-### Desktop
-```
-larguraColuna: 560 · larguraAbas: 560 · aba aberta: contas
-```
-
-### Dado do Bruno, ao fim
-```
-precos: pizza 20.00 / pizza-criança 20.00 / chopp 10.00 / refri 5.00 / água 3.00
-litros_chopp_por_adulto: 2.500
-prazo (São Paulo): 01/10/2026 23:59:59
-custo_real_chopp / pago_por_chopp: None / None
-festa: 'Festa dos 160 anos' · 'Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS'
-       · Bruno · Braz · JH Boca
-aniversariantes: ['Bruno', 'Braz', 'JH Boca']
-admins: 4  (o usuário temporário de teste foi removido; auth.users com o e-mail de teste: 0)
-```
-
-## ⚠️ A primeira confirmação de verdade chegou
-
-Durante esta fatia entrou um RSVP real:
-
-```
-rsvp:   'Rosaura', 51995509956, convidado_por [3] (JH Boca), 'Te amooooo'
-pessoa: 'Rosaura', adulto, principal, água + pizza
-```
-
-**Não encostei nela.** A partir daqui, todo teste que gravar RSVP apaga **por nome**, nunca em
-bloco — `delete from rsvps` sem `where` deixou de ser seguro neste projeto.
-
-Ela já aparece no Resumo: 4 confirmados (3 aniversariantes + Rosaura), 1 grupo, e o recado no
-bloco de "Recados e restrições", classificado como recado e não restrição.
+| O quê | Por quê |
+|---|---|
+| O `+` vence a heurística de comprimento | é declaração explícita de DDI; sem isso, número estrangeiro vira conversa com desconhecido |
+| Comprimento desconhecido não vira link | melhor não ter botão do que ter botão errado |
+| Recarrega em vez de remendar array | remendar é onde nasce divergência silenciosa, e aqui apareceria como número errado de pizza |
+| Busca e filtro em variáveis, não no HTML | é o que os faz sobreviver à recarga que o excluir dispara |
+| Litro não vira barril | quantos barris comprar é decisão do organizador com o fornecedor |
+| Filtro é lente, não contabilidade | grupo com dois anfitriões aparece nos dois; nenhum total por aniversariante nesta aba |
 
 ## O que fica para as próximas
 
-- **Fatia 13** (Quem vem + Compras): a tabela de 7 colunas ainda é a de hoje, dentro da aba.
-- **Fatia 14** (Ajustes): os quatro `<details>` provisórios saem; os inputs `date` e `url`
-  ganham o seletor (o `email`/`password` já foi pago aqui); e o aviso na tela de Ajustes de que
-  as `<meta>` `og:` do convite **não** seguem o painel.
+- **Fatia 14** (Ajustes): os `<details>` de Convite, Preços e Aniversariantes saem; `date` e `url`
+  ganham o seletor; e o aviso de que as `<meta>` `og:` do convite não seguem o painel.
 - **Fatia 15** (Contas): as 4 fases.
-- **Dívida aberta:** quando a Fatia 14 fechar, nenhuma página lerá o `:root` no escuro e o bloco
-  `@media (prefers-color-scheme: dark)` pode ser removido inteiro.
+- **Dívida registrada pelo review:** quando o `cancelar_rsvp` (P6 da Fatia 11) virar fatia, **a
+  lixeira anda junto** — "convidado cancela" e "admin apagou sem querer" são a mesma família
+  (`apagado_em` + RLS), e fazer as duas de uma vez é mais barato que duas mudanças de schema no
+  mesmo lugar.
+- Quando a Fatia 14 fechar, nenhuma página lerá o `:root` no escuro e o bloco
+  `@media (prefers-color-scheme: dark)` pode sair inteiro.

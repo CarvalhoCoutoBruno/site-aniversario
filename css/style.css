@@ -110,20 +110,12 @@ textarea { resize: vertical; }
 
 /* ===================== ADMIN ===================== */
 .pagina-admin .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
-.pagina-admin .admin-topo { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-.pagina-admin .admin-topo h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0; }
 
 .pagina-admin .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .9rem; margin-bottom: 1.8rem; }
 .pagina-admin .stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
 .pagina-admin .stat b { display: block; font-size: 1.9rem; font-family: "Fraunces", serif; color: var(--brand); }
 .pagina-admin .stat span { font-size: .82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 
-.pagina-admin .tabela-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-.pagina-admin table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--bg-soft); }
-.pagina-admin th, .pagina-admin td { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; font-size: .9rem; }
-.pagina-admin th { background: color-mix(in srgb, var(--brand) 8%, var(--bg-soft)); font-weight: 600; position: sticky; top: 0; }
-.pagina-admin tr:last-child td { border-bottom: none; }
-.pagina-admin .pill { display: inline-block; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); border-radius: 999px; padding: .1rem .55rem; font-size: .78rem; margin: .1rem .15rem 0 0; }
 
 .pagina-admin .admin-secao { margin-top: 2.5rem; }
 .pagina-admin .admin-secao h2 { font-size: 1.4rem; }
