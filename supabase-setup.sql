@@ -299,9 +299,9 @@ values (1,
   null,
   '2026-10-31T11:00:00-03:00',
   'Sábado, 31 de outubro de 2026, às 11h',
-  'Salão 3 — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS',
+  'Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS',
   'https://www.google.com/maps/search/?api=1&query=Av.+Cel.+Marcos%2C+627+-+Pedra+Redonda%2C+Porto+Alegre+-+RS%2C+91760-000',
-  'Bruno', 'Braz', 'Bocão')
+  'Bruno', 'Braz', 'JH Boca')
 on conflict (id) do nothing;
 
 -- =============================================================
