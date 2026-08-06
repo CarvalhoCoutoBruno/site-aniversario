@@ -43,9 +43,9 @@ a { color: var(--brand); }
 
 /* ===================== RSVP ===================== */
 form { display: flex; flex-direction: column; gap: 1.3rem; }
-.campo { display: flex; flex-direction: column; gap: .45rem; border: none; padding: 0; margin: 0; }
-.campo label, .campo legend { font-weight: 600; font-size: .95rem; }
-.campo legend small { font-weight: 400; color: var(--ink-soft); }
+.field { display: flex; flex-direction: column; gap: .45rem; border: none; padding: 0; margin: 0; }
+.field label, .field legend { font-weight: 600; font-size: .95rem; }
+.field legend small { font-weight: 400; color: var(--ink-soft); }
 input[type=text], input[type=tel], input[type=email], input[type=password],
 textarea, select {
   width: 100%; font: inherit; color: var(--ink);
@@ -67,14 +67,14 @@ textarea { resize: vertical; }
 }
 .chip input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
 .chip:hover { border-color: var(--brand); }
-.chip.marcado {
+.chip.checked {
   background: linear-gradient(120deg, var(--brand), var(--brand-2));
   color: #fff; border-color: transparent;
 }
 
-.pessoa-prefs { display: flex; flex-wrap: wrap; gap: 1rem; }
-.pref-grupo { flex: 1 1 200px; }
-.pref-titulo { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .45rem; color: var(--ink-soft); }
+.person-prefs { display: flex; flex-wrap: wrap; gap: 1rem; }
+.pref-group { flex: 1 1 200px; }
+.pref-title { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .45rem; color: var(--ink-soft); }
 
 .form-status { text-align: center; font-weight: 600; margin: 0; min-height: 1.2rem; }
 .form-status.ok { color: var(--ok); }
@@ -91,66 +91,66 @@ textarea { resize: vertical; }
 }
 
 /* ===================== ADMIN ===================== */
-.pagina-admin .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+.page-admin .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
 
-.pagina-admin .stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
-.pagina-admin .stat b { display: block; font-size: 1.9rem; font-family: "Fraunces", serif; color: var(--brand); }
-.pagina-admin .stat span { font-size: .82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
+.page-admin .stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
+.page-admin .stat b { display: block; font-size: 1.9rem; font-family: "Fraunces", serif; color: var(--brand); }
+.page-admin .stat span { font-size: .82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 
 
-.pagina-admin .fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .8rem; margin-top: 1rem; }
-.pagina-admin .foto-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
-.pagina-admin .foto-item img { width: 100%; height: 100%; object-fit: cover; }
-.pagina-admin .foto-item button {
+.page-admin .photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .8rem; margin-top: 1rem; }
+.page-admin .photo-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.page-admin .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+.page-admin .photo-item button {
   position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 8px;
   border: none; cursor: pointer; background: rgba(0,0,0,.55); color: #fff; font-size: .9rem;
 }
-.pagina-admin .upload-drop {
+.page-admin .upload-drop {
   border: 2px dashed var(--brand); border-radius: var(--radius); padding: 2rem 1rem; text-align: center;
   color: var(--ink-soft); cursor: pointer; transition: background .2s;
 }
-.pagina-admin .upload-drop:hover, .pagina-admin .upload-drop.drag { background: color-mix(in srgb, var(--brand) 8%, transparent); }
-.pagina-admin .upload-drop input { display: none; }
+.page-admin .upload-drop:hover, .page-admin .upload-drop.drag { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.page-admin .upload-drop input { display: none; }
 
-.pagina-admin .msg-toast { text-align: center; font-weight: 600; min-height: 1.2rem; margin: 1rem 0 0; }
-.pagina-admin .msg-toast.ok { color: var(--ok); }
-.pagina-admin .msg-toast.err { color: var(--err); }
-.pagina-admin .vazio { text-align: center; color: var(--ink-soft); padding: 2rem; }
+.page-admin .msg-toast { text-align: center; font-weight: 600; min-height: 1.2rem; margin: 1rem 0 0; }
+.page-admin .msg-toast.ok { color: var(--ok); }
+.page-admin .msg-toast.err { color: var(--err); }
+.page-admin .empty { text-align: center; color: var(--ink-soft); padding: 2rem; }
 
 /* ---- Fatia 1: tipo de pessoa, chopp bloqueado, prazo encerrado ---- */
-.pagina-admin .campo-dica { color: var(--ink-soft); font-size: .85rem; line-height: 1.45; }
+.page-admin .field-hint { color: var(--ink-soft); font-size: .85rem; line-height: 1.45; }
 
-.pagina-admin .chip.desabilitado {
+.page-admin .chip.disabled {
   opacity: .45;
   cursor: not-allowed;
   text-decoration: line-through;
 }
-.pagina-admin .chip.desabilitado:hover { border-color: var(--line); }
+.page-admin .chip.disabled:hover { border-color: var(--line); }
 
-.pagina-admin .pref-grupo .p-aviso-chopp { display: block; margin-top: .35rem; }
+.page-admin .pref-group .p-beer-warning { display: block; margin-top: .35rem; }
 
 
 /* ---- Ajustes da revisão da Fatia 1 ---- */
 
-.pagina-admin .contador { align-self: flex-end; font-variant-numeric: tabular-nums; }
-.pagina-admin .contador.no-limite { color: var(--err); font-weight: 600; }
+.page-admin .counter { align-self: flex-end; font-variant-numeric: tabular-nums; }
+.page-admin .counter.no-limit { color: var(--err); font-weight: 600; }
 
-.pagina-admin .prazo-aberto {
+.page-admin .deadline-open {
   text-align: center; font-weight: 600; color: var(--ink-soft); margin: 0 0 .25rem;
 }
 
 /* ---- Fatia 2: tela de config ---- */
 
-.pagina-admin .config-bloco { border: 1.5px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; margin: 1rem 0 0; }
-.pagina-admin .config-bloco legend { font-weight: 700; padding: 0 .4rem; }
+.page-admin .config-block { border: 1.5px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; margin: 1rem 0 0; }
+.page-admin .config-block legend { font-weight: 700; padding: 0 .4rem; }
 
-.pagina-admin .config-campo { display: flex; flex-direction: column; gap: .3rem; }
-.pagina-admin .config-campo span { font-size: .85rem; font-weight: 600; }
+.page-admin .config-field { display: flex; flex-direction: column; gap: .3rem; }
+.page-admin .config-field span { font-size: .85rem; font-weight: 600; }
 
 
 /* ---- Fatia 3: aniversariantes ---- */
-.pagina-admin .aniv-bloco legend small { font-weight: 400; color: var(--ink-soft); }
-.pagina-admin .aniv-bloco .pessoa-prefs { margin-top: .4rem; }
+.page-admin .celebrant-block legend small { font-weight: 400; color: var(--ink-soft); }
+.page-admin .celebrant-block .person-prefs { margin-top: .4rem; }
 
 /* ---- Fatia 4: estimativa ---- */
 
@@ -158,7 +158,7 @@ textarea { resize: vertical; }
 
 
 /* ---- Fatia 6: acerto ---- */
-.pagina-admin .config-campo span small { font-weight: 400; color: var(--ink-soft); }
+.page-admin .config-field span small { font-weight: 400; color: var(--ink-soft); }
 
 /* ---- Fatia 7: compartilhar o acerto ---- */
 
@@ -177,7 +177,7 @@ textarea { resize: vertical; }
    que qualquer das duas pontas. Quando a Fatia 14 fechar, ninguém mais
    lê o :root escuro e aquele bloco pode sair.
    ===================================================================== */
-.pagina-admin {
+.page-admin {
   --ad-fundo:    #eceae5;   /* fora da coluna */
   --ad-painel:   #f7f6f3;   /* fundo do app */
   --ad-card:     #ffffff;
@@ -214,53 +214,53 @@ textarea { resize: vertical; }
   font-family: "Space Grotesk", system-ui, sans-serif;
 }
 
-.pagina-admin h1, .pagina-admin h2, .pagina-admin h3 {
+.page-admin h1, .page-admin h2, .page-admin h3 {
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -.02em;
 }
-.pagina-admin .mono {
+.page-admin .mono {
   font-family: "DM Mono", ui-monospace, monospace;
 }
 /* [hidden] contra display de autor — mesma armadilha do convite */
-.pagina-admin [hidden] { display: none !important; }
+.page-admin [hidden] { display: none !important; }
 
 /* ---------------------------------------------------------------------
    LOGIN
    --------------------------------------------------------------------- */
-.pagina-admin .login-box {
+.page-admin .login-box {
   max-width: 560px; margin: 0 auto; min-height: 100vh;
   display: flex; flex-direction: column; justify-content: center;
   padding: 28px 20px;
   background: var(--ad-painel);
   box-shadow: 0 0 0 1px var(--ad-borda);
 }
-.pagina-admin .login-cartao {
+.page-admin .login-card {
   background: var(--ad-card); border: 1px solid var(--ad-borda);
   border-radius: 14px; padding: 26px 20px;
 }
-.pagina-admin .login-cartao h1 { margin: 0 0 4px; font-size: 22px; }
-.pagina-admin .login-sub { margin: 0 0 22px; font-size: 14px; color: var(--ad-mudo); }
-.pagina-admin #loginForm { display: flex; flex-direction: column; gap: 14px; }
-.pagina-admin .login-cartao .campo > span { font-size: 13px; font-weight: 600; }
-.pagina-admin .login-cartao input {
+.page-admin .login-card h1 { margin: 0 0 4px; font-size: 22px; }
+.page-admin .login-sub { margin: 0 0 22px; font-size: 14px; color: var(--ad-mudo); }
+.page-admin #loginForm { display: flex; flex-direction: column; gap: 14px; }
+.page-admin .login-card .field > span { font-size: 13px; font-weight: 600; }
+.page-admin .login-card input {
   border: 1px solid var(--ad-borda-2); border-radius: 10px;
   padding: 13px 12px; font-size: 16px;      /* 16px: abaixo disso o iOS dá zoom */
   background: var(--ad-card); color: var(--ad-tinta);
 }
-.pagina-admin .login-btn {
+.page-admin .login-btn {
   margin-top: 4px; width: 100%;
   font-family: inherit; font-size: 16px; font-weight: 700; padding: 15px;
   border: none; border-radius: 10px; cursor: pointer;
   background: var(--ad-tinta); color: var(--ad-painel);
 }
-.pagina-admin .login-volta { margin: 18px 0 0; text-align: center; font-size: 13px; }
-.pagina-admin .login-volta a { text-decoration: none; }
+.page-admin .login-volta { margin: 18px 0 0; text-align: center; font-size: 13px; }
+.page-admin .login-volta a { text-decoration: none; }
 
 /* ---------------------------------------------------------------------
    CASCA — coluna, cabeçalho fixo e barra de abas
    --------------------------------------------------------------------- */
-.pagina-admin .admin-wrap {
+.page-admin .admin-wrap {
   max-width: 560px;
   margin: 0 auto;
   padding: 0 0 82px;              /* espaço para a barra fixa não cobrir conteúdo */
@@ -269,41 +269,41 @@ textarea { resize: vertical; }
   box-shadow: 0 0 0 1px var(--ad-borda);
 }
 
-.pagina-admin .ad-topo {
+.page-admin .ad-top {
   position: sticky; top: 0; z-index: 5;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 14px 16px 10px;
   background: var(--ad-painel);
   border-bottom: 1px solid var(--ad-borda);
 }
-.pagina-admin .ad-topo h1 { margin: 0; font-size: 19px; }
-.pagina-admin .ad-carimbo { margin: 2px 0 0; font-size: 11px; color: var(--ad-mudo); }
-.pagina-admin .ad-topo-acoes { display: flex; gap: 8px; flex: 0 0 auto; }
+.page-admin .ad-top h1 { margin: 0; font-size: 19px; }
+.page-admin .ad-stamp { margin: 2px 0 0; font-size: 11px; color: var(--ad-mudo); }
+.page-admin .ad-top-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 
-.pagina-admin .ad-icone,
-.pagina-admin .ad-btn {
+.page-admin .ad-icon,
+.page-admin .ad-btn {
   height: 44px; border: 1px solid var(--ad-borda-2); border-radius: 10px;
   background: var(--ad-card); color: var(--ad-tinta);
   font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
 }
-.pagina-admin .ad-icone { width: 44px; font-size: 16px; }
-.pagina-admin .ad-btn { padding: 0 14px; }
-.pagina-admin .ad-icone:hover,
-.pagina-admin .ad-btn:hover { border-color: var(--ad-tinta); }
+.page-admin .ad-icon { width: 44px; font-size: 16px; }
+.page-admin .ad-btn { padding: 0 14px; }
+.page-admin .ad-icon:hover,
+.page-admin .ad-btn:hover { border-color: var(--ad-tinta); }
 
-.pagina-admin .ad-conteudo { padding: 16px 16px 24px; }
-.pagina-admin .ad-aba { display: flex; flex-direction: column; gap: 16px; }
+.page-admin .ad-content { padding: 16px 16px 24px; }
+.page-admin .ad-panel { display: flex; flex-direction: column; gap: 16px; }
 
 /* Barra de abas: fixa no rodapé, alvo de 58px, rótulo de texto.
    Sem ícone — glifo ambíguo foi testado e descartado pelo design. */
-.pagina-admin .ad-abas {
+.page-admin .ad-tabs {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
   display: grid; grid-template-columns: repeat(5, 1fr);
   width: 100%; max-width: 560px; margin: 0 auto;
   background: var(--ad-card);
   border-top: 1px solid var(--ad-borda);
 }
-.pagina-admin .ad-aba-btn {
+.page-admin .ad-tab-btn {
   display: flex; align-items: center; justify-content: center;
   min-height: 58px;
   padding: 10px 2px calc(10px + env(safe-area-inset-bottom));
@@ -312,168 +312,168 @@ textarea { resize: vertical; }
   font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: -.01em;
   cursor: pointer;
 }
-.pagina-admin .ad-aba-btn.ativa { color: var(--ad-azul); border-top-color: var(--ad-azul); }
+.page-admin .ad-tab-btn.active { color: var(--ad-azul); border-top-color: var(--ad-azul); }
 
 /* ---------------------------------------------------------------------
    ABA RESUMO
    --------------------------------------------------------------------- */
-.pagina-admin .res-cartoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.pagina-admin .res-cartao {
+.page-admin .res-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.page-admin .res-card {
   background: var(--ad-card); border: 1px solid var(--ad-borda);
   border-radius: 14px; padding: 16px;
 }
-.pagina-admin .res-cartao-forte {
+.page-admin .res-card-forte {
   background: var(--ad-tinta); color: var(--ad-painel); border-color: var(--ad-tinta);
 }
-.pagina-admin .res-rot {
+.page-admin .res-label {
   display: block; font-size: 10px; letter-spacing: .14em;
   text-transform: uppercase; color: var(--ad-mudo);
 }
-.pagina-admin .res-cartao-forte .res-rot { color: var(--ad-mudo-2); }
-.pagina-admin .res-cartao b {
+.page-admin .res-card-forte .res-label { color: var(--ad-mudo-2); }
+.page-admin .res-card b {
   display: block; margin-top: 4px; font-size: 40px; line-height: 1; letter-spacing: -.03em;
 }
-.pagina-admin .res-sub { display: block; margin-top: 6px; font-size: 13px; color: var(--ad-mudo); }
-.pagina-admin .res-cartao-forte .res-sub { color: var(--ad-claro-2); }
+.page-admin .res-sub { display: block; margin-top: 6px; font-size: 13px; color: var(--ad-mudo); }
+.page-admin .res-card-forte .res-sub { color: var(--ad-claro-2); }
 
-.pagina-admin .res-bloco {
+.page-admin .res-block {
   background: var(--ad-card); border: 1px solid var(--ad-borda);
   border-radius: 14px; padding: 16px;
 }
-.pagina-admin .res-bloco-liso { padding: 0; overflow: hidden; }
-.pagina-admin .res-bloco-topo {
+.page-admin .res-block-flat { padding: 0; overflow: hidden; }
+.page-admin .res-block-top {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 10px; margin-bottom: 12px; font-size: 15px;
 }
-.pagina-admin .res-bloco-topo span { font-size: 12px; color: var(--ad-mudo); }
-.pagina-admin .res-bloco-cab { padding: 14px 16px 10px; border-bottom: 1px solid var(--ad-linha-2); }
-.pagina-admin .res-bloco-cab b { font-size: 15px; }
-.pagina-admin .res-bloco-cab p { margin: 2px 0 0; font-size: 12.5px; color: var(--ad-mudo); }
-.pagina-admin .res-titulo { display: block; margin-bottom: 4px; font-size: 15px; }
-.pagina-admin .res-nota { margin: 10px 0 0; font-size: 13px; color: var(--ad-mudo); }
-.pagina-admin .res-nota b { color: var(--ad-tinta); }
+.page-admin .res-block-top span { font-size: 12px; color: var(--ad-mudo); }
+.page-admin .res-block-cab { padding: 14px 16px 10px; border-bottom: 1px solid var(--ad-linha-2); }
+.page-admin .res-block-cab b { font-size: 15px; }
+.page-admin .res-block-cab p { margin: 2px 0 0; font-size: 12.5px; color: var(--ad-mudo); }
+.page-admin .res-title { display: block; margin-bottom: 4px; font-size: 15px; }
+.page-admin .res-nota { margin: 10px 0 0; font-size: 13px; color: var(--ad-mudo); }
+.page-admin .res-nota b { color: var(--ad-tinta); }
 
-.pagina-admin .res-barra {
+.page-admin .res-bar {
   flex: 1; height: 8px; border-radius: 4px; background: var(--ad-fundo); overflow: hidden;
 }
-.pagina-admin .res-barra-fill { height: 100%; background: var(--ad-azul); }
-.pagina-admin .res-barra-fill.cheia { background: var(--ad-mudo); }
+.page-admin .res-bar-fill { height: 100%; background: var(--ad-azul); }
+.page-admin .res-bar-fill.full { background: var(--ad-mudo); }
 
-.pagina-admin .res-linha {
+.page-admin .res-row {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 16px; border-bottom: 1px solid var(--ad-linha-2);
 }
-.pagina-admin .res-linha:last-child { border-bottom: none; }
-.pagina-admin .res-linha-nome { flex: 0 0 78px; font-size: 14px; font-weight: 600; }
-.pagina-admin .res-linha-n {
+.page-admin .res-row:last-child { border-bottom: none; }
+.page-admin .res-row-name { flex: 0 0 78px; font-size: 14px; font-weight: 600; }
+.page-admin .res-row-n {
   flex: 0 0 34px; text-align: right; font-size: 14px; font-weight: 500;
 }
 
-.pagina-admin .res-recados { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.pagina-admin .res-recados:empty { margin-top: 0; }
-.pagina-admin .res-recado { border-left: 3px solid var(--ad-borda-2); padding: 2px 0 2px 12px; }
-.pagina-admin .res-recado.restricao { border-left-color: var(--ad-vermelho); }
-.pagina-admin .res-recado-quem { display: block; font-size: 13px; font-weight: 600; }
-.pagina-admin .res-recado-txt {
+.page-admin .res-notes { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.page-admin .res-notes:empty { margin-top: 0; }
+.page-admin .res-note { border-left: 3px solid var(--ad-borda-2); padding: 2px 0 2px 12px; }
+.page-admin .res-note.restriction { border-left-color: var(--ad-vermelho); }
+.page-admin .res-note-who { display: block; font-size: 13px; font-weight: 600; }
+.page-admin .res-note-txt {
   display: block; margin-top: 2px; font-size: 13.5px; line-height: 1.45; color: var(--ad-corpo);
 }
 
 /* ---------------------------------------------------------------------
    ABA "QUEM VEM" — cards no lugar da tabela de 7 colunas
    --------------------------------------------------------------------- */
-.pagina-admin .ad-busca {
+.page-admin .ad-search {
   width: 100%; font-size: 16px; padding: 13px 14px;
   border: 1px solid var(--ad-borda-2); border-radius: 10px;
   background: var(--ad-card); color: var(--ad-tinta);
 }
-.pagina-admin .ad-filtros {
+.page-admin .ad-filters {
   display: flex; gap: 7px; margin: 12px 0 4px;
   overflow-x: auto; padding-bottom: 2px;
 }
-.pagina-admin .ad-filtro {
+.page-admin .ad-filter {
   flex: 0 0 auto; cursor: pointer;
   font-family: inherit; font-size: 13.5px; font-weight: 600;
   padding: 10px 14px; border-radius: 999px;
   border: 1px solid var(--ad-borda-2); background: var(--ad-card); color: var(--ad-tinta);
 }
-.pagina-admin .ad-filtro.ativo {
+.page-admin .ad-filter.active {
   background: var(--ad-tinta); color: var(--ad-painel); border-color: var(--ad-tinta);
 }
 
-.pagina-admin .lista-grupos { display: flex; flex-direction: column; gap: 10px; }
-.pagina-admin .lista-msg:empty { display: none; }
-.pagina-admin .lista-msg { white-space: pre-wrap; text-align: left; }
+.page-admin .list-groups { display: flex; flex-direction: column; gap: 10px; }
+.page-admin .list-msg:empty { display: none; }
+.page-admin .list-msg { white-space: pre-wrap; text-align: left; }
 
-.pagina-admin .grupo-card {
+.page-admin .group-card {
   background: var(--ad-card); border: 1px solid var(--ad-borda);
   border-radius: 14px; overflow: hidden;
 }
-.pagina-admin .grupo-topo {
+.page-admin .group-top {
   width: 100%; display: flex; align-items: center; gap: 12px;
   padding: 14px 16px; border: none; background: transparent;
   text-align: left; cursor: pointer; font-family: inherit; color: inherit;
 }
-.pagina-admin .grupo-quem { flex: 1; min-width: 0; }
-.pagina-admin .grupo-quem b { display: block; font-size: 15.5px; letter-spacing: -.01em; }
-.pagina-admin .grupo-meta {
+.page-admin .group-who { flex: 1; min-width: 0; }
+.page-admin .group-who b { display: block; font-size: 15.5px; letter-spacing: -.01em; }
+.page-admin .group-meta {
   display: block; margin-top: 2px; font-size: 11.5px; color: var(--ad-mudo);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.pagina-admin .grupo-qtd {
+.page-admin .group-count {
   flex: 0 0 auto; font-size: 13px; font-weight: 500;
   background: var(--ad-fundo); border-radius: 999px; padding: 5px 10px;
 }
-.pagina-admin .grupo-seta { flex: 0 0 auto; font-size: 11px; color: var(--ad-mudo); }
+.page-admin .group-arrow { flex: 0 0 auto; font-size: 11px; color: var(--ad-mudo); }
 
-.pagina-admin .grupo-corpo { padding: 0 16px 14px; border-top: 1px solid var(--ad-linha-2); }
-.pagina-admin .pessoa-linha {
+.page-admin .group-body { padding: 0 16px 14px; border-top: 1px solid var(--ad-linha-2); }
+.page-admin .person-row {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 0; border-bottom: 1px solid var(--ad-linha-2);
 }
-.pagina-admin .pessoa-linha-nome { flex: 1; font-size: 14.5px; min-width: 0; }
-.pagina-admin .pessoa-linha-tipo {
+.page-admin .person-row-name { flex: 1; font-size: 14.5px; min-width: 0; }
+.page-admin .person-row-kind {
   font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ad-mudo);
 }
-.pagina-admin .pessoa-linha-tipo.crianca { color: var(--ad-ambar-txt); }
-.pagina-admin .pessoa-linha-itens { font-size: 12px; color: var(--ad-mudo); }
-.pagina-admin .grupo-recado {
+.page-admin .person-row-kind.child { color: var(--ad-ambar-txt); }
+.page-admin .person-row-items { font-size: 12px; color: var(--ad-mudo); }
+.page-admin .group-note {
   margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--ad-corpo);
 }
-.pagina-admin .grupo-quando { margin: 10px 0 0; font-size: 11px; color: var(--ad-mudo); }
+.page-admin .group-when { margin: 10px 0 0; font-size: 11px; color: var(--ad-mudo); }
 
-.pagina-admin .grupo-acoes { display: flex; gap: 8px; margin-top: 12px; }
-.pagina-admin .grupo-acao {
+.page-admin .group-actions { display: flex; gap: 8px; margin-top: 12px; }
+.page-admin .group-acao {
   flex: 1; text-align: center; text-decoration: none;
   font-size: 14px; font-weight: 600; padding: 12px;
   border: 1px solid var(--ad-borda-2); border-radius: 10px; color: var(--ad-tinta);
 }
-.pagina-admin .grupo-acao-morta { color: var(--ad-mudo); font-weight: 400; }
-.pagina-admin .grupo-excluir {
+.page-admin .group-acao-dead { color: var(--ad-mudo); font-weight: 400; }
+.page-admin .group-excluir {
   flex: 0 0 auto; cursor: pointer; font-family: inherit;
   font-size: 14px; font-weight: 600; padding: 12px 14px;
   border: 1px solid var(--ad-erro-borda); border-radius: 10px;
   background: var(--ad-card); color: var(--ad-vermelho);
 }
 
-.pagina-admin .vazio { text-align: center; color: var(--ad-mudo); padding: 28px 8px; }
-.pagina-admin #listaSemResultado p { margin: 0 0 12px; }
+.page-admin .empty { text-align: center; color: var(--ad-mudo); padding: 28px 8px; }
+.page-admin #listNoResult p { margin: 0 0 12px; }
 
 /* ---------------------------------------------------------------------
    ABA "COMPRAS"
    --------------------------------------------------------------------- */
-.pagina-admin .compras-lista {
+.page-admin .shopping-list {
   display: flex; flex-direction: column; gap: 1px;
   background: var(--ad-fundo); border-radius: 10px; overflow: hidden;
   margin-top: 14px;
 }
-.pagina-admin .compras-linha {
+.page-admin .shopping-row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: 14px; background: var(--ad-card); font-size: 14.5px;
 }
-.pagina-admin .compras-linha b { font-size: 16px; font-weight: 500; }
-.pagina-admin .compras-custo { font-size: 22px; font-weight: 500; letter-spacing: -.02em; }
-.pagina-admin .ad-btn-largo { width: 100%; margin-top: 12px; padding: 14px; font-size: 15px; }
-.pagina-admin .compras-texto {
+.page-admin .shopping-row b { font-size: 16px; font-weight: 500; }
+.page-admin .shopping-cost { font-size: 22px; font-weight: 500; letter-spacing: -.02em; }
+.page-admin .ad-btn-wide { width: 100%; margin-top: 12px; padding: 14px; font-size: 15px; }
+.page-admin .shopping-text {
   width: 100%; margin-top: 10px; font-family: "DM Mono", ui-monospace, monospace;
   font-size: 13px; border: 1px solid var(--ad-borda-2); border-radius: 10px; padding: 12px;
 }
@@ -481,78 +481,78 @@ textarea { resize: vertical; }
 /* ---------------------------------------------------------------------
    ABA "AJUSTES" — acordeões
    --------------------------------------------------------------------- */
-.pagina-admin #aba-ajustes { gap: 10px; }
+.page-admin #panel-settings { gap: 10px; }
 
-.pagina-admin .aj-bloco {
+.page-admin .aj-block {
   background: var(--ad-card); border: 1px solid var(--ad-borda);
   border-radius: 14px; overflow: hidden;
 }
-.pagina-admin .aj-topo {
+.page-admin .aj-top {
   width: 100%; display: flex; align-items: center; gap: 12px;
   padding: 16px; border: none; background: transparent;
   text-align: left; cursor: pointer; font-family: inherit; color: inherit;
 }
-.pagina-admin .aj-quem { flex: 1; min-width: 0; }
-.pagina-admin .aj-quem b { display: block; font-size: 15.5px; letter-spacing: -.01em; }
-.pagina-admin .aj-desc { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ad-mudo); }
-.pagina-admin .aj-seta { flex: 0 0 auto; font-size: 11px; color: var(--ad-mudo); }
+.page-admin .aj-who { flex: 1; min-width: 0; }
+.page-admin .aj-who b { display: block; font-size: 15.5px; letter-spacing: -.01em; }
+.page-admin .aj-desc { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ad-mudo); }
+.page-admin .aj-arrow { flex: 0 0 auto; font-size: 11px; color: var(--ad-mudo); }
 
 /* "não salvo": só aparece com edição pendente, e some ao salvar */
-.pagina-admin .aj-sujo {
+.page-admin .aj-dirty {
   flex: 0 0 auto; font-family: "DM Mono", ui-monospace, monospace;
   font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   background: var(--ad-ambar-bg); border: 1px solid var(--ad-ambar-borda);
   color: var(--ad-ambar-txt); border-radius: 999px; padding: 4px 8px;
 }
 
-.pagina-admin .aj-corpo { padding: 14px 16px 16px; border-top: 1px solid var(--ad-linha-2); }
-.pagina-admin .aj-bloco-aberto .aj-corpo { border-top: none; padding-top: 0; }
-.pagina-admin .aj-fotos-cab { padding: 16px 16px 10px; }
-.pagina-admin .aj-fotos-cab b { font-size: 15.5px; }
+.page-admin .aj-body { padding: 14px 16px 16px; border-top: 1px solid var(--ad-linha-2); }
+.page-admin .aj-block-open .aj-body { border-top: none; padding-top: 0; }
+.page-admin .aj-photos-cab { padding: 16px 16px 10px; }
+.page-admin .aj-photos-cab b { font-size: 15.5px; }
 
-.pagina-admin .aj-corpo form { display: flex; flex-direction: column; gap: 12px; }
-.pagina-admin .config-campo { display: flex; flex-direction: column; gap: 6px; }
-.pagina-admin .config-campo > span { font-size: 13px; font-weight: 600; }
-.pagina-admin .config-campo > span small { font-weight: 400; color: var(--ad-mudo); }
-.pagina-admin .aj-corpo input,
-.pagina-admin .aj-corpo select,
-.pagina-admin .aj-corpo textarea {
+.page-admin .aj-body form { display: flex; flex-direction: column; gap: 12px; }
+.page-admin .config-field { display: flex; flex-direction: column; gap: 6px; }
+.page-admin .config-field > span { font-size: 13px; font-weight: 600; }
+.page-admin .config-field > span small { font-weight: 400; color: var(--ad-mudo); }
+.page-admin .aj-body input,
+.page-admin .aj-body select,
+.page-admin .aj-body textarea {
   font-size: 16px; padding: 12px;                 /* 16px: abaixo disso o iOS dá zoom */
   border: 1px solid var(--ad-borda-2); border-radius: 10px;
   background: var(--ad-card); color: var(--ad-tinta);
 }
-.pagina-admin .aj-salvar {
+.page-admin .aj-save {
   margin-top: 2px; width: 100%; cursor: pointer; font-family: inherit;
   font-size: 15px; font-weight: 600; padding: 14px;
   border: none; border-radius: 10px;
   background: var(--ad-azul); color: #fff;
 }
-.pagina-admin .aj-salvar:disabled { opacity: .6; cursor: progress; }
+.page-admin .aj-save:disabled { opacity: .6; cursor: progress; }
 
 /* o aviso das <meta> og:, colado nos campos que ficam mentindo */
-.pagina-admin .aj-alerta {
+.page-admin .aj-alert {
   margin: 0; padding: 12px 14px; border-radius: 10px;
   background: var(--ad-ambar-bg); border: 1px solid var(--ad-ambar-borda);
   color: var(--ad-ambar-txt); font-size: 12.5px; line-height: 1.55;
 }
-.pagina-admin .aj-alerta b { display: block; margin-bottom: 2px; }
-.pagina-admin .aj-alerta code {
+.page-admin .aj-alert b { display: block; margin-bottom: 2px; }
+.page-admin .aj-alert code {
   font-family: "DM Mono", ui-monospace, monospace; font-size: 11.5px;
 }
 
-.pagina-admin .upload-drop {
+.page-admin .upload-drop {
   display: block; cursor: pointer; text-align: center;
   border: 1.5px dashed var(--ad-borda-2); border-radius: 12px; padding: 26px 16px;
 }
-.pagina-admin .upload-drop b { display: block; font-size: 14.5px; }
-.pagina-admin .upload-drop small { display: block; margin-top: 3px; font-size: 12.5px; color: var(--ad-mudo); }
-.pagina-admin .upload-drop input { display: none; }
-.pagina-admin .fotos-grid {
+.page-admin .upload-drop b { display: block; font-size: 14.5px; }
+.page-admin .upload-drop small { display: block; margin-top: 3px; font-size: 12.5px; color: var(--ad-mudo); }
+.page-admin .upload-drop input { display: none; }
+.page-admin .photos-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px;
 }
-.pagina-admin .foto-item { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; }
-.pagina-admin .foto-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pagina-admin .foto-item button {
+.page-admin .photo-item { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; }
+.page-admin .photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.page-admin .photo-item button {
   position: absolute; top: 6px; right: 6px; width: 30px; height: 30px;
   border: none; border-radius: 8px; cursor: pointer;
   background: rgba(20,17,13,.72); color: #fff; font-size: 14px;
@@ -561,95 +561,95 @@ textarea { resize: vertical; }
 /* ---------------------------------------------------------------------
    ABA "CONTAS" — a do dinheiro
    --------------------------------------------------------------------- */
-.pagina-admin .ct-sub { margin: 4px 0 0; }
+.page-admin .ct-sub { margin: 4px 0 0; }
 
 /* "ainda não sei" é uma pendência, não um erro nem um zero. Âmbar é a
    cor de pendente no pacote de design. */
-.pagina-admin .ct-nao-sei.pendente {
+.page-admin .ct-unknown.pending {
   border-color: var(--ad-ambar-borda);
   background: var(--ad-ambar-bg);
 }
-.pagina-admin .ct-nao-sei::placeholder { color: var(--ad-ambar-txt); opacity: .75; }
-.pagina-admin .ct-nota-convidado { margin: 4px 0 14px; }
+.page-admin .ct-unknown::placeholder { color: var(--ad-ambar-txt); opacity: .75; }
+.page-admin .ct-nota-invited { margin: 4px 0 14px; }
 
-.pagina-admin .ct-conta {
+.page-admin .ct-account {
   padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2);
 }
-.pagina-admin .ct-conta:last-child { border-bottom: none; padding-bottom: 0; }
-.pagina-admin .ct-conta-topo {
+.page-admin .ct-account:last-child { border-bottom: none; padding-bottom: 0; }
+.page-admin .ct-account-top {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
 }
-.pagina-admin .ct-conta-topo b:first-child { font-size: 15px; }
-.pagina-admin .ct-conta-total { font-size: 16px; font-weight: 500; }
-.pagina-admin .ct-conta-total small { font-size: 11px; font-weight: 400; color: var(--ad-mudo); }
-.pagina-admin .ct-conta-total.pagar { color: var(--ad-erro-txt); }
-.pagina-admin .ct-conta-total.receber { color: var(--ad-ok-txt); }
+.page-admin .ct-account-top b:first-child { font-size: 15px; }
+.page-admin .ct-account-total { font-size: 16px; font-weight: 500; }
+.page-admin .ct-account-total small { font-size: 11px; font-weight: 400; color: var(--ad-mudo); }
+.page-admin .ct-account-total.topay { color: var(--ad-erro-txt); }
+.page-admin .ct-account-total.toreceive { color: var(--ad-ok-txt); }
 
-.pagina-admin .ct-itens { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
-.pagina-admin .ct-item { display: flex; gap: 6px; font-size: 12.5px; color: var(--ad-mudo); }
-.pagina-admin .ct-item b { font-size: 12.5px; font-weight: 500; color: var(--ad-tinta); }
-.pagina-admin .ct-nada { font-size: 12.5px; color: var(--ad-mudo); }
+.page-admin .ct-items { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+.page-admin .ct-item { display: flex; gap: 6px; font-size: 12.5px; color: var(--ad-mudo); }
+.page-admin .ct-item b { font-size: 12.5px; font-weight: 500; color: var(--ad-tinta); }
+.page-admin .ct-none { font-size: 12.5px; color: var(--ad-mudo); }
 
-.pagina-admin .ct-totais {
+.page-admin .ct-totals {
   margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--ad-borda);
   display: flex; flex-direction: column; gap: 6px;
 }
-.pagina-admin .ct-total-linha {
+.page-admin .ct-total-row {
   display: flex; justify-content: space-between; align-items: baseline;
   font-size: 14px;
 }
-.pagina-admin .ct-total-linha b { font-size: 16px; font-weight: 500; }
+.page-admin .ct-total-row b { font-size: 16px; font-weight: 500; }
 
 /* O selo, nas 4 fases. As cores saem do pacote de design: âmbar para
    pendente, vermelho para não-confere, azul para as duas fases boas. */
-.pagina-admin .ct-selo {
+.page-admin .ct-badge {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 14px 16px; border-radius: 14px;
   font-size: 13.5px; line-height: 1.5;
 }
-.pagina-admin .ct-selo-ico {
+.page-admin .ct-badge-icon {
   flex: 0 0 auto; width: 20px; height: 20px; border-radius: 999px;
   display: grid; place-items: center; font-size: 12px; font-weight: 700;
   border: 1.5px solid currentColor;
 }
-.pagina-admin .ct-selo.pendente {
+.page-admin .ct-badge.pending {
   background: var(--ad-ambar-bg); border: 1px solid var(--ad-ambar-borda); color: var(--ad-ambar-txt);
 }
-.pagina-admin .ct-selo.erro {
+.page-admin .ct-badge.error {
   background: var(--ad-erro-bg); border: 1px solid var(--ad-erro-borda); color: var(--ad-erro-txt);
 }
-.pagina-admin .ct-selo.ok {
+.page-admin .ct-badge.ok {
   background: var(--ad-ok-bg); border: 1px solid var(--ad-ok-borda); color: var(--ad-ok-txt);
 }
 
-.pagina-admin .ct-pagador { padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2); }
-.pagina-admin .ct-pagador:last-of-type { border-bottom: none; }
-.pagina-admin .ct-pagador-topo {
+.page-admin .ct-payer { padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2); }
+.page-admin .ct-payer:last-of-type { border-bottom: none; }
+.page-admin .ct-payer-top {
   display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;
 }
-.pagina-admin .ct-pagador-topo b { font-size: 14.5px; }
-.pagina-admin .ct-pagador-valor { font-size: 14px; font-weight: 500; color: var(--ad-mudo); }
-.pagina-admin .ct-opcoes { display: flex; gap: 6px; }
-.pagina-admin .ct-opcao {
+.page-admin .ct-payer-top b { font-size: 14.5px; }
+.page-admin .ct-payer-amount { font-size: 14px; font-weight: 500; color: var(--ad-mudo); }
+.page-admin .ct-options { display: flex; gap: 6px; }
+.page-admin .ct-option {
   flex: 1; text-align: center; cursor: pointer; font-family: inherit;
   font-size: 13.5px; font-weight: 600; padding: 11px 4px;
   border: 1px solid var(--ad-borda-2); border-radius: 10px;
   background: var(--ad-card); color: var(--ad-tinta);
 }
-.pagina-admin .ct-opcao.escolhido {
+.page-admin .ct-option.chosen {
   background: var(--ad-tinta); color: var(--ad-painel); border-color: var(--ad-tinta);
 }
 
-.pagina-admin .ct-transf { list-style: none; margin: 12px 0 0; padding: 0; }
-.pagina-admin .ct-transf li {
+.page-admin .ct-transfers { list-style: none; margin: 12px 0 0; padding: 0; }
+.page-admin .ct-transfers li {
   display: flex; align-items: baseline; gap: 8px;
   padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2); font-size: 14.5px;
 }
-.pagina-admin .ct-transf li:last-child { border-bottom: none; }
-.pagina-admin .ct-transf li b:last-child { margin-left: auto; font-size: 16px; font-weight: 500; }
+.page-admin .ct-transfers li:last-child { border-bottom: none; }
+.page-admin .ct-transfers li b:last-child { margin-left: auto; font-size: 16px; font-weight: 500; }
 
-.pagina-admin .ct-compartilhar { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-.pagina-admin .ct-compartilhar .ad-btn-largo { margin-top: 0; text-align: center; text-decoration: none; line-height: 1.2; }
+.page-admin .ct-share { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.page-admin .ct-share .ad-btn-wide { margin-top: 0; text-align: center; text-decoration: none; line-height: 1.2; }
 
 /* =====================================================================
    CONVITE — pele "cartaz de boteco" (Fatia 11)
@@ -664,7 +664,7 @@ textarea { resize: vertical; }
    peça de celular, e no desktop continua sendo uma peça de celular
    centralizada, com o preto do fundo fazendo moldura.
    ===================================================================== */
-.pagina-convite {
+.page-invite {
   --cv-tinta:       #14110d;   /* preto quente: texto e traço */
   --cv-papel:       #f4efe2;   /* o creme da coluna */
   --cv-papel-2:     #ffffff;   /* cards internos */
@@ -712,7 +712,7 @@ textarea { resize: vertical; }
 
 /* A coluna. No desktop sobram faixas pretas nas laterais: é intencional,
    o convite não vira dashboard. */
-.pagina-convite .folha {
+.page-invite .sheet {
   max-width: 460px;
   margin: 0 auto;
   min-height: 100vh;
@@ -723,28 +723,28 @@ textarea { resize: vertical; }
   display: flex;
   flex-direction: column;
 }
-.pagina-convite .folha .rodape { margin-top: auto; }
+.page-invite .sheet .footer { margin-top: auto; }
 
-.pagina-convite h1, .pagina-convite h2, .pagina-convite h3 {
+.page-invite h1, .page-invite h2, .page-invite h3 {
   font-family: "Anton", Impact, sans-serif;
   font-weight: 400;
   text-transform: uppercase;
 }
-.pagina-convite a { color: var(--cv-azul); }
-.pagina-convite .btn { text-decoration: none; }
+.page-invite a { color: var(--cv-azul); }
+.page-invite .btn { text-decoration: none; }
 
 /* 16px é o mínimo que evita o zoom automático do iOS ao focar um campo. */
-.pagina-convite input,
-.pagina-convite textarea,
-.pagina-convite select { font-size: 16px; }
-.pagina-convite input:focus-visible,
-.pagina-convite textarea:focus-visible {
+.page-invite input,
+.page-invite textarea,
+.page-invite select { font-size: 16px; }
+.page-invite input:focus-visible,
+.page-invite textarea:focus-visible {
   outline: 3px solid var(--cv-azul); outline-offset: 1px;
 }
 
 /* Rótulo técnico: mono, caixa alta, muito espaçado. Repete-se em toda a
    página, então vale uma classe. */
-.pagina-convite .mono {
+.page-invite .mono {
   font-family: "DM Mono", ui-monospace, monospace;
   text-transform: uppercase;
   letter-spacing: .18em;
@@ -754,12 +754,12 @@ textarea { resize: vertical; }
 /* [hidden] é display:none na folha do navegador — e qualquer `display`
    de autor o vence. O .countdown tem display:flex, então ficava visível
    (zerado) ao lado do "É hoje!". Esta regra devolve a precedência. */
-.pagina-convite [hidden] { display: none !important; }
+.page-invite [hidden] { display: none !important; }
 
 /* ---------------------------------------------------------------------
    HERO — cartaz. Alinhado à esquerda, como pôster colado em poste.
    --------------------------------------------------------------------- */
-.pagina-convite .hero {
+.page-invite .hero {
   position: relative;
   padding: 28px 20px 32px;
   border-bottom: 3px solid var(--cv-tinta);
@@ -767,15 +767,15 @@ textarea { resize: vertical; }
 }
 /* textura de pontos: substitui o confete decorativo da pele anterior.
    CSS puro, sem markup e sem JS. */
-.pagina-convite .hero::before {
+.page-invite .hero::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   opacity: .07;
   background-image: radial-gradient(var(--cv-tinta) 1px, transparent 1px);
   background-size: 5px 5px;
 }
-.pagina-convite .hero-inner { position: relative; }
+.page-invite .hero-inner { position: relative; }
 
-.pagina-convite .hero-eyebrow {
+.page-invite .hero-eyebrow {
   display: inline-block; margin: 0 0 14px;
   border: 2px solid var(--cv-vermelho-txt);
   color: var(--cv-vermelho-txt);
@@ -784,59 +784,59 @@ textarea { resize: vertical; }
   transform: rotate(-2deg);
 }
 
-.pagina-convite .hero-title {
+.page-invite .hero-title {
   margin: 0;
   font-size: 66px; line-height: .84; letter-spacing: -.02em;
 }
 /* a última palavra em vermelho — aplicada pelo main.js, não por <br>
    fixo, porque o título vem do banco e é editável */
-.pagina-convite .hero-title .fim { color: var(--cv-vermelho); }
+.page-invite .hero-title .end { color: var(--cv-vermelho); }
 
-.pagina-convite .hero-sub {
+.page-invite .hero-sub {
   margin: 14px 0 0;
   font-size: 15px; line-height: 1.5; font-weight: 500; max-width: 32ch;
 }
 
 /* ---- a equação 40 + 50 + 70 = 160 ---- */
-.pagina-convite .equacao {
+.page-invite .equation {
   display: flex; align-items: flex-end; gap: 6px;
   margin: 24px 0 0; padding: 15px 0;
   border-top: 2px dashed var(--cv-tinta);
   border-bottom: 2px dashed var(--cv-tinta);
 }
-.pagina-convite .eq-item { flex: 1; text-align: center; }
-.pagina-convite .eq-num {
+.page-invite .eq-item { flex: 1; text-align: center; }
+.page-invite .eq-num {
   display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
   font-size: 35px; line-height: 1;
 }
-.pagina-convite .eq-nome {
+.page-invite .eq-name {
   font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
-.pagina-convite .eq-op {
+.page-invite .eq-op {
   font-family: "Anton", Impact, sans-serif; font-size: 20px;
   padding-bottom: 16px; color: var(--cv-azul);
 }
-.pagina-convite .eq-igual { color: var(--cv-vermelho); }
-.pagina-convite .eq-total {
+.page-invite .eq-igual { color: var(--cv-vermelho); }
+.page-invite .eq-total {
   flex: 1.15; background: var(--cv-vermelho); color: var(--cv-papel);
   padding: 5px 2px; transform: rotate(1.5deg);
 }
-.pagina-convite .eq-total .eq-nome { font-size: 10px; letter-spacing: .04em; }
+.page-invite .eq-total .eq-name { font-size: 10px; letter-spacing: .04em; }
 
 /* ---- ficha Dia / Onde ---- */
-.pagina-convite .ficha {
+.page-invite .factsheet {
   display: grid; grid-template-columns: auto 1fr; gap: 8px 14px;
   margin: 20px 0 0; font-size: 15px;
 }
-.pagina-convite .ficha-rot {
+.page-invite .factsheet-label {
   letter-spacing: .12em; color: var(--cv-mudo-2); padding-top: 4px;
 }
-.pagina-convite .ficha b { font-weight: 700; }
+.page-invite .factsheet b { font-weight: 700; }
 /* o endereço tem duas linhas de texto; sem o block o link do mapa emenda
    no fim da frase e o convidado não o encontra */
-.pagina-convite .ficha-onde #cardLocal { display: block; }
-.pagina-convite .ficha-onde .link-mapa { display: block; width: max-content; }
-.pagina-convite .link-mapa {
+.page-invite .factsheet-where #cardVenue { display: block; }
+.page-invite .factsheet-where .link-map { display: block; width: max-content; }
+.page-invite .link-map {
   display: inline-block; margin-top: 8px;
   min-height: 44px; line-height: 44px;   /* alvo de toque */
   font-weight: 700; font-size: 14px; color: var(--cv-azul);
@@ -844,44 +844,44 @@ textarea { resize: vertical; }
 }
 
 /* ---- countdown ---- */
-.pagina-convite .countdown {
+.page-invite .countdown {
   display: flex; gap: 5px; margin: 22px 0 0;
   font-family: "DM Mono", ui-monospace, monospace;
 }
-.pagina-convite .cd-box {
+.page-invite .cd-box {
   flex: 1; border: 2px solid var(--cv-tinta); padding: 9px 2px; text-align: center;
 }
-.pagina-convite .cd-box b {
+.page-invite .cd-box b {
   display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
   font-size: 23px; line-height: 1;
 }
-.pagina-convite .cd-box span {
+.page-invite .cd-box span {
   font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
 }
 
 /* ---- os dois avisos de estado da festa ---- */
-.pagina-convite .festa-estado { margin: 22px 0 0; }
-.pagina-convite .festa-estado[data-tipo="hoje"] {
+.page-invite .party-state { margin: 22px 0 0; }
+.page-invite .party-state[data-state="hoje"] {
   background: var(--cv-vermelho); color: var(--cv-papel); text-align: center;
   padding: 18px 14px; transform: rotate(-1deg);
   box-shadow: 5px 5px 0 var(--cv-tinta);
 }
-.pagina-convite .festa-estado[data-tipo="passou"] {
+.page-invite .party-state[data-state="passou"] {
   border: 3px solid var(--cv-tinta); background: var(--cv-papel-2); padding: 18px 16px;
 }
-.pagina-convite .festa-estado b {
+.page-invite .party-state b {
   display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
   text-transform: uppercase; line-height: .95;
 }
-.pagina-convite .festa-estado[data-tipo="hoje"] b { font-size: 40px; }
-.pagina-convite .festa-estado[data-tipo="passou"] b { font-size: 30px; line-height: 1; }
-.pagina-convite .festa-estado p { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
-.pagina-convite .festa-estado[data-tipo="passou"] p {
+.page-invite .party-state[data-state="hoje"] b { font-size: 40px; }
+.page-invite .party-state[data-state="passou"] b { font-size: 30px; line-height: 1; }
+.page-invite .party-state p { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+.page-invite .party-state[data-state="passou"] p {
   margin-top: 8px; font-size: 14.5px; line-height: 1.5; font-weight: 400; color: var(--cv-corpo);
 }
 
 /* ---- o botão do cartaz: bloco preto com sombra dura ---- */
-.pagina-convite .btn-cta {
+.page-invite .btn-cta {
   display: block; margin: 20px 0 0;
   background: var(--cv-tinta); color: var(--cv-papel);
   text-align: center; text-decoration: none;
@@ -890,38 +890,38 @@ textarea { resize: vertical; }
   padding: 17px; border: none; cursor: pointer; width: 100%;
   box-shadow: 5px 5px 0 var(--cv-vermelho);
 }
-.pagina-convite .btn-cta:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-vermelho); }
+.page-invite .btn-cta:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-vermelho); }
 
 /* ---------------------------------------------------------------------
    FOTOS — bloco escuro no meio da coluna creme.
    --------------------------------------------------------------------- */
-.pagina-convite .secao-fotos {
+.page-invite .photos-section {
   padding: 28px 20px;
   background: var(--cv-tinta);
   color: var(--cv-papel);
 }
-.pagina-convite .secao-fotos .kicker {
+.page-invite .photos-section .kicker {
   margin: 0 0 4px; color: var(--cv-ambar); letter-spacing: .18em;
 }
-.pagina-convite .secao-fotos .secao-titulo {
+.page-invite .photos-section .section-title {
   margin: 0 0 16px; font-size: 34px; line-height: .95;
 }
 
-.pagina-convite .carrossel {
+.page-invite .carousel {
   position: relative; overflow: hidden;
   aspect-ratio: 4 / 5;
   border: 3px solid var(--cv-papel);
   background: var(--cv-escuro-2);
 }
-.pagina-convite .carrossel-track {
+.page-invite .carousel-track {
   display: flex; height: 100%;
   transition: transform .6s cubic-bezier(.6,.05,.2,1);
 }
-.pagina-convite .carrossel-track .slide { min-width: 100%; height: 100%; }
-.pagina-convite .carrossel-track .slide img {
+.page-invite .carousel-track .slide { min-width: 100%; height: 100%; }
+.page-invite .carousel-track .slide img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
-.pagina-convite .carrossel-legenda {
+.page-invite .carousel-legenda {
   position: absolute; bottom: 0; left: 0; right: 0; margin: 0;
   padding: 12px;
   background: linear-gradient(transparent, rgba(20,17,13,.92));
@@ -931,18 +931,18 @@ textarea { resize: vertical; }
 /* Fora da moldura: os dots são a única navegação por clique, então
    precisam de alvo de toque. O quadradinho visível tem 10px; o botão
    tem 30px, com background-clip mantendo a diferença invisível. */
-.pagina-convite .car-dots {
+.page-invite .car-dots {
   display: flex; gap: 2px; justify-content: center; padding-top: 8px;
 }
-.pagina-convite .car-dots button {
+.page-invite .car-dots button {
   width: 30px; height: 30px; padding: 10px;
   border: none; border-radius: 0; cursor: pointer;
   background: rgba(244,239,226,.4);
   background-clip: content-box;
 }
-.pagina-convite .car-dots button.ativo { background: var(--cv-papel); background-clip: content-box; }
+.page-invite .car-dots button.active { background: var(--cv-papel); background-clip: content-box; }
 
-.pagina-convite .carrossel-vazio {
+.page-invite .carousel-empty {
   margin: 0; padding: 28px 0 4px; text-align: center;
   font-family: "DM Mono", ui-monospace, monospace;
   font-size: 12px; line-height: 1.7; color: var(--cv-claro-2);
@@ -951,127 +951,127 @@ textarea { resize: vertical; }
 /* ---------------------------------------------------------------------
    RSVP
    --------------------------------------------------------------------- */
-.pagina-convite .rsvp {
+.page-invite .rsvp {
   padding: 28px 20px 36px;
   border-top: 3px solid var(--cv-tinta);
   background: var(--cv-papel);
 }
-.pagina-convite .rsvp .kicker {
+.page-invite .rsvp .kicker {
   margin: 0 0 4px; color: var(--cv-vermelho-txt); letter-spacing: .18em;
 }
-.pagina-convite .rsvp .secao-titulo { margin: 0 0 5px; font-size: 34px; line-height: .95; }
-.pagina-convite .secao-sub { margin: 0 0 20px; font-size: 14px; color: #4a4640; }
+.page-invite .rsvp .section-title { margin: 0 0 5px; font-size: 34px; line-height: .95; }
+.page-invite .section-sub { margin: 0 0 20px; font-size: 14px; color: #4a4640; }
 
-.pagina-convite form { display: flex; flex-direction: column; gap: 16px; }
-.pagina-convite .campo {
+.page-invite form { display: flex; flex-direction: column; gap: 16px; }
+.page-invite .field {
   display: flex; flex-direction: column; gap: 6px;
   border: none; padding: 0; margin: 0;
 }
-.pagina-convite .campo-rot {
+.page-invite .field-label {
   font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   padding: 0;
 }
-.pagina-convite .campo-rot em {
+.page-invite .field-label em {
   font-style: normal; font-weight: 400; text-transform: none;
   letter-spacing: 0; color: var(--cv-mudo);
 }
-.pagina-convite input[type=text],
-.pagina-convite input[type=tel],
-.pagina-convite textarea {
+.page-invite input[type=text],
+.page-invite input[type=tel],
+.page-invite textarea {
   width: 100%; font-family: inherit; color: var(--cv-tinta);
   background: var(--cv-papel-2);
   border: 2px solid var(--cv-tinta); border-radius: 0;
   padding: 13px 12px; box-shadow: none;
 }
-.pagina-convite input:focus, .pagina-convite textarea:focus { box-shadow: none; }
-.pagina-convite textarea { resize: vertical; }
-.pagina-convite .campo-dica {
+.page-invite input:focus, .page-invite textarea:focus { box-shadow: none; }
+.page-invite textarea { resize: vertical; }
+.page-invite .field-hint {
   font-family: "DM Mono", ui-monospace, monospace;
   font-size: 11px; line-height: 1.6; color: var(--cv-mudo);
 }
-.pagina-convite .campo-dica strong { color: var(--cv-tinta); }
-.pagina-convite .prazo-aberto {
+.page-invite .field-hint strong { color: var(--cv-tinta); }
+.page-invite .deadline-open {
   margin: 0; text-align: center; letter-spacing: .08em;
   text-transform: uppercase; color: var(--cv-mudo);
 }
 
 /* ---- chips: quadrados, traço grosso, azul quando marcado ---- */
-.pagina-convite .chips { display: flex; gap: 6px; }
-.pagina-convite .chips .chip { flex: 1; text-align: center; }
-.pagina-convite .pref-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.pagina-convite .chip {
+.page-invite .chips { display: flex; gap: 6px; }
+.page-invite .chips .chip { flex: 1; text-align: center; }
+.page-invite .pref-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.page-invite .chip {
   position: relative; cursor: pointer; user-select: none;
   padding: 12px 14px; border-radius: 0;
   font-size: 14px; font-weight: 600;
   background: var(--cv-papel-2); border: 2px solid var(--cv-tinta);
   color: var(--cv-tinta); transition: none;
 }
-.pagina-convite .chip:hover { border-color: var(--cv-tinta); }
-.pagina-convite .chip.marcado {
+.page-invite .chip:hover { border-color: var(--cv-tinta); }
+.page-invite .chip.checked {
   background: var(--cv-azul); border-color: var(--cv-azul); color: var(--cv-papel);
 }
-.pagina-convite .chip.desabilitado { opacity: .4; cursor: not-allowed; }
-.pagina-convite .p-tipo .chip, .pagina-convite .chips .chip { font-weight: 700; padding: 13px 4px; }
+.page-invite .chip.disabled { opacity: .4; cursor: not-allowed; }
+.page-invite .p-kind .chip, .page-invite .chips .chip { font-weight: 700; padding: 13px 4px; }
 
 /* ---- cards de pessoa ---- */
 /* sem o gap os cards encostam e a borda de um vira o topo do outro */
-.pagina-convite #pessoasLista { display: flex; flex-direction: column; gap: 16px; }
-.pagina-convite .pessoa-card {
+.page-invite #peopleList { display: flex; flex-direction: column; gap: 16px; }
+.page-invite .person-card {
   border: 2px solid var(--cv-tinta); border-radius: 0;
   background: var(--cv-papel-2); padding: 0; gap: 0;
   display: block;
 }
-.pagina-convite .pessoa-topo {
+.page-invite .person-top {
   display: flex; justify-content: space-between; align-items: center;
   padding: 11px 12px; background: var(--cv-mudo); color: var(--cv-papel); gap: 8px;
 }
-.pagina-convite .pessoa-card.responsavel .pessoa-topo { background: var(--cv-tinta); }
-.pagina-convite .pessoa-rotulo {
+.page-invite .person-card.lead .person-top { background: var(--cv-tinta); }
+.page-invite .person-label {
   font-family: "Anton", Impact, sans-serif; font-weight: 400;
   font-size: 17px; text-transform: uppercase; color: inherit;
 }
-.pagina-convite .pessoa-tag { font-size: 10px; letter-spacing: .1em; }
-.pagina-convite .p-remover {
+.page-invite .person-tag { font-size: 10px; letter-spacing: .1em; }
+.page-invite .p-remove {
   width: 44px; height: 30px; border: none; background: transparent;
   color: var(--cv-papel); font-size: 17px; cursor: pointer; border-radius: 0;
 }
-.pagina-convite .pessoa-corpo {
+.page-invite .person-body {
   padding: 13px; display: flex; flex-direction: column; gap: 14px;
 }
-.pagina-convite .pessoa-corpo .p-nome {
+.page-invite .person-body .p-name {
   background: var(--cv-papel-3); border-color: var(--cv-linha);
 }
 /* No admin o .pref-grupo é coluna de 200px num flex horizontal; aqui o
    contêiner é vertical, e o flex-basis vira ALTURA — 200px de vazio
    dentro do card. */
-.pagina-convite .pref-grupo { flex: none; }
-.pagina-convite .pref-titulo {
+.page-invite .pref-group { flex: none; }
+.page-invite .pref-title {
   display: block; margin-bottom: 8px; font-size: 10px;
   letter-spacing: .12em; color: var(--cv-mudo); font-weight: 400;
 }
-.pagina-convite .p-aviso-chopp { display: block; margin-top: 8px; }
+.page-invite .p-beer-warning { display: block; margin-top: 8px; }
 
 /* ---- somar acompanhante ---- */
-.pagina-convite .btn-somar {
+.page-invite .btn-add {
   font-family: inherit; font-size: 15px; font-weight: 700; padding: 15px;
   border: 2px dashed var(--cv-tinta); border-radius: 0;
   background: transparent; color: var(--cv-tinta); cursor: pointer; width: 100%;
 }
 
 /* ---- barra do total ---- */
-.pagina-convite .barra-total {
+.page-invite .bar-total {
   background: var(--cv-tinta); color: var(--cv-papel);
   padding: 14px; display: flex; justify-content: space-between; align-items: center;
   font-family: "DM Mono", ui-monospace, monospace; font-size: 12px; letter-spacing: .06em;
 }
-.pagina-convite .barra-total .mono { color: var(--cv-claro-2); letter-spacing: .06em; }
-.pagina-convite .barra-total b {
+.page-invite .bar-total .mono { color: var(--cv-claro-2); letter-spacing: .06em; }
+.page-invite .bar-total b {
   font-family: "Anton", Impact, sans-serif; font-weight: 400;
   font-size: 22px; letter-spacing: .02em;
 }
 
 /* ---- enviar ---- */
-.pagina-convite .btn-enviar {
+.page-invite .btn-submit {
   display: block; width: 100%; border: none; cursor: pointer;
   background: var(--cv-vermelho); color: var(--cv-papel);
   font-family: "Anton", Impact, sans-serif; font-weight: 400;
@@ -1082,107 +1082,107 @@ textarea { resize: vertical; }
   font-size: 24px; text-transform: uppercase; padding: 18px;
   box-shadow: 5px 5px 0 var(--cv-tinta);
 }
-.pagina-convite .btn-enviar:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-tinta); }
-.pagina-convite .btn-enviar:disabled { opacity: .6; cursor: progress; }
+.page-invite .btn-submit:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-tinta); }
+.page-invite .btn-submit:disabled { opacity: .6; cursor: progress; }
 
-.pagina-convite .form-status {
+.page-invite .form-status {
   text-align: center; font-weight: 700; margin: 0; min-height: 1.2rem; font-size: 14px;
 }
-.pagina-convite .form-status.err { color: var(--cv-vermelho-txt); }
+.page-invite .form-status.err { color: var(--cv-vermelho-txt); }
 
 /* ---- prazo encerrado ---- */
-.pagina-convite .rsvp-encerrado {
+.page-invite .rsvp-closed {
   border: 3px solid var(--cv-tinta); border-radius: 0;
   background: var(--cv-papel-2); padding: 24px 18px;
   box-shadow: 6px 6px 0 var(--cv-mudo);
 }
-.pagina-convite .rsvp-encerrado h3 {
+.page-invite .rsvp-closed h3 {
   margin: 0; font-size: 32px; line-height: .95; color: var(--cv-tinta);
 }
-.pagina-convite .rsvp-encerrado p {
+.page-invite .rsvp-closed p {
   margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: var(--cv-corpo);
 }
 
 /* ---- rodapé ---- */
-.pagina-convite .rodape {
+.page-invite .footer {
   padding: 22px 20px 26px; background: var(--cv-tinta); color: var(--cv-rodape);
   text-align: center; font-family: "DM Mono", ui-monospace, monospace;
   font-size: 10px; letter-spacing: .1em; text-transform: uppercase; line-height: 2;
 }
-.pagina-convite .rodape #rodapeFesta { margin: 0; }
-.pagina-convite .rodape-admin { margin: 0; }
-.pagina-convite .rodape a { color: var(--cv-ambar); }
+.page-invite .footer #footerParty { margin: 0; }
+.page-invite .footer-admin { margin: 0; }
+.page-invite .footer a { color: var(--cv-ambar); }
 
 /* ---------------------------------------------------------------------
    ESTADOS DE TELA CHEIA — carregando, erro, sucesso
    --------------------------------------------------------------------- */
-.pagina-convite .carregando {
+.page-invite .loading {
   min-height: 70vh; display: grid; place-items: center;
   padding: 40px 24px; text-align: center;
 }
-.pagina-convite .carregando b {
+.page-invite .loading b {
   display: block; font-family: "Anton", Impact, sans-serif; font-weight: 400;
   font-size: 68px; line-height: .9;
   animation: cv-pulso 1.4s ease-in-out infinite;
 }
-.pagina-convite .carregando p {
+.page-invite .loading p {
   margin: 14px 0 0; letter-spacing: .2em; color: var(--cv-mudo);
 }
 @keyframes cv-pulso { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
 @media (prefers-reduced-motion: reduce) {
-  .pagina-convite .carregando b { animation: none; }
+  .page-invite .loading b { animation: none; }
 }
 
-.pagina-convite .convite-erro {
+.page-invite .invite-error {
   text-align: center;
   border: 3px solid var(--cv-tinta); background: var(--cv-papel-2);
   padding: 30px 22px; margin: 30px 0;
   box-shadow: 6px 6px 0 var(--cv-vermelho);
 }
-.pagina-convite .convite-erro .big {
+.page-invite .invite-error .big {
   font-family: "Anton", Impact, sans-serif; font-size: 40px; line-height: 1;
   text-transform: uppercase; color: var(--cv-vermelho);
 }
-.pagina-convite .convite-erro p {
+.page-invite .invite-error p {
   margin: 12px 0 20px; font-size: 15px; line-height: 1.55; color: var(--cv-corpo);
 }
-.pagina-convite .convite-erro .btn-cta { margin: 0; font-size: 19px; padding: 15px; }
+.page-invite .invite-error .btn-cta { margin: 0; font-size: 19px; padding: 15px; }
 
 /* ---- sucesso ---- */
-.pagina-convite .rsvp-sucesso {
+.page-invite .rsvp-success {
   min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
   padding: 36px 22px;
 }
-.pagina-convite .cartao-ok {
+.page-invite .card-ok {
   border: 3px solid var(--cv-tinta); background: var(--cv-papel-2);
   box-shadow: 7px 7px 0 var(--cv-azul);
 }
-.pagina-convite .cartao-ok-faixa {
+.page-invite .card-ok-faixa {
   background: var(--cv-tinta); color: var(--cv-papel);
   padding: 12px 18px; letter-spacing: .2em;
 }
-.pagina-convite .cartao-ok-corpo { padding: 26px 20px 28px; }
-.pagina-convite .cartao-ok h2 { margin: 0 0 10px; font-size: 46px; line-height: .88; }
-.pagina-convite .cartao-ok #sucessoResumo {
+.page-invite .card-ok-body { padding: 26px 20px 28px; }
+.page-invite .card-ok h2 { margin: 0 0 10px; font-size: 46px; line-height: .88; }
+.page-invite .card-ok #successSummary {
   margin: 0 0 20px; font-size: 15.5px; line-height: 1.5; color: var(--cv-corpo);
 }
-.pagina-convite .lista-ok {
+.page-invite .list-ok {
   border-top: 2px dashed var(--cv-tinta); border-bottom: 2px dashed var(--cv-tinta);
   padding: 14px 0; margin-bottom: 20px; display: grid; gap: 8px; font-size: 14.5px;
 }
-.pagina-convite .linha-ok { display: flex; justify-content: space-between; gap: 12px; }
-.pagina-convite .linha-ok span { color: var(--cv-mudo); }
-.pagina-convite .btn-agenda {
+.page-invite .row-ok { display: flex; justify-content: space-between; gap: 12px; }
+.page-invite .row-ok span { color: var(--cv-mudo); }
+.page-invite .btn-calendar {
   display: block; text-align: center; text-decoration: none;
   background: var(--cv-azul); color: var(--cv-papel);
   font-family: "Anton", Impact, sans-serif; font-weight: 400;
   font-size: 19px; text-transform: uppercase; padding: 15px;
   box-shadow: 4px 4px 0 var(--cv-tinta); margin-bottom: 10px;
 }
-.pagina-convite .btn-mudar {
+.page-invite .btn-change {
   display: block; width: 100%; text-align: center; cursor: pointer;
   border: 2px solid var(--cv-tinta); border-radius: 0; background: transparent;
   color: var(--cv-tinta); font-family: inherit; font-weight: 700;
   font-size: 15px; padding: 13px;
 }
-.pagina-convite .cartao-ok .campo-dica { display: block; margin: 16px 0 0; letter-spacing: .04em; }
+.page-invite .card-ok .field-hint { display: block; margin: 16px 0 0; letter-spacing: .04em; }

@@ -17,6 +17,6 @@ window.CONFIG = {
   supabase: {
     url: "https://mbzuxkvrrtvbgkikrivh.supabase.co",
     anonKey: "sb_publishable_K86bohNhtKvfzytzszn_YA_UlNN2iDL",
-    bucketFotos: "fotos",
+    photosBucket: "fotos",
   },
 };

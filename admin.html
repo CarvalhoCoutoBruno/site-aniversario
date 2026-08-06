@@ -13,20 +13,20 @@
 </head>
 <!-- A classe escopa paleta e fontes do painel. O index.html usa o mesmo
      style.css e não pode herdar nada disto — nem o contrário. -->
-<body class="pagina-admin">
+<body class="page-admin">
   <!-- ===================== LOGIN ===================== -->
   <div class="login-box" id="loginBox">
-    <div class="login-cartao">
+    <div class="login-card">
       <h1>Área do organizador</h1>
       <p class="login-sub">Entre para ver as confirmações e fechar as contas.</p>
       <form id="loginForm">
-        <label class="campo" for="email">
+        <label class="field" for="email">
           <span>E-mail</span>
           <input type="email" id="email" required autocomplete="username" placeholder="voce@email.com" />
         </label>
-        <label class="campo" for="senha">
+        <label class="field" for="password">
           <span>Senha</span>
-          <input type="password" id="senha" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
+          <input type="password" id="password" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
         </label>
         <button type="submit" class="login-btn">Entrar</button>
         <p class="msg-toast" id="loginMsg"></p>
@@ -36,101 +36,101 @@
   </div>
 
   <!-- ===================== PAINEL ===================== -->
-  <main class="admin-wrap" id="painel" hidden>
-    <header class="ad-topo">
+  <main class="admin-wrap" id="panel" hidden>
+    <header class="ad-top">
       <div>
         <h1>Organizador</h1>
-        <p class="mono ad-carimbo" id="adAtualizado"></p>
+        <p class="mono ad-stamp" id="adUpdatedAt"></p>
       </div>
-      <div class="ad-topo-acoes">
-        <button type="button" class="ad-icone" id="btnAtualizar" aria-label="Atualizar">&#8635;</button>
-        <button type="button" class="ad-btn" id="btnSair">Sair</button>
+      <div class="ad-top-actions">
+        <button type="button" class="ad-icon" id="btnRefresh" aria-label="Atualizar">&#8635;</button>
+        <button type="button" class="ad-btn" id="btnSignOut">Sair</button>
       </div>
     </header>
 
-    <div class="ad-conteudo">
+    <div class="ad-content">
 
       <!-- ---------- Resumo ---------- -->
-      <section class="ad-aba" id="aba-resumo" role="tabpanel" aria-labelledby="tab-resumo">
+      <section class="ad-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
       <!-- Tudo aqui sai do render(), que já calculava: nenhum dado
            novo, nenhuma consulta nova. -->
-      <div class="res-cartoes">
-        <div class="res-cartao res-cartao-forte">
-          <span class="mono res-rot">Confirmados</span>
-          <b id="resConfirmados">0</b>
-          <span class="res-sub" id="resComposicao">&mdash;</span>
+      <div class="res-cards">
+        <div class="res-card res-card-forte">
+          <span class="mono res-label">Confirmados</span>
+          <b id="resConfirmed">0</b>
+          <span class="res-sub" id="resBreakdown">&mdash;</span>
         </div>
-        <div class="res-cartao">
-          <span class="mono res-rot">Respostas</span>
-          <b id="resGrupos">0</b>
+        <div class="res-card">
+          <span class="mono res-label">Respostas</span>
+          <b id="resGroups">0</b>
           <span class="res-sub">grupos confirmados</span>
         </div>
       </div>
 
-      <div class="res-bloco" id="resPrazoBloco" hidden>
-        <div class="res-bloco-topo">
+      <div class="res-block" id="resDeadlineBlock" hidden>
+        <div class="res-block-top">
           <b>Prazo de confirmação</b>
-          <span class="mono" id="resPrazoData">&mdash;</span>
+          <span class="mono" id="resDeadlineDate">&mdash;</span>
         </div>
-        <div class="res-barra" id="resPrazoBarraWrap" hidden>
-          <div class="res-barra-fill" id="resPrazoBarra"></div>
+        <div class="res-bar" id="resDeadlineBarWrap" hidden>
+          <div class="res-bar-fill" id="resDeadlineBar"></div>
         </div>
-        <p class="res-nota" id="resPrazoNota"></p>
+        <p class="res-nota" id="resDeadlineNota"></p>
       </div>
 
-      <div class="res-bloco res-bloco-liso">
-        <div class="res-bloco-cab">
+      <div class="res-block res-block-flat">
+        <div class="res-block-cab">
           <b>Quem consome o quê</b>
           <p>Base da estimativa de compra.</p>
         </div>
-        <div id="resConsumo"></div>
+        <div id="resConsumption"></div>
       </div>
 
-      <div class="res-bloco">
-        <b class="res-titulo">Recados e restrições</b>
-        <p class="res-nota" id="resRecadosNota">Ninguém escreveu nada ainda.</p>
-        <div class="res-recados" id="resRecados"></div>
+      <div class="res-block">
+        <b class="res-title">Recados e restrições</b>
+        <p class="res-nota" id="resNotesNota">Ninguém escreveu nada ainda.</p>
+        <div class="res-notes" id="resNotes"></div>
       </div>
       </section>
 
       <!-- ---------- Quem vem ----------
            A tabela de 7 colunas sai na Fatia 13. Até lá mora aqui,
            inteira e funcionando: feio é aceitável, quebrado não é. -->
-      <section class="ad-aba" id="aba-quem-vem" role="tabpanel" aria-labelledby="tab-quem-vem" hidden>
-      <input type="search" id="buscaGrupos" class="ad-busca"
+      <section class="ad-panel" id="panel-guests" role="tabpanel" aria-labelledby="tab-guests" hidden>
+      <input type="search" id="searchGroups" class="ad-search"
              placeholder="Buscar por nome ou WhatsApp" autocomplete="off" />
-      <div class="ad-filtros" id="filtrosGrupos"></div>
+      <div class="ad-filters" id="filtersGroups"></div>
 
-      <p class="msg-toast lista-msg" id="listaMsg"></p>
-      <div class="lista-grupos" id="listaGrupos"></div>
+      <p class="msg-toast list-msg" id="listMsg"></p>
+      <div class="list-groups" id="listGroups"></div>
 
       <!-- Dois vazios diferentes: banco vazio pede paciência; busca sem
            resultado pede limpar o filtro. -->
-      <p class="vazio" id="listaVazia" hidden>Nenhuma confirmação ainda.</p>
-      <div class="vazio" id="listaSemResultado" hidden>
+      <p class="empty" id="listEmpty" hidden>Nenhuma confirmação ainda.</p>
+      <div class="empty" id="listNoResult" hidden>
         <p>Nenhuma confirmação bate com essa busca.</p>
-        <button type="button" class="ad-btn" id="btnLimparBusca">Limpar busca e filtros</button>
+        <button type="button" class="ad-btn" id="btnClearSearch">Limpar busca e filtros</button>
       </div>
       </section>
 
       <!-- ---------- Compras (provisório até a Fatia 13) ---------- -->
-      <section class="ad-aba" id="aba-compras" role="tabpanel" aria-labelledby="tab-compras" hidden>
-      <div class="res-bloco">
-        <b class="res-titulo">Lista de compra</b>
-        <p class="res-nota" id="comprasBase">&mdash;</p>
-        <div class="compras-lista" id="comprasLista"></div>
-        <p class="msg-toast" id="comprasAviso" hidden></p>
-        <button type="button" class="ad-btn ad-btn-largo" id="btnCopiarCompras">
+      <section class="ad-panel" id="panel-shopping" role="tabpanel" aria-labelledby="tab-shopping" hidden>
+      <div class="res-block">
+        <b class="res-title">Lista de compra</b>
+        <p class="res-nota" id="shoppingBase">&mdash;</p>
+        <div class="shopping-list" id="shoppingList"></div>
+        <p class="msg-toast" id="shoppingWarning" hidden></p>
+        <button type="button" class="ad-btn ad-btn-wide" id="btnCopyShopping">
           &#128203; Copiar para o fornecedor
         </button>
-        <p class="res-nota" id="comprasCopiaMsg"></p>
-        <textarea class="compras-texto" id="comprasTexto" rows="10" readonly hidden></textarea>
+        <p class="res-nota" id="shoppingCopyMsg"></p>
+        <textarea class="shopping-text" id="shoppingText" rows="10" readonly hidden></textarea>
       </div>
 
-      <div class="res-bloco">
-        <div class="res-bloco-topo">
+      <div class="res-block">
+        <div class="res-block-top">
           <b>Custo estimado</b>
-          <b class="mono compras-custo" id="comprasCusto">&mdash;</b>
+          <b class="mono shopping-cost" id="shoppingCost">&mdash;</b>
         </div>
         <p class="res-nota">
           Usa os preços de referência dos Ajustes &mdash; não é o gasto real.
@@ -140,98 +140,98 @@
       </section>
 
       <!-- ---------- Contas (provisório até a Fatia 15) ---------- -->
-      <section class="ad-aba" id="aba-contas" role="tabpanel" aria-labelledby="tab-contas" hidden>
+      <section class="ad-panel" id="panel-accounts" role="tabpanel" aria-labelledby="tab-accounts" hidden>
       <!-- Fechamento e rateio -->
       <!-- Nenhuma cifra desta aba é calculada aqui: tudo vem de
            Calculo.rateio() / Calculo.acerto() / Calculo.resumoAcerto().
            A tela formata e posiciona; ela não conta. -->
 
-      <div class="res-bloco">
-        <b class="res-titulo">Custo real</b>
+      <div class="res-block">
+        <b class="res-title">Custo real</b>
         <p class="res-nota">
           O que foi pago de verdade, depois da compra. Deixe em branco o que ainda não fechou —
           <strong>vazio quer dizer "ainda não sei", não zero</strong>.
         </p>
-        <form id="fecForm" novalidate>
-          <div id="fecCustos"></div>
+        <form id="closingForm" novalidate>
+          <div id="closingCosts"></div>
           <p class="res-nota ct-sub">Preço real da pizza — em branco, vale o preço de referência dos Ajustes.</p>
-          <div id="fecPizzas"></div>
-          <button type="submit" class="aj-salvar" id="btnSalvarFec">Salvar custo real</button>
-          <p class="msg-toast" id="fecMsg"></p>
+          <div id="closingPizzas"></div>
+          <button type="submit" class="aj-save" id="btnSaveClosing">Salvar custo real</button>
+          <p class="msg-toast" id="closingMsg"></p>
         </form>
       </div>
 
-      <div class="res-bloco">
-        <b class="res-titulo">Rateio</b>
-        <p class="res-nota ct-nota-convidado">
+      <div class="res-block">
+        <b class="res-title">Rateio</b>
+        <p class="res-nota ct-nota-invited">
           Convidado não paga: o consumo dele é bancado por <strong>quem o convidou</strong>,
           dividido igualmente quando foi mais de um.
         </p>
-        <div id="fecContas"></div>
-        <div class="ct-totais" id="fecTotais"></div>
+        <div id="closingAccounts"></div>
+        <div class="ct-totals" id="closingTotals"></div>
       </div>
 
-      <div class="ct-selo" id="fecSelo" hidden></div>
+      <div class="ct-badge" id="closingBadge" hidden></div>
 
-      <div class="res-bloco">
-        <b class="res-titulo">Quem pagou cada item</b>
+      <div class="res-block">
+        <b class="res-title">Quem pagou cada item</b>
         <p class="res-nota">
           O valor vem do custo real acima — <strong>ninguém digita valor aqui</strong>, só escolhe
           o nome.
         </p>
-        <form id="acertoForm" novalidate>
-          <div id="acertoPagadores"></div>
-          <button type="submit" class="aj-salvar" id="btnSalvarAcerto">Salvar quem pagou</button>
-          <p class="msg-toast" id="acertoMsg"></p>
+        <form id="settlementForm" novalidate>
+          <div id="settlementPayers"></div>
+          <button type="submit" class="aj-save" id="btnSaveSettlement">Salvar quem pagou</button>
+          <p class="msg-toast" id="settlementMsg"></p>
         </form>
       </div>
 
-      <div class="res-bloco" id="acertoBloco">
-        <b class="res-titulo">Acerto entre vocês</b>
-        <div id="acertoSaldos"></div>
-        <div id="acertoTransferencias"></div>
-        <div class="ct-compartilhar" id="acertoCompartilhar" hidden>
-          <button type="button" class="ad-btn ad-btn-largo" id="btnCopiarAcerto">&#128203; Copiar resumo</button>
-          <a class="ad-btn ad-btn-largo" id="btnWhatsAcerto" target="_blank" rel="noopener">&#128172; Mandar no WhatsApp</a>
-          <p class="res-nota" id="acertoCopiaMsg"></p>
-          <textarea id="acertoTexto" class="compras-texto" rows="6" readonly hidden></textarea>
+      <div class="res-block" id="settlementBlock">
+        <b class="res-title">Acerto entre vocês</b>
+        <div id="settlementBalances"></div>
+        <div id="settlementTransferencias"></div>
+        <div class="ct-share" id="settlementShare" hidden>
+          <button type="button" class="ad-btn ad-btn-wide" id="btnCopySettlement">&#128203; Copiar resumo</button>
+          <a class="ad-btn ad-btn-wide" id="btnWhatsSettlement" target="_blank" rel="noopener">&#128172; Mandar no WhatsApp</a>
+          <p class="res-nota" id="settlementCopyMsg"></p>
+          <textarea id="settlementText" class="shopping-text" rows="6" readonly hidden></textarea>
         </div>
       </div>
       </section>
 
       <!-- ---------- Ajustes (provisório até a Fatia 14) ---------- -->
-      <section class="ad-aba" id="aba-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" hidden>
+      <section class="ad-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
       <!-- Seis blocos, cinco em acordeão e as fotos sempre abertas.
            Preços, taxas e prazo, que eram um formulário só, viraram três:
            cada `update` nasce estreito porque o formulário é pequeno. -->
 
-      <div class="aj-bloco" data-aj="convite">
-        <button type="button" class="aj-topo" data-aj-toggle="convite" aria-expanded="false">
-          <span class="aj-quem">
+      <div class="aj-block" data-aj="convite">
+        <button type="button" class="aj-top" data-aj-toggle="convite" aria-expanded="false">
+          <span class="aj-who">
             <b>O convite</b>
             <span class="aj-desc">Título, data, local e os nomes dos aniversariantes</span>
           </span>
-          <span class="aj-sujo" hidden>não salvo</span>
-          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+          <span class="aj-dirty" hidden>não salvo</span>
+          <span class="aj-arrow" aria-hidden="true">&#9660;</span>
         </button>
-        <div class="aj-corpo" hidden>
-          <form id="conviteForm" novalidate>
-            <label class="config-campo"><span>Título *</span>
-              <input type="text" id="cv_titulo" maxlength="120" /></label>
-            <label class="config-campo"><span>Subtítulo</span>
-              <input type="text" id="cv_subtitulo" maxlength="200" /></label>
-            <label class="config-campo"><span>Data e hora *</span>
-              <input type="datetime-local" id="cv_data" /></label>
-            <label class="config-campo"><span>Data por extenso <small>(vazio = gerada)</small></span>
-              <input type="text" id="cv_data_texto" maxlength="160" /></label>
-            <label class="config-campo"><span>Local *</span>
-              <input type="text" id="cv_local" maxlength="200" /></label>
-            <label class="config-campo"><span>Link do mapa</span>
-              <input type="url" id="cv_local_mapa" placeholder="https://..." /></label>
+        <div class="aj-body" hidden>
+          <form id="inviteForm" novalidate>
+            <label class="config-field"><span>Título *</span>
+              <input type="text" id="party_title" maxlength="120" /></label>
+            <label class="config-field"><span>Subtítulo</span>
+              <input type="text" id="party_subtitle" maxlength="200" /></label>
+            <label class="config-field"><span>Data e hora *</span>
+              <input type="datetime-local" id="party_starts_at" /></label>
+            <label class="config-field"><span>Data por extenso <small>(vazio = gerada)</small></span>
+              <input type="text" id="party_date_text" maxlength="160" /></label>
+            <label class="config-field"><span>Local *</span>
+              <input type="text" id="party_venue" maxlength="200" /></label>
+            <label class="config-field"><span>Link do mapa</span>
+              <input type="url" id="party_map_url" placeholder="https://..." /></label>
 
             <!-- Colado em data e local de propósito: são estes dois que
                  ficam mentindo no preview do WhatsApp. -->
-            <p class="aj-alerta">
+            <p class="aj-alert">
               <b>O preview do WhatsApp não segue isto.</b>
               Título, data e local que aparecem quando alguém compartilha o link estão escritos à
               mão no <code>index.html</code>. Mudou a data ou o local aqui? Peça para alguém
@@ -239,122 +239,122 @@
               valor antigo.
             </p>
 
-            <p class="campo-dica">
+            <p class="field-hint">
               A <strong>posição</strong> do aniversariante é o identificador dele nas confirmações.
               Renomear é seguro; trocar de posição reatribui quem convidou quem.
             </p>
-            <label class="config-campo"><span>1º aniversariante *</span><input type="text" id="cv_nome_aniv_1" maxlength="60" /></label>
-            <label class="config-campo"><span>2º aniversariante *</span><input type="text" id="cv_nome_aniv_2" maxlength="60" /></label>
-            <label class="config-campo"><span>3º aniversariante *</span><input type="text" id="cv_nome_aniv_3" maxlength="60" /></label>
+            <label class="config-field"><span>1º aniversariante *</span><input type="text" id="party_celebrant_1_name" maxlength="60" /></label>
+            <label class="config-field"><span>2º aniversariante *</span><input type="text" id="party_celebrant_2_name" maxlength="60" /></label>
+            <label class="config-field"><span>3º aniversariante *</span><input type="text" id="party_celebrant_3_name" maxlength="60" /></label>
 
-            <button type="submit" class="aj-salvar" id="btnSalvarConvite">Salvar</button>
-            <small class="campo-dica" id="conviteAtualizado"></small>
-            <p class="msg-toast" id="conviteMsg"></p>
+            <button type="submit" class="aj-save" id="btnSaveInvite">Salvar</button>
+            <small class="field-hint" id="inviteUpdatedAt"></small>
+            <p class="msg-toast" id="inviteMsg"></p>
           </form>
         </div>
       </div>
 
-      <div class="aj-bloco" data-aj="precos">
-        <button type="button" class="aj-topo" data-aj-toggle="precos" aria-expanded="false">
-          <span class="aj-quem">
+      <div class="aj-block" data-aj="precos">
+        <button type="button" class="aj-top" data-aj-toggle="precos" aria-expanded="false">
+          <span class="aj-who">
             <b>Preços de referência</b>
             <span class="aj-desc">Base da estimativa de custo</span>
           </span>
-          <span class="aj-sujo" hidden>não salvo</span>
-          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+          <span class="aj-dirty" hidden>não salvo</span>
+          <span class="aj-arrow" aria-hidden="true">&#9660;</span>
         </button>
-        <div class="aj-corpo" hidden>
-          <form id="precosForm" novalidate>
-            <p class="campo-dica">Use vírgula para os centavos: <code>18,00</code>.</p>
-            <div id="configPrecos"></div>
-            <button type="submit" class="aj-salvar" id="btnSalvarPrecos">Salvar</button>
-            <p class="msg-toast" id="precosMsg"></p>
+        <div class="aj-body" hidden>
+          <form id="pricesForm" novalidate>
+            <p class="field-hint">Use vírgula para os centavos: <code>18,00</code>.</p>
+            <div id="configPrices"></div>
+            <button type="submit" class="aj-save" id="btnSavePrices">Salvar</button>
+            <p class="msg-toast" id="pricesMsg"></p>
           </form>
         </div>
       </div>
 
-      <div class="aj-bloco" data-aj="taxas">
-        <button type="button" class="aj-topo" data-aj-toggle="taxas" aria-expanded="false">
-          <span class="aj-quem">
+      <div class="aj-block" data-aj="taxas">
+        <button type="button" class="aj-top" data-aj-toggle="taxas" aria-expanded="false">
+          <span class="aj-who">
             <b>Consumo por pessoa</b>
             <span class="aj-desc">Litros usados no cálculo da compra</span>
           </span>
-          <span class="aj-sujo" hidden>não salvo</span>
-          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+          <span class="aj-dirty" hidden>não salvo</span>
+          <span class="aj-arrow" aria-hidden="true">&#9660;</span>
         </button>
-        <div class="aj-corpo" hidden>
-          <form id="taxasForm" novalidate>
-            <p class="campo-dica">
+        <div class="aj-body" hidden>
+          <form id="ratesForm" novalidate>
+            <p class="field-hint">
               Transformam o "quem bebe o quê" em litros a comprar. Taxa zerada faz a estimativa
               daquela bebida dar zero.
             </p>
-            <div id="configTaxas"></div>
-            <button type="submit" class="aj-salvar" id="btnSalvarTaxas">Salvar</button>
-            <p class="msg-toast" id="taxasMsg"></p>
+            <div id="configRates"></div>
+            <button type="submit" class="aj-save" id="btnSaveRates">Salvar</button>
+            <p class="msg-toast" id="ratesMsg"></p>
           </form>
         </div>
       </div>
 
-      <div class="aj-bloco" data-aj="prazo">
-        <button type="button" class="aj-topo" data-aj-toggle="prazo" aria-expanded="false">
-          <span class="aj-quem">
+      <div class="aj-block" data-aj="prazo">
+        <button type="button" class="aj-top" data-aj-toggle="prazo" aria-expanded="false">
+          <span class="aj-who">
             <b>Prazo</b>
             <span class="aj-desc">Quando o formulário do convite fecha</span>
           </span>
-          <span class="aj-sujo" hidden>não salvo</span>
-          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+          <span class="aj-dirty" hidden>não salvo</span>
+          <span class="aj-arrow" aria-hidden="true">&#9660;</span>
         </button>
-        <div class="aj-corpo" hidden>
-          <form id="prazoForm" novalidate>
-            <label class="config-campo">
+        <div class="aj-body" hidden>
+          <form id="deadlineForm" novalidate>
+            <label class="config-field">
               <span>Confirmações até o fim do dia</span>
-              <input type="date" id="cfgPrazo" />
+              <input type="date" id="cfgDeadline" />
             </label>
-            <p class="campo-dica">
+            <p class="field-hint">
               Vazio = sem limite. Depois dessa data o formulário público fecha e o envio é
               recusado pelo banco.
             </p>
-            <button type="submit" class="aj-salvar" id="btnSalvarPrazo">Salvar</button>
-            <p class="msg-toast" id="prazoMsg"></p>
+            <button type="submit" class="aj-save" id="btnSaveDeadline">Salvar</button>
+            <p class="msg-toast" id="deadlineMsg"></p>
           </form>
         </div>
       </div>
 
-      <div class="aj-bloco" data-aj="aniversariantes">
-        <button type="button" class="aj-topo" data-aj-toggle="aniversariantes" aria-expanded="false">
-          <span class="aj-quem">
+      <div class="aj-block" data-aj="aniversariantes">
+        <button type="button" class="aj-top" data-aj-toggle="aniversariantes" aria-expanded="false">
+          <span class="aj-who">
             <b>Aniversariantes</b>
             <span class="aj-desc">O que cada um consome na festa</span>
           </span>
-          <span class="aj-sujo" hidden>não salvo</span>
-          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+          <span class="aj-dirty" hidden>não salvo</span>
+          <span class="aj-arrow" aria-hidden="true">&#9660;</span>
         </button>
-        <div class="aj-corpo" hidden>
-          <form id="anivForm" novalidate>
-            <p class="campo-dica">
+        <div class="aj-body" hidden>
+          <form id="celebrantForm" novalidate>
+            <p class="field-hint">
               Eles pagam 100% do próprio consumo e entram na estimativa como qualquer pessoa.
               Para <strong>renomear</strong>, é no bloco "O convite".
             </p>
-            <div id="anivBlocos"></div>
-            <button type="submit" class="aj-salvar" id="btnSalvarAniv">Salvar</button>
-            <p class="msg-toast" id="anivMsg"></p>
+            <div id="celebrantBlocks"></div>
+            <button type="submit" class="aj-save" id="btnSaveCelebrant">Salvar</button>
+            <p class="msg-toast" id="celebrantMsg"></p>
           </form>
         </div>
       </div>
 
-      <div class="aj-bloco aj-bloco-aberto">
-        <div class="aj-fotos-cab">
+      <div class="aj-block aj-block-open">
+        <div class="aj-photos-cab">
           <b>Fotos do convite</b>
           <span class="aj-desc">As imagens que passam na seção "Fotos da festa".</span>
         </div>
-        <div class="aj-corpo">
+        <div class="aj-body">
           <label class="upload-drop" id="uploadDrop">
             <input type="file" id="fileInput" accept="image/*" multiple />
             <b>Toque para enviar</b>
             <small>JPG, PNG, WEBP ou GIF</small>
           </label>
-          <p class="msg-toast" id="fotoMsg"></p>
-          <div class="fotos-grid" id="fotosGrid"></div>
+          <p class="msg-toast" id="photoMsg"></p>
+          <div class="photos-grid" id="photosGrid"></div>
         </div>
       </div>
       </section>
@@ -362,12 +362,12 @@
 
     <!-- Barra de abas. Rótulo de texto, sem ícone: glifo ambíguo foi
          testado e descartado pelo design. -->
-    <nav class="ad-abas" role="tablist" aria-label="Seções do painel">
-      <button type="button" class="ad-aba-btn" role="tab" id="tab-resumo" data-aba="resumo" aria-controls="aba-resumo">Resumo</button>
-      <button type="button" class="ad-aba-btn" role="tab" id="tab-quem-vem" data-aba="quem-vem" aria-controls="aba-quem-vem">Quem vem</button>
-      <button type="button" class="ad-aba-btn" role="tab" id="tab-compras" data-aba="compras" aria-controls="aba-compras">Compras</button>
-      <button type="button" class="ad-aba-btn" role="tab" id="tab-contas" data-aba="contas" aria-controls="aba-contas">Contas</button>
-      <button type="button" class="ad-aba-btn" role="tab" id="tab-ajustes" data-aba="ajustes" aria-controls="aba-ajustes">Ajustes</button>
+    <nav class="ad-tabs" role="tablist" aria-label="Seções do painel">
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-overview" data-aba="resumo" aria-controls="panel-overview">Resumo</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-guests" data-aba="quem-vem" aria-controls="panel-guests">Quem vem</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-shopping" data-aba="compras" aria-controls="panel-shopping">Compras</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-accounts" data-aba="contas" aria-controls="panel-accounts">Contas</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-settings" data-aba="ajustes" aria-controls="panel-settings">Ajustes</button>
     </nav>
   
 

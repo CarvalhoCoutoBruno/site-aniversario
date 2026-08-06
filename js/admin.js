@@ -6,8 +6,8 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-  const temSupabase = C.supabase.url && !C.supabase.url.includes("COLE_");
-  if (!temSupabase || !window.supabase) {
+  const hasSupabase = C.supabase.url && !C.supabase.url.includes("COLE_");
+  if (!hasSupabase || !window.supabase) {
     $("#loginBox").innerHTML =
       '<h1>Configuração pendente</h1><p>Cole a URL e a chave do Supabase em <code>js/config.js</code> para usar o painel.</p><p style="text-align:center"><a href="index.html">← Voltar</a></p>';
     return;
@@ -21,17 +21,17 @@
     msg.className = "msg-toast"; msg.textContent = "Entrando...";
     const { error } = await sb.auth.signInWithPassword({
       email: $("#email").value.trim(),
-      password: $("#senha").value,
+      password: $("#password").value,
     });
     if (error) { msg.className = "msg-toast err"; msg.textContent = "E-mail ou senha incorretos."; return; }
-    mostrarPainel();
+    showPanel();
   });
 
-  $("#btnSair").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
-  $("#btnAtualizar").addEventListener("click", async () => {
-    await carregarConvite();
-    carregarConfig(); carregarAniversariantes(); carregarRSVPs(); carregarFotos();
-    carimbarAtualizacao();
+  $("#btnSignOut").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
+  $("#btnRefresh").addEventListener("click", async () => {
+    await loadParty();
+    loadSettings(); loadCelebrants(); loadRSVPs(); loadPhotos();
+    stampRefresh();
   });
 
   /* ================= ABAS =================
@@ -43,49 +43,49 @@
 
      O estado vive no hash: sobrevive ao reload e ao botão voltar, é
      compartilhável, e não guarda nada no aparelho de ninguém. */
-  const ABAS = ["resumo", "quem-vem", "compras", "contas", "ajustes"];
-  const ABA_PADRAO = "resumo";
+  const TABS = ["resumo", "quem-vem", "compras", "contas", "ajustes"];
+  const DEFAULT_TAB = "resumo";
 
-  function abaDoHash() {
+  function tabFromHash() {
     const h = (location.hash || "").replace(/^#/, "");
-    return ABAS.includes(h) ? h : ABA_PADRAO;   // hash ausente ou desconhecido cai no padrão
+    return TABS.includes(h) ? h : DEFAULT_TAB;   // hash ausente ou desconhecido cai no padrão
   }
 
-  function mostrarAba(id) {
-    for (const a of ABAS) {
+  function showTab(id) {
+    for (const a of TABS) {
       $(`#aba-${a}`).hidden = a !== id;
       const botao = $(`#tab-${a}`);
-      botao.classList.toggle("ativa", a === id);
+      botao.classList.toggle("active", a === id);
       botao.setAttribute("aria-selected", String(a === id));
     }
     // o conteúdo da aba anterior pode ter deixado a página rolada
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  $$(".ad-aba-btn").forEach((b) => {
+  $$(".ad-tab-btn").forEach((b) => {
     b.addEventListener("click", () => {
       const id = b.dataset.aba;
       // replaceState e não hash direto: um toque em aba não merece uma
       // entrada no histórico, mas a URL precisa refletir onde você está
       history.replaceState(null, "", `#${id}`);
-      mostrarAba(id);
+      showTab(id);
     });
   });
   // o voltar/avançar do navegador mexe no hash sem passar pelo clique
-  window.addEventListener("hashchange", () => mostrarAba(abaDoHash()));
+  window.addEventListener("hashchange", () => showTab(tabFromHash()));
 
   /* "atualizado às HH:MM" — a hora do último carregamento nesta sessão,
      que é o que responde "esse número na minha tela está velho?".
      No fuso da festa: o organizador pode estar viajando. */
-  function carimbarAtualizacao() {
-    $("#adAtualizado").textContent = "atualizado às " +
+  function stampRefresh() {
+    $("#adUpdatedAt").textContent = "atualizado às " +
       new Intl.DateTimeFormat("pt-BR", {
         timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false,
       }).format(new Date());
   }
 
   // já logado?
-  sb.auth.getSession().then(({ data }) => { if (data.session) mostrarPainel(); });
+  sb.auth.getSession().then(({ data }) => { if (data.session) showPanel(); });
 
   /* A trava é sobre REGISTRAR LISTENER, não sobre montar o painel.
 
@@ -98,22 +98,22 @@
      O que precisava de trava era só o prepararUpload(), que duplicava os
      listeners e fazia um arquivo escolhido subir duas vezes. Recarregar
      dado é idempotente e pode acontecer de novo à vontade. */
-  let uploadPreparado = false;
+  let uploadReady = false;
 
-  async function mostrarPainel() {
+  async function showPanel() {
     $("#loginBox").hidden = true;
-    $("#painel").hidden = false;
-    mostrarAba(abaDoHash());
-    if (!uploadPreparado) { uploadPreparado = true; prepararUpload(); }
+    $("#panel").hidden = false;
+    showTab(tabFromHash());
+    if (!uploadReady) { uploadReady = true; wireUpload(); }
     // A festa vem PRIMEIRO e sozinha: os nomes dos aniversariantes saem
     // dela, e quem renderiza rótulo (cadastro, seletor de pagador,
     // coluna "convidou") pegaria o fallback se rodasse em paralelo.
-    await carregarConvite();
-    carregarConfig();
-    carregarAniversariantes();
-    carregarRSVPs();
-    carregarFotos();
-    carimbarAtualizacao();
+    await loadParty();
+    loadSettings();
+    loadCelebrants();
+    loadRSVPs();
+    loadPhotos();
+    stampRefresh();
   }
 
   /* ================= CONVITE: o que o convidado vê =================
@@ -125,14 +125,14 @@
      em convidado_por e aniversariante_id. Em colunas nomeadas em vez de
      array, não dá para reordenar sem perceber.                      */
 
-  let ultimaFesta = null;
+  let lastParty = null;
 
-  const CAMPOS_CONVITE = ["titulo", "subtitulo", "data_texto", "local", "local_mapa",
+  const PARTY_FIELDS = ["titulo", "subtitulo", "data_texto", "local", "local_mapa",
                           "nome_aniv_1", "nome_aniv_2", "nome_aniv_3"];
 
   // datetime-local <-> timestamptz, sempre em -03:00, mesma disciplina
   // do prazo: o dia sai do fuso de São Paulo, não do navegador.
-  function dataParaInput(iso) {
+  function dateToInput(iso) {
     if (!iso) return "";
     const d = new Date(iso);
     if (isNaN(d)) return "";
@@ -145,86 +145,86 @@
     return `${g("year")}-${g("month")}-${g("day")}T${g("hour")}:${g("minute")}`;
   }
 
-  const inputParaData = (v) => (v ? `${v}:00-03:00` : null);
+  const inputToDate = (v) => (v ? `${v}:00-03:00` : null);
 
-  async function carregarConvite() {
-    const { data, error } = await sb.from("festa").select("*").eq("id", 1).single();
+  async function loadParty() {
+    const { data, error } = await sb.from("party").select("*").eq("id", 1).single();
     if (error || !data) {
       console.error(error);
-      return toastConvite("Não consegui carregar o convite.", "err");
+      return partyToast("Não consegui carregar o convite.", "err");
     }
-    ultimaFesta = data;
-    for (const col of CAMPOS_CONVITE) $(`#cv_${col}`).value = data[col] || "";
-    $("#cv_data").value = dataParaInput(data.data);
-    $("#conviteAtualizado").textContent = data.atualizado_em
-      ? `Editado em ${fmtData(data.atualizado_em)}`
+    lastParty = data;
+    for (const col of PARTY_FIELDS) $(`#cv_${col}`).value = data[col] || "";
+    $("#party_starts_at").value = dateToInput(data.starts_at);
+    $("#inviteUpdatedAt").textContent = data.updated_at
+      ? `Editado em ${fmtDateTime(data.updated_at)}`
       : "Ainda nos valores originais";
-    recomputar();
+    recompute();
   }
 
-  function toastConvite(msg, classe) {
-    const el = $("#conviteMsg");
+  function partyToast(msg, classe) {
+    const el = $("#inviteMsg");
     el.className = "msg-toast" + (classe ? " " + classe : "");
     el.textContent = msg;
   }
 
-  $("#conviteForm").addEventListener("submit", async (e) => {
+  $("#inviteForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = $("#btnSalvarConvite");
-    toastConvite("");
+    const btn = $("#btnSaveInvite");
+    partyToast("");
 
     const txt = (id) => $(`#cv_${id}`).value.trim();
     const obrigatorios = [["titulo", "Título"], ["local", "Local"],
                           ["nome_aniv_1", "1º aniversariante"],
                           ["nome_aniv_2", "2º aniversariante"],
                           ["nome_aniv_3", "3º aniversariante"]];
-    for (const [col, rotulo] of obrigatorios) {
-      if (!txt(col)) return erroConvite(col, `Preencha "${rotulo}".`);
+    for (const [col, label] of obrigatorios) {
+      if (!txt(col)) return partyFieldError(col, `Preencha "${label}".`);
     }
-    if (!$("#cv_data").value) return erroConvite("data", "Escolha a data e a hora da festa.");
+    if (!$("#party_starts_at").value) return partyFieldError("data", "Escolha a data e a hora da festa.");
 
     // o link vai direto para o href do convite: um valor colado errado
     // viraria link quebrado na cara do convidado
     const mapa = txt("local_mapa");
     if (mapa && !/^https?:\/\//i.test(mapa)) {
-      return erroConvite("local_mapa", "O link do mapa precisa começar com http:// ou https://.");
+      return partyFieldError("local_mapa", "O link do mapa precisa começar com http:// ou https://.");
     }
 
     const patch = {
-      titulo: txt("titulo"),
-      subtitulo: txt("subtitulo") || null,
-      data: inputParaData($("#cv_data").value),
-      data_texto: txt("data_texto") || null,
-      local: txt("local"),
-      local_mapa: mapa || null,
-      nome_aniv_1: txt("nome_aniv_1"),
-      nome_aniv_2: txt("nome_aniv_2"),
-      nome_aniv_3: txt("nome_aniv_3"),
-      atualizado_em: new Date().toISOString(),
+      title: txt("titulo"),
+      subtitle: txt("subtitulo") || null,
+      starts_at: inputToDate($("#party_starts_at").value),
+      date_text: txt("data_texto") || null,
+      venue: txt("local"),
+      map_url: mapa || null,
+      celebrant_1_name: txt("nome_aniv_1"),
+      celebrant_2_name: txt("nome_aniv_2"),
+      celebrant_3_name: txt("nome_aniv_3"),
+      updated_at: new Date().toISOString(),
     };
 
     btn.disabled = true;
-    const rotulo = btn.textContent;
+    const label = btn.textContent;
     btn.textContent = "Salvando...";
-    const { error } = await sb.from("festa").update(patch).eq("id", 1);
+    const { error } = await sb.from("party").update(patch).eq("id", 1);
     btn.disabled = false;
-    btn.textContent = rotulo;
+    btn.textContent = label;
 
     if (error) {
       console.error(error);
-      return toastConvite("Não consegui salvar o convite.", "err");
+      return partyToast("Não consegui salvar o convite.", "err");
     }
-    limparSujo("convite");
-    toastConvite("Convite salvo. ✅ O site já está mostrando isso.", "ok");
+    clearDirty("convite");
+    partyToast("Convite salvo. ✅ O site já está mostrando isso.", "ok");
     // await antes dos dependentes: os rótulos dos blocos e a coluna
     // "convidou" saem dos nomes, e sem esperar pegariam os antigos.
-    await carregarConvite();
-    carregarAniversariantes();
-    carregarRSVPs();
+    await loadParty();
+    loadCelebrants();
+    loadRSVPs();
   });
 
-  function erroConvite(col, msg) {
-    toastConvite(msg, "err");
+  function partyFieldError(col, msg) {
+    partyToast(msg, "err");
     const el = $(`#cv_${col}`);
     if (el) el.focus();
   }
@@ -233,14 +233,14 @@
      quando o aniversariante foi cadastrado. Renomeando no Convite, a
      conta continuaria com o nome velho até alguém re-salvar o cadastro.
      A festa é a fonte única do nome — o snapshot serve só de reserva. */
-  function nomeDoAniversariante(id, reserva) {
-    return nomesAniversariantes()[id - 1] || reserva || `Aniversariante ${id}`;
+  function celebrantName(id, reserva) {
+    return celebrantNames()[id - 1] || reserva || `Aniversariante ${id}`;
   }
 
   // nomes dos 3, na ordem — a posição é o id
-  function nomesAniversariantes() {
-    return ultimaFesta
-      ? [ultimaFesta.nome_aniv_1, ultimaFesta.nome_aniv_2, ultimaFesta.nome_aniv_3]
+  function celebrantNames() {
+    return lastParty
+      ? [lastParty.celebrant_1_name, lastParty.celebrant_2_name, lastParty.celebrant_3_name]
       : ["Aniversariante 1", "Aniversariante 2", "Aniversariante 3"];
   }
 
@@ -250,17 +250,17 @@
 
   // numeric(10,2) e numeric(6,3) no banco: estourar a faixa volta como
   // erro cru de tipo, então a trava é aqui.
-  const MAX_PRECO = 99999999.99;
-  const MAX_TAXA = 999.999;
+  const MAX_PRICE = 99999999.99;
+  const MAX_RATE = 999.999;
 
-  const CAMPOS_PRECO = [
+  const PRICE_FIELDS = [
     ["preco_litro_chopp", "Chopp (por litro)"],
     ["preco_litro_refri", "Refrigerante (por litro)"],
     ["preco_litro_agua", "Água (por litro)"],
     ["preco_pizza_adulto", "Pizza — adulto (por pessoa)"],
     ["preco_pizza_crianca", "Pizza — criança (por pessoa)"],
   ];
-  const CAMPOS_TAXA = [
+  const RATE_FIELDS = [
     ["litros_chopp_por_adulto", "Chopp por adulto"],
     ["litros_refri_por_pessoa", "Refrigerante por pessoa"],
     ["litros_agua_por_pessoa", "Água por pessoa"],
@@ -273,17 +273,17 @@
      Regra: se há vírgula, ela é o decimal e os pontos são milhar;
      sem vírgula, um ponto é decimal. Distingue vazio de inválido para
      a mensagem poder ser específica.                                */
-  function parseNumeroBR(txt) {
+  function parseNumberBR(txt) {
     const s = String(txt == null ? "" : txt).trim();
-    if (s === "") return { vazio: true, valor: null };
+    if (s === "") return { empty: true, amount: null };
     const norm = s.indexOf(",") >= 0 ? s.replace(/\./g, "").replace(",", ".") : s;
-    if (!/^-?\d+(\.\d+)?$/.test(norm)) return { invalido: true, valor: null };
+    if (!/^-?\d+(\.\d+)?$/.test(norm)) return { invalido: true, amount: null };
     const n = Number(norm);
-    if (!isFinite(n)) return { invalido: true, valor: null };
-    return { valor: n };
+    if (!isFinite(n)) return { invalido: true, amount: null };
+    return { amount: n };
   }
 
-  function fmtNumeroBR(n, minCasas, maxCasas) {
+  function fmtNumberBR(n, minCasas, maxCasas) {
     if (n === null || n === undefined || n === "") return "";
     return Number(n).toLocaleString("pt-BR", {
       minimumFractionDigits: minCasas,
@@ -297,7 +297,7 @@
      em 31/12 mudaria o ano), fazendo o prazo andar a cada visita.
      Por isso o dia sai pelo fuso de São Paulo, não pelo do navegador
      — que pode ser outro, se o organizador estiver viajando.        */
-  function dataDoPrazo(iso) {
+  function deadlineToInput(iso) {
     if (!iso) return "";
     const d = new Date(iso);
     if (isNaN(d)) return "";
@@ -309,37 +309,37 @@
     return `${parte("year")}-${parte("month")}-${parte("day")}`;
   }
 
-  const prazoDaData = (data) => (data ? `${data}T23:59:59-03:00` : null);
+  const inputToDeadline = (data) => (data ? `${data}T23:59:59-03:00` : null);
 
   /* ---- montagem dos campos ---- */
-  function montarCampos(destino, campos, dica) {
-    $(destino).innerHTML = campos
-      .map(([col, rotulo]) => `
-        <label class="config-campo">
-          <span>${esc(rotulo)}</span>
+  function renderFields(destino, fields, hint) {
+    $(destino).innerHTML = fields
+      .map(([col, label]) => `
+        <label class="config-field">
+          <span>${esc(label)}</span>
           <input type="text" inputmode="decimal" id="cfg_${col}"
-                 data-coluna="${col}" placeholder="${esc(dica)}" />
+                 data-coluna="${col}" placeholder="${esc(hint)}" />
         </label>`)
       .join("");
   }
 
-  async function carregarConfig() {
-    montarCampos("#configPrecos", CAMPOS_PRECO, "0,00");
-    montarCampos("#configTaxas", CAMPOS_TAXA, "0,0");
+  async function loadSettings() {
+    renderFields("#configPrices", PRICE_FIELDS, "0,00");
+    renderFields("#configRates", RATE_FIELDS, "0,0");
 
-    const { data, error } = await sb.from("config").select("*").eq("id", 1).single();
+    const { data, error } = await sb.from("settings").select("*").eq("id", 1).single();
     if (error) {
       console.error(error);
-      toast("#precosMsg", "Não consegui carregar a configuração.", "err");
+      toast("#pricesMsg", "Não consegui carregar a configuração.", "err");
       return;
     }
-    ultimaConfig = data;   // estimativa e rateio usam a config SALVA, não os inputs
-    montarCamposFechamento();
-    preencherFechamento(data);
-    recomputar();
-    for (const [col] of CAMPOS_PRECO) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 2, 2);
-    for (const [col] of CAMPOS_TAXA) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 0, 3);
-    $("#cfgPrazo").value = dataDoPrazo(data.prazo_confirmacao);
+    lastSettings = data;   // estimativa e rateio usam a config SALVA, não os inputs
+    renderClosingFields();
+    fillClosing(data);
+    recompute();
+    for (const [col] of PRICE_FIELDS) $(`#cfg_${col}`).value = fmtNumberBR(data[col], 2, 2);
+    for (const [col] of RATE_FIELDS) $(`#cfg_${col}`).value = fmtNumberBR(data[col], 0, 3);
+    $("#cfgDeadline").value = deadlineToInput(data.rsvp_deadline);
   }
 
   /* ---- salvar ---- */
@@ -349,40 +349,40 @@
      lista as colunas à mão, e `custo_real_*` / `pago_por_*` não aparecem
      em nenhum deles. */
 
-  function salvarNumeros(campos, maximo, tipo, botao, toast) {
+  function readNumbers(fields, maximo, kind, botao, toast) {
     const patch = {};
-    for (const [col, rotulo] of campos) {
-      const r = parseNumeroBR($(`#cfg_${col}`).value);
+    for (const [col, label] of fields) {
+      const r = parseNumberBR($(`#cfg_${col}`).value);
       // vazio e inválido são erros diferentes e merecem mensagem diferente:
       // deixar vazio virar 0 em silêncio seria zerar preço sem avisar.
-      if (r.vazio) return { erro: [col, `Preencha "${rotulo}". Use 0 se for zero mesmo.`] };
-      if (r.invalido) return { erro: [col, `"${rotulo}" não é um número válido.`] };
-      if (r.valor < 0) return { erro: [col, `"${rotulo}" não pode ser negativo.`] };
-      if (r.valor > maximo) {
-        return { erro: [col, `"${rotulo}" passou do máximo aceito para ${tipo} (${fmtNumeroBR(maximo, 2, 3)}).`] };
+      if (r.empty) return { error: [col, `Preencha "${label}". Use 0 se for zero mesmo.`] };
+      if (r.invalido) return { error: [col, `"${label}" não é um número válido.`] };
+      if (r.amount < 0) return { error: [col, `"${label}" não pode ser negativo.`] };
+      if (r.amount > maximo) {
+        return { error: [col, `"${label}" passou do máximo aceito para ${kind} (${fmtNumberBR(maximo, 2, 3)}).`] };
       }
-      patch[col] = r.valor;
+      patch[col] = r.amount;
     }
     return { patch };
   }
 
-  async function gravarConfig(patch, botao, elToast, ondeMarcar) {
-    patch.atualizado_em = new Date().toISOString();
+  async function saveSettings(patch, botao, toastEl, dirtyBlock) {
+    patch.updated_at = new Date().toISOString();
     botao.disabled = true;
     const anterior = botao.textContent;
     botao.textContent = "Salvando...";
-    const { error } = await sb.from("config").update(patch).eq("id", 1);
+    const { error } = await sb.from("settings").update(patch).eq("id", 1);
     botao.disabled = false;
     botao.textContent = anterior;
 
     if (error) {
       console.error(error);
-      toast(elToast, "Não consegui salvar. Confira os valores e tente de novo.", "err");
+      toast(toastEl, "Não consegui salvar. Confira os valores e tente de novo.", "err");
       return false;
     }
-    toast(elToast, "Salvo. ✅", "ok");
-    limparSujo(ondeMarcar);
-    carregarConfig();
+    toast(toastEl, "Salvo. ✅", "ok");
+    clearDirty(dirtyBlock);
+    loadSettings();
     return true;
   }
 
@@ -395,28 +395,28 @@
      Trocar de aba não perde edição pendente: as abas são troca de
      visibilidade e o input segue no DOM com o valor digitado. O marcador
      existe para a recarga e o logout. */
-  function marcarSujo(bloco) {
-    const el = document.querySelector(`.aj-bloco[data-aj="${bloco}"] .aj-sujo`);
+  function markDirty(block) {
+    const el = document.querySelector(`.aj-block[data-aj="${block}"] .aj-dirty`);
     if (el) el.hidden = false;
   }
 
-  function limparSujo(bloco) {
-    const el = document.querySelector(`.aj-bloco[data-aj="${bloco}"] .aj-sujo`);
+  function clearDirty(block) {
+    const el = document.querySelector(`.aj-block[data-aj="${block}"] .aj-dirty`);
     if (el) el.hidden = true;
   }
 
-  $$(".aj-bloco[data-aj]").forEach((bl) => {
-    const nome = bl.dataset.aj;
-    bl.addEventListener("input", () => marcarSujo(nome));
+  $$(".aj-block[data-aj]").forEach((bl) => {
+    const name = bl.dataset.aj;
+    bl.addEventListener("input", () => markDirty(name));
   });
 
   $$("[data-aj-toggle]").forEach((b) => b.addEventListener("click", () => {
-    const bloco = b.closest(".aj-bloco");
-    const corpo = bloco.querySelector(".aj-corpo");
+    const block = b.closest(".aj-block");
+    const corpo = block.querySelector(".aj-body");
     const abrindo = corpo.hidden;
     corpo.hidden = !abrindo;
     b.setAttribute("aria-expanded", String(abrindo));
-    bloco.querySelector(".aj-seta").innerHTML = abrindo ? "&#9650;" : "&#9660;";
+    block.querySelector(".aj-arrow").innerHTML = abrindo ? "&#9650;" : "&#9660;";
   }));
 
   function toast(sel, msg, classe) {
@@ -426,32 +426,32 @@
     el.textContent = msg;
   }
 
-  $("#precosForm").addEventListener("submit", async (e) => {
+  $("#pricesForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    toast("#precosMsg", "");
-    const r = salvarNumeros(CAMPOS_PRECO, MAX_PRECO, "preço");
-    if (r.erro) return erroCampo("#precosMsg", r.erro[0], r.erro[1]);
-    await gravarConfig(r.patch, $("#btnSalvarPrecos"), "#precosMsg", "precos");
+    toast("#pricesMsg", "");
+    const r = readNumbers(PRICE_FIELDS, MAX_PRICE, "preço");
+    if (r.error) return fieldError("#pricesMsg", r.error[0], r.error[1]);
+    await saveSettings(r.patch, $("#btnSavePrices"), "#pricesMsg", "precos");
   });
 
-  $("#taxasForm").addEventListener("submit", async (e) => {
+  $("#ratesForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    toast("#taxasMsg", "");
-    const r = salvarNumeros(CAMPOS_TAXA, MAX_TAXA, "taxa");
-    if (r.erro) return erroCampo("#taxasMsg", r.erro[0], r.erro[1]);
-    await gravarConfig(r.patch, $("#btnSalvarTaxas"), "#taxasMsg", "taxas");
+    toast("#ratesMsg", "");
+    const r = readNumbers(RATE_FIELDS, MAX_RATE, "taxa");
+    if (r.error) return fieldError("#ratesMsg", r.error[0], r.error[1]);
+    await saveSettings(r.patch, $("#btnSaveRates"), "#ratesMsg", "taxas");
   });
 
-  $("#prazoForm").addEventListener("submit", async (e) => {
+  $("#deadlineForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    toast("#prazoMsg", "");
+    toast("#deadlineMsg", "");
     // uma coluna só: o update mais estreito do painel
-    await gravarConfig({ prazo_confirmacao: prazoDaData($("#cfgPrazo").value) },
-                       $("#btnSalvarPrazo"), "#prazoMsg", "prazo");
+    await saveSettings({ rsvp_deadline: inputToDeadline($("#cfgDeadline").value) },
+                       $("#btnSaveDeadline"), "#deadlineMsg", "prazo");
   });
 
-  function erroCampo(elToast, col, msg) {
-    toast(elToast, msg, "err");
+  function fieldError(toastEl, col, msg) {
+    toast(toastEl, msg, "err");
     const el = $(`#cfg_${col}`);
     if (el) el.focus();
   }
@@ -468,47 +468,47 @@
      "no unique or exclusion constraint matching". Por isso o caminho é
      ler as linhas e decidir update ou insert.                         */
 
-  const BEBIDAS_ANIV = [
+  const CELEBRANT_DRINKS = [
     ["bebe_agua", "Água"],
     ["bebe_refri", "Refrigerante"],
     ["bebe_chopp", "Chopp"],
   ];
 
   // aniversariante_id -> id da linha em `pessoas` (ausente = ainda não cadastrado)
-  const linhaDoAniversariante = new Map();
+  const celebrantRowId = new Map();
 
-  function montarBlocosAniversariantes() {
-    $("#anivBlocos").innerHTML = nomesAniversariantes()
-      .map((nome, i) => {
+  function renderCelebrantBlocks() {
+    $("#celebrantBlocks").innerHTML = celebrantNames()
+      .map((name, i) => {
         const k = i + 1;
         return `
-        <fieldset class="config-bloco aniv-bloco" data-aniv="${k}">
-          <legend>${esc(nome)} <small>(id ${k})</small></legend>
-          <div class="pessoa-prefs">
-            <div class="pref-grupo">
-              <span class="pref-titulo">🎂 Idade</span>
-              <div class="pref-chips a-tipo">
-                <label class="chip marcado">
-                  <input type="radio" name="aniv-tipo-${k}" value="adulto" checked /><span>Adulto</span>
+        <fieldset class="config-block celebrant-block" data-aniv="${k}">
+          <legend>${esc(name)} <small>(id ${k})</small></legend>
+          <div class="person-prefs">
+            <div class="pref-group">
+              <span class="pref-title">🎂 Idade</span>
+              <div class="pref-chips a-kind">
+                <label class="chip checked">
+                  <input type="radio" name="celebrant-kind-${k}" value="adult" checked /><span>Adulto</span>
                 </label>
                 <label class="chip">
-                  <input type="radio" name="aniv-tipo-${k}" value="crianca" /><span>Criança</span>
+                  <input type="radio" name="celebrant-kind-${k}" value="child" /><span>Criança</span>
                 </label>
               </div>
             </div>
-            <div class="pref-grupo">
-              <span class="pref-titulo">🥤 Bebidas</span>
-              <div class="pref-chips a-bebidas">
-                ${BEBIDAS_ANIV.map(([col, rotulo]) => `
-                  <label class="chip${col === "bebe_chopp" ? " a-chip-chopp" : ""}">
-                    <input type="checkbox" data-col="${col}" /><span>${esc(rotulo)}</span>
+            <div class="pref-group">
+              <span class="pref-title">🥤 Bebidas</span>
+              <div class="pref-chips a-drinks">
+                ${CELEBRANT_DRINKS.map(([col, label]) => `
+                  <label class="chip${col === "wants_beer" ? " a-chip-beer" : ""}">
+                    <input type="checkbox" data-col="${col}" /><span>${esc(label)}</span>
                   </label>`).join("")}
               </div>
-              <small class="campo-dica a-aviso-chopp" hidden>Chopp só para adultos.</small>
+              <small class="field-hint a-beer-warning" hidden>Chopp só para adultos.</small>
             </div>
-            <div class="pref-grupo">
-              <span class="pref-titulo">🍕 Comida</span>
-              <div class="pref-chips a-comida">
+            <div class="pref-group">
+              <span class="pref-title">🍕 Comida</span>
+              <div class="pref-chips a-food">
                 <label class="chip"><input type="checkbox" data-col="come_pizza" /><span>Pizza</span></label>
               </div>
             </div>
@@ -517,121 +517,121 @@
       })
       .join("");
 
-    $$(".aniv-bloco").forEach((bloco) => {
-      ativarChips(bloco);
-      ligarRegraChoppAniv(bloco);
+    $$(".celebrant-block").forEach((block) => {
+      enableChips(block);
+      enableCelebrantBeerRule(block);
     });
   }
 
   /* Espelho de UX da constraint chopp_nao_para_crianca. A fonte da
      verdade da regra é o banco; isto só evita o erro cru na tela. */
-  function ligarRegraChoppAniv(bloco) {
-    const chopp = bloco.querySelector('[data-col="bebe_chopp"]');
-    const chip = bloco.querySelector(".a-chip-chopp");
-    const aviso = bloco.querySelector(".a-aviso-chopp");
+  function enableCelebrantBeerRule(block) {
+    const beer = block.querySelector('[data-col="bebe_chopp"]');
+    const chip = block.querySelector(".a-chip-chopp");
+    const warning = block.querySelector(".a-beer-warning");
     function aplicar() {
-      const ehCrianca = bloco.querySelector('.a-tipo input[value="crianca"]').checked;
-      chopp.disabled = ehCrianca;
-      chip.classList.toggle("desabilitado", ehCrianca);
-      aviso.hidden = !ehCrianca;
-      if (ehCrianca && chopp.checked) {
-        chopp.checked = false;
-        chip.classList.remove("marcado");
+      const isChild = block.querySelector('.a-kind input[value="child"]').checked;
+      beer.disabled = isChild;
+      chip.classList.toggle("disabled", isChild);
+      warning.hidden = !isChild;
+      if (isChild && beer.checked) {
+        beer.checked = false;
+        chip.classList.remove("checked");
       }
     }
-    $$(".a-tipo input", bloco).forEach((r) => r.addEventListener("change", aplicar));
+    $$(".a-kind input", block).forEach((r) => r.addEventListener("change", aplicar));
     aplicar();
   }
 
-  function marcarChip(input, ligado) {
+  function setChip(input, ligado) {
     input.checked = ligado;
-    input.closest(".chip").classList.toggle("marcado", ligado);
+    input.closest(".chip").classList.toggle("checked", ligado);
   }
 
-  async function carregarAniversariantes() {
-    montarBlocosAniversariantes();
-    linhaDoAniversariante.clear();
+  async function loadCelebrants() {
+    renderCelebrantBlocks();
+    celebrantRowId.clear();
 
-    const { data, error } = await sb.from("pessoas").select("*").eq("papel", "aniversariante");
+    const { data, error } = await sb.from("people").select("*").eq("role", "celebrant");
     if (error) {
       console.error(error);
-      return toastAniv("Não consegui carregar os aniversariantes.", "err");
+      return celebrantToast("Não consegui carregar os aniversariantes.", "err");
     }
 
     for (const p of data || []) {
-      if (!p.aniversariante_id) continue;
-      linhaDoAniversariante.set(p.aniversariante_id, p.id);
-      const bloco = $(`.aniv-bloco[data-aniv="${p.aniversariante_id}"]`);
-      if (!bloco) continue; // linha órfã: id sem nome correspondente no config.js
+      if (!p.celebrant_id) continue;
+      celebrantRowId.set(p.celebrant_id, p.id);
+      const block = $(`.celebrant-block[data-aniv="${p.celebrant_id}"]`);
+      if (!block) continue; // linha órfã: id sem nome correspondente no config.js
 
-      const radio = bloco.querySelector(`.a-tipo input[value="${p.tipo}"]`);
-      if (radio) { radio.checked = true; $$(".a-tipo .chip", bloco).forEach((c) => c.classList.remove("marcado")); radio.closest(".chip").classList.add("marcado"); }
-      for (const [col] of BEBIDAS_ANIV) marcarChip(bloco.querySelector(`[data-col="${col}"]`), !!p[col]);
-      marcarChip(bloco.querySelector('[data-col="come_pizza"]'), !!p.come_pizza);
-      ligarRegraChoppAniv(bloco); // reaplica: se veio criança, o chopp precisa travar
+      const radio = block.querySelector(`.a-kind input[value="${p.kind}"]`);
+      if (radio) { radio.checked = true; $$(".a-kind .chip", block).forEach((c) => c.classList.remove("checked")); radio.closest(".chip").classList.add("checked"); }
+      for (const [col] of CELEBRANT_DRINKS) setChip(block.querySelector(`[data-col="${col}"]`), !!p[col]);
+      setChip(block.querySelector('[data-col="come_pizza"]'), !!p.wants_pizza);
+      enableCelebrantBeerRule(block); // reaplica: se veio criança, o chopp precisa travar
     }
   }
 
-  function toastAniv(msg, classe) {
-    const el = $("#anivMsg");
+  function celebrantToast(msg, classe) {
+    const el = $("#celebrantMsg");
     el.className = "msg-toast" + (classe ? " " + classe : "");
     el.textContent = msg;
   }
 
-  $("#anivForm").addEventListener("submit", async (e) => {
+  $("#celebrantForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = $("#btnSalvarAniv");
-    toastAniv("");
+    const btn = $("#btnSaveCelebrant");
+    celebrantToast("");
     btn.disabled = true;
-    const rotulo = btn.textContent;
+    const label = btn.textContent;
     btn.textContent = "Salvando...";
 
-    let erro = null;
-    for (const bloco of $$(".aniv-bloco")) {
-      const k = Number(bloco.dataset.aniv);
-      const tipo = bloco.querySelector('.a-tipo input[value="crianca"]').checked ? "crianca" : "adulto";
+    let error = null;
+    for (const block of $$(".celebrant-block")) {
+      const k = Number(block.dataset.aniv);
+      const kind = block.querySelector('.a-kind input[value="child"]').checked ? "child" : "adult";
       const registro = {
         // `nome` fica de fora de propósito: a linha de aniversariante NÃO
         // guarda nome. A `festa` é a fonte única, e quem alimenta o
         // calculo.js resolve pelo pessoasParaCalculo(). Gravar aqui
         // repopularia a coluna e a divergência voltaria pelo outro lado.
-        tipo,
-        papel: "aniversariante",
-        aniversariante_id: k,
-        come_pizza: bloco.querySelector('[data-col="come_pizza"]').checked,
+        kind,
+        role: "celebrant",
+        celebrant_id: k,
+        wants_pizza: block.querySelector('[data-col="come_pizza"]').checked,
       };
-      for (const [col] of BEBIDAS_ANIV) registro[col] = bloco.querySelector(`[data-col="${col}"]`).checked;
-      if (tipo === "crianca") registro.bebe_chopp = false; // cinto e suspensório
+      for (const [col] of CELEBRANT_DRINKS) registro[col] = block.querySelector(`[data-col="${col}"]`).checked;
+      if (kind === "child") registro.wants_beer = false; // cinto e suspensório
       // rsvp_id fica de fora de propósito: aniversariante vive sem grupo
       // (constraint aniversariante_sem_grupo).
 
-      const existente = linhaDoAniversariante.get(k);
+      const existente = celebrantRowId.get(k);
       const r = existente
-        ? await sb.from("pessoas").update(registro).eq("id", existente)
-        : await sb.from("pessoas").insert(registro);
-      if (r.error) { erro = r.error; break; }
+        ? await sb.from("people").update(registro).eq("id", existente)
+        : await sb.from("people").insert(registro);
+      if (r.error) { error = r.error; break; }
     }
 
     btn.disabled = false;
-    btn.textContent = rotulo;
+    btn.textContent = label;
 
-    if (erro) {
-      console.error(erro);
-      const m = String(erro.message || "");
+    if (error) {
+      console.error(error);
+      const m = String(error.message || "");
       if (/pessoas_aniversariante_id_unico|duplicate key/i.test(m)) {
-        toastAniv("Alguém acabou de cadastrar por outra tela. Recarregue e tente de novo.", "err");
+        celebrantToast("Alguém acabou de cadastrar por outra tela. Recarregue e tente de novo.", "err");
       } else if (/chopp_nao_para_crianca/.test(m)) {
-        toastAniv("Chopp não é liberado para criança.", "err");
+        celebrantToast("Chopp não é liberado para criança.", "err");
       } else {
-        toastAniv("Não consegui salvar. Tente de novo.", "err");
+        celebrantToast("Não consegui salvar. Tente de novo.", "err");
       }
       return;
     }
 
-    limparSujo("aniversariantes");
-    toastAniv("Aniversariantes salvos. ✅", "ok");
-    await carregarAniversariantes();
-    carregarRSVPs(); // a contagem "cadastrados: N/3" vive nas estatísticas
+    clearDirty("aniversariantes");
+    celebrantToast("Aniversariantes salvos. ✅", "ok");
+    await loadCelebrants();
+    loadRSVPs(); // a contagem "cadastrados: N/3" vive nas estatísticas
   });
 
   /* ================= ESTIMATIVA DE COMPRA =================
@@ -647,95 +647,95 @@
      A config usada é a SALVA (a linha do banco), não a dos inputs —
      estimativa não deve refletir edição não salva.                   */
 
-  let ultimaConfig = null;
-  let ultimasPessoas = null;
-  let ultimosGrupos = null;
-  let ultimoResumo = null;
+  let lastSettings = null;
+  let lastPeople = null;
+  let lastGroups = null;
+  let lastOverview = null;
 
-  const fmtLitros = (n) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+  const fmtLiters = (n) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 
-  function cartao(valor, rotulo) {
-    return `<div class="stat"><b>${esc(String(valor))}</b><span>${esc(rotulo)}</span></div>`;
+  function cartao(amount, label) {
+    return `<div class="stat"><b>${esc(String(amount))}</b><span>${esc(label)}</span></div>`;
   }
 
   // Guarda de completude única: os carregadores rodam em paralelo, e
   // tanto a estimativa quanto o rateio precisam do conjunto inteiro.
   // Quem chegar por último dispara os dois.
-  function recomputar() {
+  function recompute() {
     // ultimaFesta entra na guarda: os nomes dos aniversariantes vêm
     // dela, e o rateio/acerto rotula as contas com esses nomes.
-    if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos || !ultimaFesta) return;
-    atualizarEstimativa();
-    atualizarRateio();
+    if (!lastSettings || !lastPeople || !lastGroups || !lastParty) return;
+    refreshEstimate();
+    refreshSplit();
     // o Resumo é remontado aqui porque a barra do prazo só existe com a
     // config na mão, e o render() pode ter rodado antes dela chegar
-    if (ultimoResumo) montarResumo(ultimoResumo.grupos, ultimoResumo.todas, ultimoResumo.cont);
+    if (lastOverview) renderOverview(lastOverview.groups, lastOverview.todas, lastOverview.cont);
   }
 
   /* ================= ABA "COMPRAS" =================
      Só leitura, sobre a mesma Calculo.estimativa() de sempre. */
 
-  function atualizarEstimativa() {
-    if (!ultimaConfig || !ultimasPessoas) return;
-    const e = Calculo.estimativa(pessoasParaCalculo(), ultimaConfig);
-    const c = e.contagens;
+  function refreshEstimate() {
+    if (!lastSettings || !lastPeople) return;
+    const e = Calc.estimate(peopleForCalc(), lastSettings);
+    const c = e.counts;
 
     // Litro é litro: NÃO arredondo para barril. Quantos barris comprar é
     // decisão do organizador com o fornecedor, e embutir isso aqui
     // esconderia uma regra de negócio dentro de um texto.
-    const itens = [
-      ["Chopp", fmtLitros(e.litrosChopp) + " L"],
-      ["Refrigerante", fmtLitros(e.litrosRefri) + " L"],
-      ["Água", fmtLitros(e.litrosAgua) + " L"],
-      ["Pizza (adulto)", String(e.pizzaAdultos)],
-      ["Pizza (criança)", String(e.pizzaCriancas)],
+    const items = [
+      ["Chopp", fmtLiters(e.beerLiters) + " L"],
+      ["Refrigerante", fmtLiters(e.sodaLiters) + " L"],
+      ["Água", fmtLiters(e.waterLiters) + " L"],
+      ["Pizza (adulto)", String(e.adultPizzas)],
+      ["Pizza (criança)", String(e.childPizzas)],
     ];
 
-    $("#comprasBase").textContent =
-      `Calculada sobre ${c.totalPessoas} ${c.totalPessoas === 1 ? "confirmado" : "confirmados"}, ` +
+    $("#shoppingBase").textContent =
+      `Calculada sobre ${c.totalPeople} ${c.totalPeople === 1 ? "confirmado" : "confirmedPeople"}, ` +
       "aniversariantes incluídos.";
-    $("#comprasLista").innerHTML = itens.map(([nome, valor]) => `
-      <div class="compras-linha">
-        <span>${esc(nome)}</span>
-        <b class="mono">${esc(valor)}</b>
+    $("#shoppingList").innerHTML = items.map(([name, amount]) => `
+      <div class="shopping-row">
+        <span>${esc(name)}</span>
+        <b class="mono">${esc(amount)}</b>
       </div>`).join("");
-    $("#comprasCusto").textContent = Calculo.formatarBRL(e.custoEstimado);
+    $("#shoppingCost").textContent = Calc.formatBRL(e.estimatedCost);
 
     // Com os preços ainda nas sementes (0), o custo sai zerado. Os
     // volumes seguem úteis; a tela avisa em vez de deixar o organizador
     // achar que a conta quebrou.
-    const precos = ["preco_litro_chopp", "preco_litro_refri", "preco_litro_agua",
+    const prices = ["preco_litro_chopp", "preco_litro_refri", "preco_litro_agua",
                     "preco_pizza_adulto", "preco_pizza_crianca"];
-    const semPreco = precos.every((k) => Number(ultimaConfig[k]) === 0);
-    const aviso = $("#comprasAviso");
-    aviso.hidden = !semPreco;
-    aviso.className = "msg-toast" + (semPreco ? " err" : "");
-    aviso.textContent = semPreco
+    const noPrices = prices.every((k) => Number(lastSettings[k]) === 0);
+    const warning = $("#shoppingWarning");
+    warning.hidden = !noPrices;
+    warning.className = "msg-toast" + (noPrices ? " err" : "");
+    warning.textContent = noPrices
       ? "Os preços ainda estão zerados em Ajustes — os volumes valem, o custo não."
       : "";
 
-    $("#comprasTexto").value = textoDoFornecedor(itens, c.totalPessoas);
+    $("#shoppingText").value = supplierText(items, c.totalPeople);
   }
 
   /* Texto para colar no WhatsApp do fornecedor. Sem preço: é lista, não
      orçamento. Com a data no cabeçalho, que é a primeira coisa que o
      fornecedor pergunta. */
-  function textoDoFornecedor(itens, total) {
-    const f = ultimaFesta;
+  function supplierText(items, total) {
+    const f = lastParty;
     return [
-      `${(f && f.titulo) || "Festa"}${quandoDaFesta(f) ? " — " + quandoDaFesta(f) : ""}`,
+      `${(f && f.title) || "Party"}${partyWhen(f) ? " — " + partyWhen(f) : ""}`,
       "Lista de compra",
       "",
-      ...itens.map(([nome, valor]) => `${nome}: ${valor}`),
+      ...items.map(([name, amount]) => `${name}: ${amount}`),
       "",
-      `Base: ${total} ${total === 1 ? "confirmado" : "confirmados"}`,
+      `Base: ${total} ${total === 1 ? "confirmado" : "confirmedPeople"}`,
     ].join("\n");
   }
 
   // "31/10/2026, sábado, 11h" — no fuso da festa, não no de quem clica
-  function quandoDaFesta(f) {
-    if (!f || !f.data) return "";
-    const d = new Date(f.data);
+  function partyWhen(f) {
+    if (!f || !f.starts_at) return "";
+    const d = new Date(f.starts_at);
     if (isNaN(d)) return "";
     const partes = new Intl.DateTimeFormat("pt-BR", {
       timeZone: "America/Sao_Paulo", hour12: false,
@@ -743,21 +743,21 @@
       hour: "2-digit", minute: "2-digit",
     }).formatToParts(d);
     const g = (t) => (partes.find((x) => x.type === t) || {}).value || "";
-    const hora = g("minute") === "00" ? `${g("hour")}h` : `${g("hour")}h${g("minute")}`;
-    return `${g("day")}/${g("month")}/${g("year")}, ${g("weekday")}, ${hora}`;
+    const hour = g("minute") === "00" ? `${g("hour")}h` : `${g("hour")}h${g("minute")}`;
+    return `${g("day")}/${g("month")}/${g("year")}, ${g("weekday")}, ${hour}`;
   }
 
-  $("#btnCopiarCompras").addEventListener("click", async () => {
-    const texto = $("#comprasTexto").value;
-    const msg = $("#comprasCopiaMsg");
+  $("#btnCopyShopping").addEventListener("click", async () => {
+    const text = $("#shoppingText").value;
+    const msg = $("#shoppingCopyMsg");
     try {
       // exige contexto seguro e pode ser negada pelo usuário
-      await navigator.clipboard.writeText(texto);
+      await navigator.clipboard.writeText(text);
       msg.textContent = "Copiado! ✅";
     } catch (e) {
       // sem saída melhor que mostrar erro: expõe o texto para copiar na mão
       console.warn("clipboard indisponível:", e);
-      const area = $("#comprasTexto");
+      const area = $("#shoppingText");
       area.hidden = false;
       area.select();
       msg.textContent = "Não consegui copiar sozinho — o texto está aí embaixo, selecionado.";
@@ -774,40 +774,40 @@
      muito abaixo do gasto e o selo fica vermelho. Falha alto, mas o
      wiring de ultimosGrupos é o coração desta fatia.               */
 
-  const CAMPOS_CUSTO = [
+  const COST_FIELDS = [
     ["custo_real_chopp", "Chopp"],
     ["custo_real_refri", "Refrigerante"],
     ["custo_real_agua", "Água"],
   ];
-  const CAMPOS_PIZZA_REAL = [
+  const ACTUAL_PIZZA_FIELDS = [
     ["preco_real_pizza_adulto", "Pizza — adulto (por pessoa)"],
     ["preco_real_pizza_crianca", "Pizza — criança (por pessoa)"],
   ];
 
-  function montarCamposFechamento() {
-    const campo = ([col, rotulo]) => `
-      <label class="config-campo">
-        <span>${esc(rotulo)}</span>
-        <input type="text" inputmode="decimal" id="fec_${col}" class="ct-nao-sei" placeholder="não sei" />
+  function renderClosingFields() {
+    const field = ([col, label]) => `
+      <label class="config-field">
+        <span>${esc(label)}</span>
+        <input type="text" inputmode="decimal" id="fec_${col}" class="ct-unknown" placeholder="não sei" />
       </label>`;
-    $("#fecCustos").innerHTML = CAMPOS_CUSTO.map(campo).join("");
-    $("#fecPizzas").innerHTML = CAMPOS_PIZZA_REAL.map(campo).join("");
+    $("#closingCosts").innerHTML = COST_FIELDS.map(field).join("");
+    $("#closingPizzas").innerHTML = ACTUAL_PIZZA_FIELDS.map(field).join("");
   }
 
-  function preencherFechamento(cfg) {
-    for (const [col] of [...CAMPOS_CUSTO, ...CAMPOS_PIZZA_REAL]) {
+  function fillClosing(cfg) {
+    for (const [col] of [...COST_FIELDS, ...ACTUAL_PIZZA_FIELDS]) {
       const el = $(`#fec_${col}`);
       if (!el) continue;
-      const vazio = cfg[col] === null || cfg[col] === undefined;
-      el.value = vazio ? "" : fmtNumeroBR(cfg[col], 2, 2);
+      const empty = cfg[col] === null || cfg[col] === undefined;
+      el.value = empty ? "" : fmtNumberBR(cfg[col], 2, 2);
       // borda âmbar enquanto é "ainda não sei": o campo em branco aqui não
       // é erro nem zero, é uma pendência — e tem que parecer uma.
-      el.classList.toggle("pendente", vazio);
+      el.classList.toggle("pending", empty);
     }
   }
 
-  function toastFec(msg, classe) {
-    const el = $("#fecMsg");
+  function closingToast(msg, classe) {
+    const el = $("#closingMsg");
     el.className = "msg-toast" + (classe ? " " + classe : "");
     el.textContent = msg;
   }
@@ -815,47 +815,47 @@
   /* ---- salvar: update estreito, só os 5 campos de fechamento ----
      Vazio = NULL aqui, ao contrário da Fatia 2: lá vazio era
      esquecimento e se recusava; aqui significa "ainda não fechei". */
-  $("#fecForm").addEventListener("submit", async (e) => {
+  $("#closingForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = $("#btnSalvarFec");
-    toastFec("");
+    const btn = $("#btnSaveClosing");
+    closingToast("");
 
     const patch = {};
-    for (const [col, rotulo] of [...CAMPOS_CUSTO, ...CAMPOS_PIZZA_REAL]) {
-      const r = parseNumeroBR($(`#fec_${col}`).value);
-      if (r.vazio) { patch[col] = null; continue; }
-      if (r.invalido) return erroFec(col, `"${rotulo}" não é um número válido.`);
-      if (r.valor < 0) return erroFec(col, `"${rotulo}" não pode ser negativo.`);
-      if (r.valor > MAX_PRECO) {
-        return erroFec(col, `"${rotulo}" passou do máximo aceito (${fmtNumeroBR(MAX_PRECO, 2, 2)}).`);
+    for (const [col, label] of [...COST_FIELDS, ...ACTUAL_PIZZA_FIELDS]) {
+      const r = parseNumberBR($(`#fec_${col}`).value);
+      if (r.empty) { patch[col] = null; continue; }
+      if (r.invalido) return closingFieldError(col, `"${label}" não é um número válido.`);
+      if (r.amount < 0) return closingFieldError(col, `"${label}" não pode ser negativo.`);
+      if (r.amount > MAX_PRICE) {
+        return closingFieldError(col, `"${label}" passou do máximo aceito (${fmtNumberBR(MAX_PRICE, 2, 2)}).`);
       }
-      patch[col] = r.valor;
+      patch[col] = r.amount;
     }
-    patch.atualizado_em = new Date().toISOString();
+    patch.updated_at = new Date().toISOString();
 
     btn.disabled = true;
-    const rotulo = btn.textContent;
+    const label = btn.textContent;
     btn.textContent = "Salvando...";
-    const { error } = await sb.from("config").update(patch).eq("id", 1);
+    const { error } = await sb.from("settings").update(patch).eq("id", 1);
     btn.disabled = false;
-    btn.textContent = rotulo;
+    btn.textContent = label;
 
     if (error) {
       console.error(error);
-      return toastFec("Não consegui salvar. Confira os valores e tente de novo.", "err");
+      return closingToast("Não consegui salvar. Confira os valores e tente de novo.", "err");
     }
-    toastFec("Fechamento salvo. ✅", "ok");
-    carregarConfig(); // recarrega a config e recomputa o rateio
+    closingToast("Fechamento salvo. ✅", "ok");
+    loadSettings(); // recarrega a config e recomputa o rateio
   });
 
-  function erroFec(col, msg) {
-    toastFec(msg, "err");
+  function closingFieldError(col, msg) {
+    closingToast(msg, "err");
     const el = $(`#fec_${col}`);
     if (el) el.focus();
   }
 
   /* ---- o rateio (só leitura) ---- */
-  const ITENS_CONTA = [["chopp", "Chopp"], ["refri", "Refri"], ["agua", "Água"], ["pizza", "Pizza"]];
+  const ACCOUNT_ITEMS = [["chopp", "Chopp"], ["refri", "Refri"], ["agua", "Água"], ["pizza", "Pizza"]];
 
   /* ================= O CONTRATO COM O calculo.js =================
      O módulo é PURO: dado entra, número sai. Não é papel dele saber onde
@@ -871,41 +871,41 @@
      "Aniversariante 1 → Aniversariante 3", porque ele lê o nome de dentro
      do que recebeu. Consertar depois, na tela, seria derivar número (ou
      texto) fora do módulo — que é justamente o que não se faz aqui. */
-  function pessoasParaCalculo() {
-    return (ultimasPessoas || []).map((p) =>
-      p.papel === "aniversariante" && p.aniversariante_id
-        ? { ...p, nome: nomeDoAniversariante(p.aniversariante_id, p.nome) }
+  function peopleForCalc() {
+    return (lastPeople || []).map((p) =>
+      p.role === "celebrant" && p.celebrant_id
+        ? { ...p, name: celebrantName(p.celebrant_id, p.name) }
         : p);
   }
 
-  function atualizarRateio() {
-    if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos) return;
-    const r = Calculo.rateio(pessoasParaCalculo(), ultimaConfig, ultimosGrupos);
+  function refreshSplit() {
+    if (!lastSettings || !lastPeople || !lastGroups) return;
+    const r = Calc.split(peopleForCalc(), lastSettings, lastGroups);
 
-    $("#fecContas").innerHTML = r.porAniversariante.length
-      ? r.porAniversariante.map((a) => {
-          const itens = ITENS_CONTA
-            .filter(([k]) => a.detalhe[k] > 0)
-            .map(([k, rot]) => `<span class="ct-item"><span>${esc(rot)}</span><b class="mono">${esc(Calculo.formatarBRL(a.detalhe[k]))}</b></span>`)
+    $("#closingAccounts").innerHTML = r.perCelebrant.length
+      ? r.perCelebrant.map((a) => {
+          const items = ACCOUNT_ITEMS
+            .filter(([k]) => a.breakdown[k] > 0)
+            .map(([k, rot]) => `<span class="ct-item"><span>${esc(rot)}</span><b class="mono">${esc(Calc.formatBRL(a.breakdown[k]))}</b></span>`)
             .join("");
-          return `<div class="ct-conta">
-            <div class="ct-conta-topo">
-              <b>${esc(a.nome)}</b>
-              <b class="mono ct-conta-total">${esc(Calculo.formatarBRL(a.total))}</b>
+          return `<div class="ct-account">
+            <div class="ct-account-top">
+              <b>${esc(a.name)}</b>
+              <b class="mono ct-account-total">${esc(Calc.formatBRL(a.total))}</b>
             </div>
-            <div class="ct-itens">${itens || '<span class="ct-nada">não consumiu nada</span>'}</div>
+            <div class="ct-items">${items || '<span class="ct-none">não consumiu nada</span>'}</div>
           </div>`;
         }).join("")
-      : '<p class="vazio">Nenhum aniversariante cadastrado ainda.</p>';
+      : '<p class="empty">Nenhum aniversariante cadastrado ainda.</p>';
 
     // os dois números que têm de coincidir para o selo ficar azul
-    $("#fecTotais").innerHTML = `
-      <div class="ct-total-linha"><span>Total gasto</span><b class="mono">${esc(Calculo.formatarBRL(r.custoRealTotal))}</b></div>
-      <div class="ct-total-linha"><span>Total rateado</span><b class="mono">${esc(Calculo.formatarBRL(r.totalRateado))}</b></div>`;
+    $("#closingTotals").innerHTML = `
+      <div class="ct-total-row"><span>Total gasto</span><b class="mono">${esc(Calc.formatBRL(r.actualCostTotal))}</b></div>
+      <div class="ct-total-row"><span>Total rateado</span><b class="mono">${esc(Calc.formatBRL(r.splitTotal))}</b></div>`;
 
-    montarPagadores(r.custosPorItem);
-    preencherPagadores(ultimaConfig);
-    atualizarAcerto(r);
+    renderPayers(r.costPerItem);
+    fillPayers(lastSettings);
+    refreshSettlement(r);
   }
 
   /* ================= ACERTO: quem deve a quem =================
@@ -920,178 +920,178 @@
 
   /* As 4 fases do selo. O gatilho e o TEXTO do impedimento vêm do
      módulo — a tela não reescreve motivo nenhum. */
-  function faseDoAcerto(r, a) {
-    if (!r.fechamentoCompleto) return "pendente";
-    if (!r.confere) return "nao-confere";
-    if (a.faltaPagador.length) return "falta-pagador";
+  function settlementPhase(r, a) {
+    if (!r.closingComplete) return "pending";
+    if (!r.balances) return "nao-confere";
+    if (a.missingPayer.length) return "falta-pagador";
     return "completo";
   }
 
-  const SELO = {
-    "pendente":      { icone: "○", classe: "pendente" },
-    "nao-confere":   { icone: "!", classe: "erro" },
+  const BADGE = {
+    "pending":      { icone: "○", classe: "pending" },
+    "nao-confere":   { icone: "!", classe: "error" },
     "falta-pagador": { icone: "✓", classe: "ok" },
     "completo":      { icone: "✓", classe: "ok" },
   };
 
-  function atualizarAcerto(resultadoRateio) {
-    const pagoPor = {};
-    for (const [col, item] of CAMPOS_PAGO_POR) pagoPor[item] = ultimaConfig[col];
-    const a = Calculo.acerto(resultadoRateio, pagoPor);
-    const fase = faseDoAcerto(resultadoRateio, a);
+  function refreshSettlement(splitResult) {
+    const paidBy = {};
+    for (const [col, item] of PAID_BY_FIELDS) paidBy[item] = lastSettings[col];
+    const a = Calc.settlement(splitResult, paidBy);
+    const fase = settlementPhase(splitResult, a);
 
-    const selo = $("#fecSelo");
-    selo.hidden = false;
-    selo.dataset.fase = fase;
-    selo.className = "ct-selo " + SELO[fase].classe;
-    selo.innerHTML =
-      `<span class="ct-selo-ico" aria-hidden="true">${SELO[fase].icone}</span>` +
+    const badge = $("#closingBadge");
+    badge.hidden = false;
+    badge.dataset.fase = fase;
+    badge.className = "ct-badge " + BADGE[fase].classe;
+    badge.innerHTML =
+      `<span class="ct-badge-icon" aria-hidden="true">${BADGE[fase].icone}</span>` +
       `<span>${esc(fase === "completo"
-        ? "As contas fecham: a soma do que cada um paga bate com o gasto total, até o centavo."
-        : a.motivo)}</span>`;
+        ? "As accounts fecham: a sum do que cada um paga bate com o gasto total, até o cents."
+        : a.reason)}</span>`;
 
-    $("#acertoSaldos").innerHTML = a.saldos.map((s) => {
-      const rotulo = s.saldo > 0 ? "a pagar" : s.saldo < 0 ? "a receber" : "quite";
-      const classe = s.saldo > 0 ? "pagar" : s.saldo < 0 ? "receber" : "";
-      return `<div class="ct-conta">
-        <div class="ct-conta-topo">
-          <b>${esc(s.nome)}</b>
-          <b class="mono ct-conta-total ${classe}">${esc(Calculo.formatarBRL(Math.abs(s.saldo)))} <small>${rotulo}</small></b>
+    $("#settlementBalances").innerHTML = a.balancesPerCelebrant.map((s) => {
+      const label = s.balance > 0 ? "a pagar" : s.balance < 0 ? "a receber" : "quite";
+      const classe = s.balance > 0 ? "topay" : s.balance < 0 ? "toreceive" : "";
+      return `<div class="ct-account">
+        <div class="ct-account-top">
+          <b>${esc(s.name)}</b>
+          <b class="mono ct-account-total ${classe}">${esc(Calc.formatBRL(Math.abs(s.balance)))} <small>${label}</small></b>
         </div>
-        <div class="ct-itens">
-          <span class="ct-item"><span>deve</span><b class="mono">${esc(Calculo.formatarBRL(s.deve))}</b></span>
-          <span class="ct-item"><span>pagou</span><b class="mono">${esc(Calculo.formatarBRL(s.pagou))}</b></span>
+        <div class="ct-items">
+          <span class="ct-item"><span>deve</span><b class="mono">${esc(Calc.formatBRL(s.owes))}</b></span>
+          <span class="ct-item"><span>pagou</span><b class="mono">${esc(Calc.formatBRL(s.paid))}</b></span>
         </div>
       </div>`;
     }).join("");
 
-    const lista = $("#acertoTransferencias");
+    const list = $("#settlementTransferencias");
 
     // Antes do return: se ficasse depois, o acerto voltando a incompleto
     // deixaria o botão de compartilhar na tela com o texto anterior —
     // pronto para mandar no grupo um acerto que não vale mais.
-    prepararCompartilhar(a);
+    prepareShare(a);
 
-    if (a.status !== "completo") { lista.innerHTML = ""; return; }
-    lista.innerHTML = a.transferencias.length
-      ? `<ul class="ct-transf">${a.transferencias.map((t) =>
-          `<li><b>${esc(t.deNome)}</b> → <b>${esc(t.paraNome)}</b><b class="mono">${esc(Calculo.formatarBRL(t.valor))}</b></li>`
+    if (a.status !== "completo") { list.innerHTML = ""; return; }
+    list.innerHTML = a.transfers.length
+      ? `<ul class="ct-transfers">${a.transfers.map((t) =>
+          `<li><b>${esc(t.fromName)}</b> → <b>${esc(t.toName)}</b><b class="mono">${esc(Calc.formatBRL(t.amount))}</b></li>`
         ).join("")}</ul>`
       : '<p class="res-nota">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte. 🎉</p>';
   }
 
-  const CAMPOS_PAGO_POR = [
+  const PAID_BY_FIELDS = [
     ["pago_por_chopp", "chopp", "Chopp"],
     ["pago_por_refri", "refri", "Refrigerante"],
     ["pago_por_agua", "agua", "Água"],
     ["pago_por_pizza", "pizza", "Pizza"],
   ];
 
-  function montarPagadores(custosPorItem) {
-    const nomes = nomesAniversariantes();
-    $("#acertoPagadores").innerHTML = CAMPOS_PAGO_POR
-      .map(([col, item, rotulo]) => {
+  function renderPayers(costPerItem) {
+    const names = celebrantNames();
+    $("#settlementPayers").innerHTML = PAID_BY_FIELDS
+      .map(([col, item, label]) => {
         // o valor ao lado vem do módulo (custosPorItem); ninguém digita
-        const valor = custosPorItem ? Calculo.formatarBRL(custosPorItem[item] || 0) : "";
-        const opcoes = nomes.map((nome, i) =>
-          `<button type="button" class="ct-opcao" data-col="${col}" data-id="${i + 1}">${esc(nome)}</button>`
+        const amount = costPerItem ? Calc.formatBRL(costPerItem[item] || 0) : "";
+        const options = names.map((name, i) =>
+          `<button type="button" class="ct-option" data-col="${col}" data-id="${i + 1}">${esc(name)}</button>`
         ).join("");
-        return `<div class="ct-pagador">
-          <div class="ct-pagador-topo">
-            <b>${esc(rotulo)}</b>
-            <span class="mono ct-pagador-valor">${esc(valor)}</span>
+        return `<div class="ct-payer">
+          <div class="ct-payer-top">
+            <b>${esc(label)}</b>
+            <span class="mono ct-payer-amount">${esc(amount)}</span>
           </div>
-          <div class="ct-opcoes" data-grupo="${col}">${opcoes}</div>
+          <div class="ct-options" data-grupo="${col}">${options}</div>
         </div>`;
       })
       .join("");
 
     // clicar de novo no escolhido volta para "ninguém": sem isso não há
     // como desfazer uma escolha errada sem recarregar
-    $$(".ct-opcao").forEach((b) => b.addEventListener("click", () => {
-      const grupo = b.closest(".ct-opcoes");
-      const jaEra = b.classList.contains("escolhido");
-      $$(".ct-opcao", grupo).forEach((o) => o.classList.remove("escolhido"));
-      if (!jaEra) b.classList.add("escolhido");
+    $$(".ct-option").forEach((b) => b.addEventListener("click", () => {
+      const group = b.closest(".ct-options");
+      const jaEra = b.classList.contains("chosen");
+      $$(".ct-option", group).forEach((o) => o.classList.remove("chosen"));
+      if (!jaEra) b.classList.add("chosen");
     }));
   }
 
-  function preencherPagadores(cfg) {
-    for (const [col] of CAMPOS_PAGO_POR) {
-      const grupo = document.querySelector(`.ct-opcoes[data-grupo="${col}"]`);
-      if (!grupo) continue;
-      const valor = cfg[col] === null || cfg[col] === undefined ? "" : String(cfg[col]);
-      $$(".ct-opcao", grupo).forEach((b) => b.classList.toggle("escolhido", b.dataset.id === valor));
+  function fillPayers(cfg) {
+    for (const [col] of PAID_BY_FIELDS) {
+      const group = document.querySelector(`.ct-options[data-grupo="${col}"]`);
+      if (!group) continue;
+      const amount = cfg[col] === null || cfg[col] === undefined ? "" : String(cfg[col]);
+      $$(".ct-option", group).forEach((b) => b.classList.toggle("chosen", b.dataset.id === amount));
     }
   }
 
   // lê os botões em vez do <select> que saiu
-  function pagadorEscolhido(col) {
-    const b = document.querySelector(`.ct-opcoes[data-grupo="${col}"] .ct-opcao.escolhido`);
+  function chosenPayer(col) {
+    const b = document.querySelector(`.ct-options[data-grupo="${col}"] .ct-option.chosen`);
     return b ? Number(b.dataset.id) : null;
   }
 
-  function toastAcerto(msg, classe) {
-    const el = $("#acertoMsg");
+  function settlementToast(msg, classe) {
+    const el = $("#settlementMsg");
     el.className = "msg-toast" + (classe ? " " + classe : "");
     el.textContent = msg;
   }
 
-  $("#acertoForm").addEventListener("submit", async (e) => {
+  $("#settlementForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = $("#btnSalvarAcerto");
-    toastAcerto("");
+    const btn = $("#btnSaveSettlement");
+    settlementToast("");
 
     // update estreito: só os 4 pago_por. Nunca encosta em custo_real_*
     // (Fatia 5) nem nos campos da Fatia 2.
-    const patch = { atualizado_em: new Date().toISOString() };
-    for (const [col] of CAMPOS_PAGO_POR) {
-      patch[col] = pagadorEscolhido(col);   // null = ninguém escolhido ainda
+    const patch = { updated_at: new Date().toISOString() };
+    for (const [col] of PAID_BY_FIELDS) {
+      patch[col] = chosenPayer(col);   // null = ninguém escolhido ainda
     }
 
     btn.disabled = true;
-    const rotulo = btn.textContent;
+    const label = btn.textContent;
     btn.textContent = "Salvando...";
-    const { error } = await sb.from("config").update(patch).eq("id", 1);
+    const { error } = await sb.from("settings").update(patch).eq("id", 1);
     btn.disabled = false;
-    btn.textContent = rotulo;
+    btn.textContent = label;
 
     if (error) {
       console.error(error);
-      return toastAcerto("Não consegui salvar quem pagou.", "err");
+      return settlementToast("Não consegui salvar quem pagou.", "err");
     }
-    toastAcerto("Pagadores salvos. ✅", "ok");
-    carregarConfig();
+    settlementToast("Pagadores salvos. ✅", "ok");
+    loadSettings();
   });
 
   /* ---- compartilhar o acerto ----
      Só aparece com o acerto completo: sem acerto fechado não há o que
      mandar no grupo. O texto sai do resumoAcerto (puro e testado), não
      é montado aqui. */
-  function prepararCompartilhar(a) {
-    const caixa = $("#acertoCompartilhar");
-    const texto = Calculo.resumoAcerto(a, `${(ultimaFesta && ultimaFesta.titulo) || "A festa"} 🎉`);
-    caixa.hidden = !texto;
-    $("#acertoTexto").hidden = true;
-    $("#acertoCopiaMsg").textContent = "";
-    if (!texto) return;
+  function prepareShare(a) {
+    const caixa = $("#settlementShare");
+    const text = Calc.settlementSummary(a, `${(lastParty && lastParty.title) || "A party"} 🎉`);
+    caixa.hidden = !text;
+    $("#settlementText").hidden = true;
+    $("#settlementCopyMsg").textContent = "";
+    if (!text) return;
 
-    $("#acertoTexto").value = texto;
+    $("#settlementText").value = text;
     // wa.me sem número: o organizador escolhe o contato ou o grupo
-    $("#btnWhatsAcerto").href = "https://wa.me/?text=" + encodeURIComponent(texto);
+    $("#btnWhatsSettlement").href = "https://wa.me/?text=" + encodeURIComponent(text);
   }
 
-  $("#btnCopiarAcerto").addEventListener("click", async () => {
-    const texto = $("#acertoTexto").value;
-    const msg = $("#acertoCopiaMsg");
+  $("#btnCopySettlement").addEventListener("click", async () => {
+    const text = $("#settlementText").value;
+    const msg = $("#settlementCopyMsg");
     try {
       // exige contexto seguro e pode ser negada pelo usuário
-      await navigator.clipboard.writeText(texto);
+      await navigator.clipboard.writeText(text);
       msg.textContent = "Copiado! ✅";
     } catch (e) {
       // sem saída melhor que mostrar erro: expõe o texto para copiar na mão
       console.warn("clipboard indisponível:", e);
-      const area = $("#acertoTexto");
+      const area = $("#settlementText");
       area.hidden = false;
       area.select();
       msg.textContent = "Não consegui copiar sozinho — o texto está aí embaixo, selecionado.";
@@ -1102,24 +1102,24 @@
      Lê o schema novo: rsvps + pessoas por FK. As telas de config,
      aniversariantes, estimativa e fechamento são as Fatias 2 a 5 —
      aqui só a lista e as contagens.                                */
-  async function carregarRSVPs() {
+  async function loadRSVPs() {
     const [g, p] = await Promise.all([
-      sb.from("rsvps").select("*").order("criado_em", { ascending: false }),
-      sb.from("pessoas").select("*").order("ordem", { ascending: true }),
+      sb.from("rsvps").select("*").order("created_at", { ascending: false }),
+      sb.from("people").select("*").order("sort_order", { ascending: true }),
     ]);
     if (g.error || p.error) { console.error(g.error || p.error); return; }
 
-    const porGrupo = new Map();
-    const aniversariantes = [];
-    for (const pessoa of p.data || []) {
-      if (pessoa.papel === "aniversariante") { aniversariantes.push(pessoa); continue; }
-      if (!porGrupo.has(pessoa.rsvp_id)) porGrupo.set(pessoa.rsvp_id, []);
-      porGrupo.get(pessoa.rsvp_id).push(pessoa);
+    const byGroup = new Map();
+    const celebrants = [];
+    for (const person of p.data || []) {
+      if (person.role === "celebrant") { celebrants.push(person); continue; }
+      if (!byGroup.has(person.rsvp_id)) byGroup.set(person.rsvp_id, []);
+      byGroup.get(person.rsvp_id).push(person);
     }
-    ultimasPessoas = p.data || [];   // TODAS: as de grupo e as 3 de aniversariante
-    ultimosGrupos = g.data || [];    // o elo convidado -> pagante (convidado_por)
-    recomputar();
-    render(g.data || [], porGrupo, aniversariantes);
+    lastPeople = p.data || [];   // TODAS: as de grupo e as 3 de aniversariante
+    lastGroups = g.data || [];    // o elo convidado -> pagante (convidado_por)
+    recompute();
+    render(g.data || [], byGroup, celebrants);
   }
 
   /* ================= ABA RESUMO =================
@@ -1130,225 +1130,225 @@
     "Água": "var(--ad-azul)", "Refri": "#7c5a1e", "Chopp": "#14110d", "Pizza": "var(--ad-vermelho)",
   };
 
-  function montarResumo(grupos, todas, cont) {
-    $("#resConfirmados").textContent = todas.length;
-    $("#resComposicao").textContent =
-      `${cont.adultos} ${cont.adultos === 1 ? "adulto" : "adultos"} · ` +
-      `${cont.criancas} ${cont.criancas === 1 ? "criança" : "crianças"}`;
-    $("#resGrupos").textContent = grupos.length;
+  function renderOverview(groups, todas, cont) {
+    $("#resConfirmed").textContent = todas.length;
+    $("#resBreakdown").textContent =
+      `${cont.adults} ${cont.adults === 1 ? "adult" : "adults"} · ` +
+      `${cont.children} ${cont.children === 1 ? "criança" : "crianças"}`;
+    $("#resGroups").textContent = groups.length;
 
-    montarPrazoResumo(grupos);
+    renderDeadlineBar(groups);
 
     // barra proporcional ao total de pessoas; 0 pessoas não divide por zero
     const base = todas.length || 1;
-    const itens = [["Água", cont.agua], ["Refri", cont.refri], ["Chopp", cont.chopp], ["Pizza", cont.pizza]];
-    $("#resConsumo").innerHTML = itens.map(([nome, n]) => `
-      <div class="res-linha">
-        <span class="res-linha-nome">${esc(nome)}</span>
-        <div class="res-barra">
-          <div class="res-barra-fill" style="width:${Math.round((n / base) * 100)}%;background:${CONSUMO_CORES[nome]}"></div>
+    const items = [["Água", cont.water], ["Refri", cont.soda], ["Chopp", cont.beer], ["Pizza", cont.pizza]];
+    $("#resConsumption").innerHTML = items.map(([name, n]) => `
+      <div class="res-row">
+        <span class="res-row-name">${esc(name)}</span>
+        <div class="res-bar">
+          <div class="res-bar-fill" style="width:${Math.round((n / base) * 100)}%;background:${CONSUMO_CORES[name]}"></div>
         </div>
-        <span class="mono res-linha-n">${n}</span>
+        <span class="mono res-row-n">${n}</span>
       </div>`).join("");
 
-    montarRecados(grupos);
+    renderNotes(groups);
   }
 
   /* A régua da barra: da PRIMEIRA confirmação recebida até o prazo. Não
      existe "data de abertura" no schema, e essa é a origem que responde
      "quanto do período já passou" com dado real. Sem confirmação ainda,
      a barra não aparece — só a data e o "faltam N dias". */
-  function montarPrazoResumo(grupos) {
-    const bloco = $("#resPrazoBloco");
-    const prazo = ultimaConfig && ultimaConfig.prazo_confirmacao
-      ? new Date(ultimaConfig.prazo_confirmacao) : null;
-    if (!prazo || isNaN(prazo)) { bloco.hidden = true; return; }
-    bloco.hidden = false;
+  function renderDeadlineBar(groups) {
+    const block = $("#resDeadlineBlock");
+    const deadline = lastSettings && lastSettings.rsvp_deadline
+      ? new Date(lastSettings.rsvp_deadline) : null;
+    if (!deadline || isNaN(deadline)) { block.hidden = true; return; }
+    block.hidden = false;
 
-    $("#resPrazoData").textContent = new Intl.DateTimeFormat("pt-BR", {
+    $("#resDeadlineDate").textContent = new Intl.DateTimeFormat("pt-BR", {
       timeZone: "America/Sao_Paulo",
-    }).format(prazo);
+    }).format(deadline);
 
     const agora = Date.now();
-    const restaMs = prazo.getTime() - agora;
-    const dias = Math.ceil(restaMs / 864e5);
+    const restaMs = deadline.getTime() - agora;
+    const days = Math.ceil(restaMs / 864e5);
     const vencido = restaMs <= 0;
 
-    const primeira = grupos.reduce((min, g) => {
-      const t = new Date(g.criado_em).getTime();
+    const primeira = groups.reduce((min, g) => {
+      const t = new Date(g.created_at).getTime();
       return isNaN(t) ? min : Math.min(min, t);
     }, Infinity);
 
-    const wrap = $("#resPrazoBarraWrap");
+    const wrap = $("#resDeadlineBarWrap");
     if (primeira === Infinity) {
       wrap.hidden = true;                       // ninguém confirmou: não há régua
     } else {
       wrap.hidden = false;
-      const total = prazo.getTime() - primeira;
+      const total = deadline.getTime() - primeira;
       // vencido trava em 100%: a barra não passa do fim
       const pct = vencido || total <= 0 ? 100
         : Math.max(0, Math.min(100, ((agora - primeira) / total) * 100));
-      $("#resPrazoBarra").style.width = pct.toFixed(1) + "%";
-      $("#resPrazoBarra").classList.toggle("cheia", vencido);
+      $("#resDeadlineBar").style.width = pct.toFixed(1) + "%";
+      $("#resDeadlineBar").classList.toggle("full", vencido);
     }
 
     // e nada de "faltam -3 dias"
-    $("#resPrazoNota").innerHTML = vencido
+    $("#resDeadlineNota").innerHTML = vencido
       ? "As confirmações estão <b>encerradas</b>."
-      : `Faltam <b>${dias} ${dias === 1 ? "dia" : "dias"}</b> para fechar as confirmações.`;
+      : `Faltam <b>${days} ${days === 1 ? "day" : "days"}</b> para fechar as confirmações.`;
   }
 
   // O que separa restrição de recado é o que muda a compra.
   const RESTRICAO = /alergi|intoler|restri|cel[ií]ac|vegetarian|vegan|di?abet|lactose|gl[úu]ten/i;
 
-  function montarRecados(grupos) {
-    const comRecado = grupos.filter((g) => g.observacoes && g.observacoes.trim());
-    $("#resRecadosNota").textContent = comRecado.length
-      ? `${comRecado.length} ${comRecado.length === 1 ? "pessoa escreveu" : "pessoas escreveram"} algo.`
+  function renderNotes(groups) {
+    const comRecado = groups.filter((g) => g.notes && g.notes.trim());
+    $("#resNotesNota").textContent = comRecado.length
+      ? `${comRecado.length} ${comRecado.length === 1 ? "person escreveu" : "people escreveram"} algo.`
       : "Ninguém escreveu nada ainda.";
     // esc() em tudo: é texto que o convidado escreveu
-    $("#resRecados").innerHTML = comRecado.map((g) => `
-      <div class="res-recado${RESTRICAO.test(g.observacoes) ? " restricao" : ""}">
-        <span class="res-recado-quem">${esc(g.nome_principal)}</span>
-        <span class="res-recado-txt">${esc(g.observacoes)}</span>
+    $("#resNotes").innerHTML = comRecado.map((g) => `
+      <div class="res-note${RESTRICAO.test(g.notes) ? " restriction" : ""}">
+        <span class="res-note-who">${esc(g.lead_name)}</span>
+        <span class="res-note-txt">${esc(g.notes)}</span>
       </div>`).join("");
   }
 
-  const NOMES_BEBIDA = { bebe_agua: "Água", bebe_refri: "Refri", bebe_chopp: "Chopp" };
+  const DRINK_NAMES = { wants_water: "Água", wants_soda: "Refri", wants_beer: "Chopp" };
 
-  function preferencias(pessoa) {
-    const t = Object.keys(NOMES_BEBIDA).filter((k) => pessoa[k]).map((k) => NOMES_BEBIDA[k]);
-    if (pessoa.come_pizza) t.push("Pizza");
+  function preferences(person) {
+    const t = Object.keys(DRINK_NAMES).filter((k) => person[k]).map((k) => DRINK_NAMES[k]);
+    if (person.wants_pizza) t.push("Pizza");
     return t;
   }
 
-  function render(grupos, porGrupo, aniversariantes) {
+  function render(groups, byGroup, celebrants) {
     // contagens sobre TODAS as pessoas confirmadas, aniversariantes incluídos
-    const todas = [...aniversariantes];
-    for (const lista of porGrupo.values()) todas.push(...lista);
+    const todas = [...celebrants];
+    for (const list of byGroup.values()) todas.push(...list);
 
-    const cont = { agua: 0, refri: 0, chopp: 0, pizza: 0, adultos: 0, criancas: 0 };
+    const cont = { water: 0, soda: 0, beer: 0, pizza: 0, adults: 0, children: 0 };
     for (const p of todas) {
-      if (p.tipo === "adulto") cont.adultos++; else cont.criancas++;
-      if (p.bebe_agua) cont.agua++;
-      if (p.bebe_refri) cont.refri++;
-      if (p.bebe_chopp && p.tipo === "adulto") cont.chopp++;
-      if (p.come_pizza) cont.pizza++;
+      if (p.kind === "adult") cont.adults++; else cont.children++;
+      if (p.wants_water) cont.water++;
+      if (p.wants_soda) cont.soda++;
+      if (p.wants_beer && p.kind === "adult") cont.beer++;
+      if (p.wants_pizza) cont.pizza++;
     }
 
     // guardado para o recomputar(): a barra do prazo depende de
     // `ultimaConfig`, que pode chegar DEPOIS de render() — é a guarda de
     // completude em miniatura, e a solução é a mesma, não calcular com
     // metade do estado.
-    ultimoResumo = { grupos, todas, cont };
-    montarResumo(grupos, todas, cont);
+    lastOverview = { groups, todas, cont };
+    renderOverview(groups, todas, cont);
 
     // busca e filtro NÃO são remontados aqui: moram em variáveis, então
     // sobrevivem à recarga que o excluir dispara. Perder a busca no meio
     // de uma limpeza seria irritante justamente na pior hora.
-    ultimaLista = { grupos, porGrupo };
-    montarFiltros();
-    montarLista();
+    lastList = { groups, byGroup };
+    renderFilters();
+    renderList();
   }
 
   /* ================= ABA "QUEM VEM" =================
      Um card por grupo, expansível. A tabela de 7 colunas saiu: no
      celular — que é onde o painel é usado — ela era ilegível. */
 
-  let filtroAtivo = "todos";           // "todos" | "criancas" | "1" | "2" | "3"
-  const abertos = new Set();           // ids dos cards expandidos
-  let ultimaLista = null;              // { grupos, porGrupo } do último carregamento
+  let activeFilter = "todos";           // "todos" | "criancas" | "1" | "2" | "3"
+  const openCards = new Set();           // ids dos cards expandidos
+  let lastList = null;              // { grupos, porGrupo } do último carregamento
 
-  function montarFiltros() {
-    const nomes = nomesAniversariantes();
+  function renderFilters() {
+    const names = celebrantNames();
     const defs = [["todos", "Todos"], ["criancas", "Com crianças"],
-                  ["1", nomes[0]], ["2", nomes[1]], ["3", nomes[2]]];
-    $("#filtrosGrupos").innerHTML = defs.map(([id, nome]) =>
-      `<button type="button" class="ad-filtro${id === filtroAtivo ? " ativo" : ""}" data-filtro="${id}">${esc(nome)}</button>`
+                  ["1", names[0]], ["2", names[1]], ["3", names[2]]];
+    $("#filtersGroups").innerHTML = defs.map(([id, name]) =>
+      `<button type="button" class="ad-filter${id === activeFilter ? " active" : ""}" data-filtro="${id}">${esc(name)}</button>`
     ).join("");
-    $$("#filtrosGrupos .ad-filtro").forEach((b) => b.addEventListener("click", () => {
-      filtroAtivo = b.dataset.filtro;
-      montarFiltros();
-      montarLista();
+    $$("#filtersGroups .ad-filter").forEach((b) => b.addEventListener("click", () => {
+      activeFilter = b.dataset.filter;
+      renderFilters();
+      renderList();
     }));
   }
 
   // "Acompanhante N" quando não tem nome: a pessoa existe no rateio mesmo
   // sem nome, e sumir com ela já foi bug uma vez.
-  const nomeDaPessoa = (p, i) => p.nome || `Acompanhante ${i}`;
+  const personName = (p, i) => p.name || `Acompanhante ${i}`;
 
-  function combinaBusca(g, pessoas, termo) {
+  function matchesSearch(g, people, termo) {
     if (!termo) return true;
     // varre também o nome dos acompanhantes: "o Léo vem?" é pergunta natural
-    const alvo = [g.nome_principal, g.contato,
-                  ...pessoas.map((p, i) => nomeDaPessoa(p, i))].join(" ").toLowerCase();
-    return alvo.includes(termo);
+    const targetTime = [g.lead_name, g.contact,
+                  ...people.map((p, i) => personName(p, i))].join(" ").toLowerCase();
+    return targetTime.includes(termo);
   }
 
-  function combinaFiltro(g, pessoas) {
-    if (filtroAtivo === "todos") return true;
-    if (filtroAtivo === "criancas") return pessoas.some((p) => p.tipo === "crianca");
+  function matchesFilter(g, people) {
+    if (activeFilter === "todos") return true;
+    if (activeFilter === "criancas") return people.some((p) => p.kind === "child");
     // O filtro é LENTE, não contabilidade: um grupo com convidado_por
     // [1,3] aparece nos dois. Quem paga o quê está em Contas, onde o
     // mesmo convidado vale meia unidade para cada anfitrião — por isso
     // esta aba não mostra total nenhum por aniversariante.
-    return (g.convidado_por || []).map(String).includes(filtroAtivo);
+    return (g.invited_by || []).map(String).includes(activeFilter);
   }
 
-  function montarLista() {
-    if (!ultimaLista) return;
-    const { grupos, porGrupo } = ultimaLista;
-    const termo = $("#buscaGrupos").value.trim().toLowerCase();
+  function renderList() {
+    if (!lastList) return;
+    const { groups, byGroup } = lastList;
+    const termo = $("#searchGroups").value.trim().toLowerCase();
 
-    const visiveis = grupos.filter((g) => {
-      const pessoas = porGrupo.get(g.id) || [];
-      return combinaFiltro(g, pessoas) && combinaBusca(g, pessoas, termo);
+    const visiveis = groups.filter((g) => {
+      const people = byGroup.get(g.id) || [];
+      return matchesFilter(g, people) && matchesSearch(g, people, termo);
     });
 
-    const filtrando = !!termo || filtroAtivo !== "todos";
-    $("#listaVazia").hidden = grupos.length > 0;
-    $("#listaSemResultado").hidden = !(grupos.length > 0 && visiveis.length === 0 && filtrando);
+    const filtrando = !!termo || activeFilter !== "todos";
+    $("#listEmpty").hidden = groups.length > 0;
+    $("#listNoResult").hidden = !(groups.length > 0 && visiveis.length === 0 && filtrando);
 
-    $("#listaGrupos").innerHTML = visiveis.map((g) => cardDoGrupo(g, porGrupo.get(g.id) || [])).join("");
-    ligarCards();
+    $("#listGroups").innerHTML = visiveis.map((g) => groupCard(g, byGroup.get(g.id) || [])).join("");
+    wireCards();
   }
 
-  function cardDoGrupo(g, pessoas) {
-    const aberto = abertos.has(g.id);
-    const anfitrioes = (g.convidado_por || [])
-      .map((id) => nomeDoAniversariante(id, "?" + id)).join(", ");
-    const linhas = pessoas.map((p, i) => {
-      const itens = preferencias(p);
-      return `<div class="pessoa-linha">
-        <span class="pessoa-linha-nome">${esc(nomeDaPessoa(p, i))}</span>
-        <span class="mono pessoa-linha-tipo${p.tipo === "crianca" ? " crianca" : ""}">${p.tipo === "crianca" ? "criança" : "adulto"}</span>
-        <span class="mono pessoa-linha-itens">${itens.length ? esc(itens.join(" · ").toLowerCase()) : "—"}</span>
+  function groupCard(g, people) {
+    const aberto = openCards.has(g.id);
+    const anfitrioes = (g.invited_by || [])
+      .map((id) => celebrantName(id, "?" + id)).join(", ");
+    const rows = people.map((p, i) => {
+      const items = preferences(p);
+      return `<div class="person-row">
+        <span class="person-row-name">${esc(personName(p, i))}</span>
+        <span class="mono person-row-kind${p.kind === "child" ? " child" : ""}">${p.kind === "child" ? "criança" : "adulto"}</span>
+        <span class="mono person-row-items">${items.length ? esc(items.join(" · ").toLowerCase()) : "—"}</span>
       </div>`;
     }).join("");
 
-    return `<div class="grupo-card">
-      <button type="button" class="grupo-topo" data-toggle="${esc(g.id)}" aria-expanded="${aberto}">
-        <span class="grupo-quem">
-          <b>${esc(g.nome_principal)}</b>
-          <span class="mono grupo-meta">${esc(g.contato)}${anfitrioes ? " · convidado por " + esc(anfitrioes) : ""}</span>
+    return `<div class="group-card">
+      <button type="button" class="group-top" data-toggle="${esc(g.id)}" aria-expanded="${aberto}">
+        <span class="group-who">
+          <b>${esc(g.lead_name)}</b>
+          <span class="mono group-meta">${esc(g.contact)}${anfitrioes ? " · guest por " + esc(anfitrioes) : ""}</span>
         </span>
-        <span class="mono grupo-qtd">${pessoas.length}</span>
-        <span class="grupo-seta" aria-hidden="true">${aberto ? "▲" : "▼"}</span>
+        <span class="mono group-count">${people.length}</span>
+        <span class="group-arrow" aria-hidden="true">${aberto ? "▲" : "▼"}</span>
       </button>
-      ${aberto ? `<div class="grupo-corpo">
-        ${linhas}
-        ${g.observacoes ? `<p class="grupo-recado">${esc(g.observacoes)}</p>` : ""}
-        <p class="mono grupo-quando">chegou em ${esc(fmtData(g.criado_em))}</p>
-        <div class="grupo-acoes">
-          ${linkDeContato(g)}
-          <button type="button" class="grupo-excluir" data-excluir="${esc(g.id)}">Excluir</button>
+      ${aberto ? `<div class="group-body">
+        ${rows}
+        ${g.notes ? `<p class="group-note">${esc(g.notes)}</p>` : ""}
+        <p class="mono group-when">chegou em ${esc(fmtDateTime(g.created_at))}</p>
+        <div class="group-actions">
+          ${contactLink(g)}
+          <button type="button" class="group-excluir" data-excluir="${esc(g.id)}">Excluir</button>
         </div>
       </div>` : ""}
     </div>`;
   }
 
   /* ---- contato -> link ----
-     `contato` é o que o convidado digitou. Um wa.me com os dígitos crus
+     `contact` é o que o convidado digitou. Um wa.me com os dígitos crus
      manda para o país errado: a Rosaura está como 51995509956, e +51 é
      o Peru.
 
@@ -1360,8 +1360,8 @@
 
      Comprimento desconhecido não vira link: melhor não ter botão do que
      ter botão que abre conversa com desconhecido. */
-  function numeroWhats(contato) {
-    const bruto = String(contato || "").trim();
+  function whatsNumber(contact) {
+    const bruto = String(contact || "").trim();
     if (bruto.includes("@")) return null;
     const d = bruto.replace(/\D/g, "");
 
@@ -1376,149 +1376,149 @@
     return null;
   }
 
-  function linkDeContato(g) {
-    const contato = String(g.contato || "");
-    if (contato.includes("@")) {
-      return `<a class="grupo-acao" href="mailto:${encodeURIComponent(contato)}">Enviar e-mail</a>`;
+  function contactLink(g) {
+    const contact = String(g.contact || "");
+    if (contact.includes("@")) {
+      return `<a class="group-acao" href="mailto:${encodeURIComponent(contact)}">Enviar e-mail</a>`;
     }
-    const num = numeroWhats(contato);
-    if (!num) return `<span class="grupo-acao grupo-acao-morta">Contato: ${esc(contato)}</span>`;
-    return `<a class="grupo-acao" href="https://wa.me/${encodeURIComponent(num)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>`;
+    const num = whatsNumber(contact);
+    if (!num) return `<span class="group-acao group-acao-dead">Contato: ${esc(contact)}</span>`;
+    return `<a class="group-acao" href="https://wa.me/${encodeURIComponent(num)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>`;
   }
 
-  function ligarCards() {
+  function wireCards() {
     $$("[data-toggle]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.toggle;
-      if (abertos.has(id)) abertos.delete(id); else abertos.add(id);
-      montarLista();
+      if (openCards.has(id)) openCards.delete(id); else openCards.add(id);
+      renderList();
     }));
-    $$("[data-excluir]").forEach((b) => b.addEventListener("click", () => excluirGrupo(b.dataset.excluir)));
+    $$("[data-excluir]").forEach((b) => b.addEventListener("click", () => deleteGroup(b.dataset.excluir)));
   }
 
-  async function excluirGrupo(id) {
-    const { grupos, porGrupo } = ultimaLista;
-    const g = grupos.find((x) => x.id === id);
+  async function deleteGroup(id) {
+    const { groups, byGroup } = lastList;
+    const g = groups.find((x) => x.id === id);
     if (!g) return;
-    const pessoas = porGrupo.get(id) || [];
+    const people = byGroup.get(id) || [];
 
     // Nomear quem vai sumir, e a consequência. "Tem certeza?" genérico
     // não diz o que se perde.
-    const quantas = pessoas.length === 1 ? "a 1 pessoa" : `as ${pessoas.length} pessoas`;
-    const frase = `Apagar a confirmação de ${g.nome_principal} e ${quantas} do grupo? ` +
+    const quantas = people.length === 1 ? "a 1 pessoa" : `as ${people.length} pessoas`;
+    const frase = `Apagar a confirmação de ${g.lead_name} e ${quantas} do grupo? ` +
       "Isso não tem como desfazer.";
     if (!confirm(frase)) return;
 
     // O conteúdo apagado, em texto, montado ANTES de sumir: não é
     // desfazer, mas é o que permite refazer à mão se foi engano.
-    const copia = [
-      `${g.nome_principal} · ${g.contato}`,
-      `convidado por: ${(g.convidado_por || []).map((i) => nomeDoAniversariante(i, "?" + i)).join(", ") || "—"}`,
-      ...pessoas.map((p, i) => `- ${nomeDaPessoa(p, i)} (${p.tipo}): ${preferencias(p).join(", ") || "nada"}`),
-      g.observacoes ? `recado: ${g.observacoes}` : null,
+    const copy = [
+      `${g.lead_name} · ${g.contact}`,
+      `convidado por: ${(g.invited_by || []).map((i) => celebrantName(i, "?" + i)).join(", ") || "—"}`,
+      ...people.map((p, i) => `- ${personName(p, i)} (${p.kind}): ${preferences(p).join(", ") || "nada"}`),
+      g.notes ? `recado: ${g.notes}` : null,
     ].filter(Boolean).join("\n");
 
     const { error } = await sb.from("rsvps").delete().eq("id", id);
-    if (error) { console.error(error); return toastLista("Não consegui apagar.", "err"); }
+    if (error) { console.error(error); return listToast("Não consegui apagar.", "err"); }
 
-    abertos.delete(id);
-    toastLista("Apagado. O que sumiu:\n" + copia, "ok");
+    openCards.delete(id);
+    listToast("Apagado. O que sumiu:\n" + copy, "ok");
     // Recarrega em vez de remendar os arrays: é o que garante que Resumo,
     // Compras e Contas mudem junto. Busca e filtro sobrevivem porque
     // moram em variáveis, não no HTML.
-    await carregarRSVPs();
+    await loadRSVPs();
   }
 
-  function toastLista(msg, classe) {
-    const el = $("#listaMsg");
+  function listToast(msg, classe) {
+    const el = $("#listMsg");
     el.className = "msg-toast" + (classe ? " " + classe : "");
     el.textContent = msg;
   }
 
-  $("#buscaGrupos").addEventListener("input", montarLista);
-  $("#btnLimparBusca").addEventListener("click", () => {
-    $("#buscaGrupos").value = "";
-    filtroAtivo = "todos";
-    montarFiltros();
-    montarLista();
+  $("#searchGroups").addEventListener("input", renderList);
+  $("#btnClearSearch").addEventListener("click", () => {
+    $("#searchGroups").value = "";
+    activeFilter = "todos";
+    renderFilters();
+    renderList();
   });
 
   /* ================= FOTOS ================= */
-  async function carregarFotos() {
-    const grid = $("#fotosGrid");
-    const { data, error } = await sb.storage.from(C.supabase.bucketFotos).list("", { limit: 100, sortBy: { column: "name", order: "asc" } });
+  async function loadPhotos() {
+    const grid = $("#photosGrid");
+    const { data, error } = await sb.storage.from(C.supabase.photosBucket).list("", { limit: 100, sortBy: { column: "name", order: "asc" } });
     if (error) { console.error(error); return; }
-    const fotos = (data || []).filter((f) => f.name && !f.name.startsWith(".") && /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name));
-    if (!fotos.length) { grid.innerHTML = '<p class="vazio">Nenhuma foto ainda.</p>'; return; }
-    grid.innerHTML = fotos.map((f) => {
-      const url = sb.storage.from(C.supabase.bucketFotos).getPublicUrl(f.name).data.publicUrl;
-      return `<div class="foto-item"><img src="${esc(url)}" alt=""><button data-nome="${esc(f.name)}" title="Apagar">✕</button></div>`;
+    const photos = (data || []).filter((f) => f.name && !f.name.startsWith(".") && /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name));
+    if (!photos.length) { grid.innerHTML = '<p class="empty">Nenhuma foto ainda.</p>'; return; }
+    grid.innerHTML = photos.map((f) => {
+      const url = sb.storage.from(C.supabase.photosBucket).getPublicUrl(f.name).data.publicUrl;
+      return `<div class="photo-item"><img src="${esc(url)}" alt=""><button data-nome="${esc(f.name)}" title="Apagar">✕</button></div>`;
     }).join("");
-    $$(".foto-item button", grid).forEach((b) => b.addEventListener("click", async () => {
-      const nome = b.dataset.nome;
+    $$(".photo-item button", grid).forEach((b) => b.addEventListener("click", async () => {
+      const name = b.dataset.name;
       // Nomeia o arquivo e diz ONDE ele aparece — igual ao combinado para
       // os RSVPs. Aqui não dá para ecoar o conteúdo apagado (é imagem);
       // o nome do arquivo é a pista para reenviar o original.
-      if (!confirm(`Apagar a foto ${nome}? Ela sai do carrossel do convite e isso não tem como desfazer.`)) return;
-      const { error } = await sb.storage.from(C.supabase.bucketFotos).remove([nome]);
+      if (!confirm(`Apagar a foto ${name}? Ela sai do carrossel do convite e isso não tem como desfazer.`)) return;
+      const { error } = await sb.storage.from(C.supabase.photosBucket).remove([name]);
       if (error) {
         console.error(error);
-        return toast("#fotoMsg", "Não consegui apagar a foto.", "err");
+        return toast("#photoMsg", "Não consegui apagar a foto.", "err");
       }
-      toast("#fotoMsg", `Apagada: ${nome}`, "ok");
-      carregarFotos();
+      toast("#photoMsg", `Apagada: ${name}`, "ok");
+      loadPhotos();
     }));
   }
 
-  function prepararUpload() {
+  function wireUpload() {
     const drop = $("#uploadDrop");
     const input = $("#fileInput");
-    input.addEventListener("change", () => enviarFotos(input.files));
+    input.addEventListener("change", () => uploadPhotos(input.files));
     ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
     ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("drag"); }));
-    drop.addEventListener("drop", (e) => enviarFotos(e.dataTransfer.files));
+    drop.addEventListener("drop", (e) => uploadPhotos(e.dataTransfer.files));
   }
 
-  async function enviarFotos(files) {
-    const msg = $("#fotoMsg");
+  async function uploadPhotos(files) {
+    const msg = $("#photoMsg");
     const arr = [...files].filter((f) => f.type.startsWith("image/"));
     if (!arr.length) return;
     msg.className = "msg-toast"; msg.textContent = `Enviando ${arr.length} foto(s)...`;
     let ok = 0;
     for (const file of arr) {
-      const nome = `${Date.now()}_${limparNome(file.name)}`;
-      const { error } = await sb.storage.from(C.supabase.bucketFotos).upload(nome, file, { cacheControl: "3600", upsert: false });
+      const name = `${Date.now()}_${sanitizeName(file.name)}`;
+      const { error } = await sb.storage.from(C.supabase.photosBucket).upload(name, file, { cacheControl: "3600", upsert: false });
       if (error) console.error(error); else ok++;
     }
     msg.className = "msg-toast ok"; msg.textContent = `${ok} foto(s) enviada(s)!`;
     $("#fileInput").value = "";
-    carregarFotos();
+    loadPhotos();
   }
 
   /* ================= HELPERS ================= */
   // Espelha o comportamento visual dos chips do convite. Vive aqui e no
   // main.js: são dois IIFEs sem módulo compartilhado, e a alternativa
   // seria um quarto arquivo só para isto.
-  function ativarChips(root) {
+  function enableChips(root) {
     $$(".chip input", root).forEach((inp) => {
       inp.addEventListener("change", () => {
         if (inp.type === "radio" && inp.name) {
           $$(`input[name="${inp.name}"]`, document).forEach((outro) => {
             const chip = outro.closest(".chip");
-            if (chip) chip.classList.toggle("marcado", outro.checked);
+            if (chip) chip.classList.toggle("checked", outro.checked);
           });
           return;
         }
-        inp.closest(".chip").classList.toggle("marcado", inp.checked);
+        inp.closest(".chip").classList.toggle("checked", inp.checked);
       });
     });
   }
 
-  function limparNome(n) {
+  function sanitizeName(n) {
     return n.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
   }
   // "quando chegou" no fuso da FESTA, não no de quem abre o painel: são 5
   // organizadores e a resposta tem que ser a mesma para todos.
-  function fmtData(iso) {
+  function fmtDateTime(iso) {
     try {
       const d = new Date(iso);
       return new Intl.DateTimeFormat("pt-BR", {

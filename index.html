@@ -26,60 +26,60 @@
 </head>
 <!-- A classe escopa paleta e fontes do convite. O admin.html usa o mesmo
      style.css e não pode herdar nada disto. -->
-<body class="pagina-convite">
+<body class="page-invite">
   <div class="confetti" id="confetti" aria-hidden="true"></div>
 
   <!-- A coluna do convite. Fica dentro de um wrapper porque o fundo da
        página é preto e a coluna é creme: sem ele, o creme seria por
        bloco e as emendas vazariam preto. -->
-  <div class="folha">
+  <div class="sheet">
 
   <!-- ===================== HERO ===================== -->
   <header class="hero">
     <div class="hero-inner">
-      <div class="carregando" id="conviteCarregando">
+      <div class="loading" id="inviteLoading">
         <b>160</b>
         <p class="mono">abrindo o convite</p>
       </div>
 
-      <div id="hero-conteudo" hidden>
+      <div id="hero-content" hidden>
         <p class="hero-eyebrow mono">Convocação oficial</p>
-        <h1 class="hero-title" id="festaTitulo"></h1>
-        <p class="hero-sub" id="festaSubtitulo" hidden></p>
+        <h1 class="hero-title" id="partyTitle"></h1>
+        <p class="hero-sub" id="partySubtitle" hidden></p>
 
         <!-- a equação 40 + 50 + 70 = 160, montada pelo main.js -->
-        <div class="equacao" id="heroNomes"></div>
+        <div class="equation" id="heroNames"></div>
 
         <!-- ONDE / QUANDO — a antiga seção "Anota o endereço" virou esta
              ficha dentro do hero. O id sobrevive porque o fail-loud
              depende dele; o que mudou foi o lugar, não o contrato. -->
-        <div class="ficha" id="secaoOnde" hidden>
-          <span class="ficha-rot mono">Dia</span>
-          <b id="festaData">—</b>
-          <span class="ficha-rot mono">Onde</span>
-          <span class="ficha-onde">
-            <b id="cardLocal">—</b>
-            <a id="festaLocal" href="#" target="_blank" rel="noopener" class="link-mapa">abrir no mapa →</a>
+        <div class="factsheet" id="whereSection" hidden>
+          <span class="factsheet-label mono">Dia</span>
+          <b id="partyDate">—</b>
+          <span class="factsheet-label mono">Onde</span>
+          <span class="factsheet-where">
+            <b id="cardVenue">—</b>
+            <a id="partyVenue" href="#" target="_blank" rel="noopener" class="link-map">abrir no mapa →</a>
           </span>
           <!-- o endereço é longo: o link precisa de linha própria, senão
                ele emenda no fim do texto e some no meio da frase -->
         </div>
 
         <div class="countdown" id="countdown" aria-label="Contagem regressiva">
-          <div class="cd-box"><b id="cdDias">0</b><span>dias</span></div>
-          <div class="cd-box"><b id="cdHoras">0</b><span>horas</span></div>
+          <div class="cd-box"><b id="cdDays">0</b><span>dias</span></div>
+          <div class="cd-box"><b id="cdHours">0</b><span>horas</span></div>
           <div class="cd-box"><b id="cdMin">0</b><span>min</span></div>
-          <div class="cd-box"><b id="cdSeg">0</b><span>seg</span></div>
+          <div class="cd-box"><b id="cdSec">0</b><span>seg</span></div>
         </div>
 
         <!-- duas caras, escolhidas pelo data-tipo que o tick() escreve:
              carimbo torto em "e-hoje", bloco branco em "passou" -->
-        <div class="festa-estado" id="festaEstado" hidden></div>
+        <div class="party-state" id="partyState" hidden></div>
 
-        <a href="#confirmar" class="btn-cta" id="ctaTopo">Tô dentro →</a>
+        <a href="#rsvpSection" class="btn-cta" id="ctaTop">Tô dentro →</a>
       </div>
 
-      <div class="convite-erro" id="conviteErro" hidden>
+      <div class="invite-error" id="inviteError" hidden>
         <div class="big">POXA</div>
         <p>O convite não quis carregar. Deve ser a internet — nada a ver com você.</p>
         <a href="." class="btn-cta">Tentar de novo</a>
@@ -88,77 +88,77 @@
   </header>
 
   <!-- ===================== CARROSSEL ===================== -->
-  <section class="secao-fotos" id="secaoFotos">
+  <section class="photos-section" id="photosSection">
     <p class="kicker mono">Registros do futuro</p>
-    <h2 class="secao-titulo">Fotos da festa</h2>
+    <h2 class="section-title">Fotos da festa</h2>
 
     <!-- Sem setas: numa coluna de 460px elas roubam área da foto e o
          gesto natural é arrastar. Os dots ficam ABAIXO da moldura, não
          sobre ela, para não disputar espaço com a legenda e para caberem
          com alvo de toque de verdade. -->
-    <div class="carrossel" id="carrossel" aria-label="Fotos">
-      <div class="carrossel-track" id="carrosselTrack"><!-- slides --></div>
-      <p class="carrossel-legenda mono">Nenhuma destas fotos aconteceu. Ainda.</p>
+    <div class="carousel" id="carousel" aria-label="Fotos">
+      <div class="carousel-track" id="carouselTrack"><!-- slides --></div>
+      <p class="carousel-legenda mono">Nenhuma destas fotos aconteceu. Ainda.</p>
     </div>
     <div class="car-dots" id="carDots"></div>
 
-    <p class="carrossel-vazio" id="carrosselVazio" hidden>
+    <p class="carousel-empty" id="carouselEmpty" hidden>
       As fotos entram aqui assim que forem adicionadas.
     </p>
   </section>
 
   <!-- ===================== FORMULÁRIO RSVP ===================== -->
-  <section class="rsvp" id="confirmar">
+  <section class="rsvp" id="rsvpSection">
     <p class="kicker mono">Sem enrolação</p>
-    <h2 class="secao-titulo">Confirma aí</h2>
-    <p class="secao-sub">Leva 40 segundos. É pra gente saber quanta pizza pedir.</p>
+    <h2 class="section-title">Confirma aí</h2>
+    <p class="section-sub">Leva 40 segundos. É pra gente saber quanta pizza pedir.</p>
 
     <!-- Mostrado no lugar do formulário quando o prazo passou, ou quando
          a festa já aconteceu. O texto de cada caso vem do main.js. -->
-    <div class="rsvp-encerrado" id="rsvpEncerrado" hidden>
+    <div class="rsvp-closed" id="rsvpClosed" hidden>
       <h3>Prazo<br>encerrado</h3>
-      <p id="rsvpEncerradoTexto">O prazo para confirmar presença já passou.</p>
+      <p id="rsvpClosedText">O prazo para confirmar presença já passou.</p>
     </div>
 
     <form id="rsvpForm" novalidate>
-      <label class="campo" for="responsavel">
-        <span class="campo-rot">Seu nome</span>
-        <input type="text" id="responsavel" name="responsavel" required placeholder="quem tá confirmando" />
+      <label class="field" for="lead">
+        <span class="field-label">Seu nome</span>
+        <input type="text" id="lead" name="lead" required placeholder="quem tá confirmando" />
       </label>
 
-      <label class="campo" for="contato">
-        <span class="campo-rot">WhatsApp ou e-mail</span>
-        <input type="text" id="contato" name="contato" required placeholder="(51) 90000-0000" />
-        <small class="campo-dica">
+      <label class="field" for="contact">
+        <span class="field-label">WhatsApp ou e-mail</span>
+        <input type="text" id="contact" name="contact" required placeholder="(51) 90000-0000" />
+        <small class="field-hint">
           É por aqui que a gente te acha. Confirmando de novo com o mesmo
           contato, a resposta anterior é <strong>substituída</strong>.
         </small>
       </label>
 
-      <fieldset class="campo">
-        <legend class="campo-rot">Quem te chamou</legend>
-        <div class="chips" id="chipsAniversariantes"></div>
+      <fieldset class="field">
+        <legend class="field-label">Quem te chamou</legend>
+        <div class="chips" id="chipsCelebrants"></div>
       </fieldset>
 
-      <div id="pessoasLista"><!-- cards de pessoa --></div>
-      <button type="button" class="btn-somar" id="addPessoa">+ levar mais alguém</button>
-      <p class="campo-dica" id="limiteAcompanhantes" hidden>Máximo de 5 acompanhantes.</p>
+      <div id="peopleList"><!-- cards de pessoa --></div>
+      <button type="button" class="btn-add" id="addPerson">+ levar mais alguém</button>
+      <p class="field-hint" id="limitCompanions" hidden>Máximo de 5 acompanhantes.</p>
 
-      <label class="campo" for="mensagem">
-        <span class="campo-rot">Recado ou restrição <em>(opcional)</em></span>
-        <textarea id="mensagem" name="mensagem" rows="3" maxlength="500"
+      <label class="field" for="message">
+        <span class="field-label">Recado ou restrição <em>(opcional)</em></span>
+        <textarea id="message" name="message" rows="3" maxlength="500"
                   placeholder="alergia, restrição, ou só um recado"></textarea>
-        <small class="campo-dica contador" id="contadorMensagem" hidden></small>
+        <small class="field-hint counter" id="counterMessage" hidden></small>
       </label>
 
       <!-- contador ao vivo: quem adiciona 4 pessoas perde a conta -->
-      <div class="barra-total">
+      <div class="bar-total">
         <span class="mono">Total</span>
-        <b id="totalPessoas">1 pessoa</b>
+        <b id="totalPeople">1 pessoa</b>
       </div>
 
-      <button type="submit" class="btn-enviar" id="btnEnviar">Confirmar</button>
-      <p class="campo-dica prazo-aberto mono" id="prazoAberto" hidden></p>
+      <button type="submit" class="btn-submit" id="btnSubmit">Confirmar</button>
+      <p class="field-hint deadline-open mono" id="deadlineNotice" hidden></p>
       <p class="form-status" id="formStatus" role="status"></p>
     </form>
   </section>
@@ -166,25 +166,25 @@
   <!-- Tela de sucesso. Substitui o convite inteiro, mas NÃO destrói o
        formulário: "mudar minha confirmação" precisa dele de volta com o
        que foi preenchido. -->
-  <section class="rsvp-sucesso" id="rsvpSucesso" hidden>
-    <div class="cartao-ok">
-      <div class="cartao-ok-faixa mono">Confirmação registrada</div>
-      <div class="cartao-ok-corpo">
+  <section class="rsvp-success" id="rsvpSuccess" hidden>
+    <div class="card-ok">
+      <div class="card-ok-faixa mono">Confirmação registrada</div>
+      <div class="card-ok-body">
         <h2>Tá<br>anotado</h2>
-        <p id="sucessoResumo"></p>
-        <div class="lista-ok" id="sucessoLista"></div>
-        <a class="btn-agenda" id="btnAgenda" download="festa.ics" hidden>Salvar na agenda 📅</a>
-        <button type="button" class="btn-mudar" id="btnMudar">Mudar minha confirmação</button>
-        <p class="campo-dica mono">
+        <p id="successSummary"></p>
+        <div class="list-ok" id="successList"></div>
+        <a class="btn-calendar" id="btnCalendar" download="festa.ics" hidden>Salvar na agenda 📅</a>
+        <button type="button" class="btn-change" id="btnChange">Mudar minha confirmação</button>
+        <p class="field-hint mono">
           Precisa mudar algo? Confirme de novo com o mesmo contato que a gente substitui.
         </p>
       </div>
     </div>
   </section>
 
-  <footer class="rodape">
-    <p id="rodapeFesta"></p>
-    <p class="rodape-admin"><a href="admin.html">Área do organizador</a></p>
+  <footer class="footer">
+    <p id="footerParty"></p>
+    <p class="footer-admin"><a href="admin.html">Área do organizador</a></p>
   </footer>
 
   </div><!-- /.folha -->
@@ -194,33 +194,33 @@
        payload não muda, os data-bebida/data-comida continuam os mesmos.
        O <select> de relação saiu — era ele que vazava da tela a 390px,
        e o valor dele nunca foi lido por ninguém. -->
-  <template id="tplPessoa">
-    <div class="pessoa-card">
-      <div class="pessoa-topo">
-        <b class="pessoa-rotulo"></b>
-        <span class="pessoa-tag mono">Adulto</span>
-        <button type="button" class="p-remover" aria-label="Remover acompanhante" title="Remover">✕</button>
+  <template id="tplPerson">
+    <div class="person-card">
+      <div class="person-top">
+        <b class="person-label"></b>
+        <span class="person-tag mono">Adulto</span>
+        <button type="button" class="p-remove" aria-label="Remover acompanhante" title="Remover">✕</button>
       </div>
-      <div class="pessoa-corpo">
-        <input type="text" class="p-nome" placeholder="nome de quem vem com você" />
+      <div class="person-body">
+        <input type="text" class="p-name" placeholder="nome de quem vem com você" />
 
-        <div class="pref-grupo p-grupo-tipo">
-          <span class="pref-titulo mono">É</span>
-          <div class="pref-chips p-tipo">
-            <label class="chip marcado"><input type="radio" value="adulto" checked /><span>Adulto</span></label>
+        <div class="pref-group p-grupo-tipo">
+          <span class="pref-title mono">É</span>
+          <div class="pref-chips p-kind">
+            <label class="chip checked"><input type="radio" value="adulto" checked /><span>Adulto</span></label>
             <label class="chip"><input type="radio" value="crianca" /><span>Criança</span></label>
           </div>
         </div>
 
-        <div class="pref-grupo">
-          <span class="pref-titulo mono">Vai querer</span>
+        <div class="pref-group">
+          <span class="pref-title mono">Vai querer</span>
           <div class="pref-chips p-prefs">
             <label class="chip"><input type="checkbox" data-bebida="bebe_agua" /><span>Água</span></label>
             <label class="chip"><input type="checkbox" data-bebida="bebe_refri" /><span>Refri</span></label>
             <label class="chip p-chip-chopp"><input type="checkbox" data-bebida="bebe_chopp" /><span>Chopp</span></label>
             <label class="chip"><input type="checkbox" data-comida="come_pizza" /><span>Pizza</span></label>
           </div>
-          <small class="campo-dica p-aviso-chopp" hidden>Chopp só para adulto.</small>
+          <small class="field-hint p-beer-warning" hidden>Chopp só para adulto.</small>
         </div>
       </div>
     </div>
