@@ -25,7 +25,7 @@
 
    Entradas:
      people[] — { id, rsvp_id, name, age_group, wants_water, wants_soda,
-                   wants_beer, wants_pizza, papel, celebrant_id }
+                   wants_beer, wants_pizza, role, celebrant_id }
      groups[]  — { id, invited_by: [1..3], lead_name, contact }
      settings  — mesma forma da tabela `settings` (reais, não centavos)
    ============================================================= */
