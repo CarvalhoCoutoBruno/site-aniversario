@@ -1,177 +1,203 @@
-# Plano — Fatia 17: modelo de exclusão e cancelamento pelo convidado
+# Plano — Fatia 18: a lixeira, e fechar a porta do apagar
 
-Branch: `feat/fatia-17-cancelamento`
+Conferi cada afirmação do prompt antes de planejar. **Todas se sustentam** — e uma delas se
+sustenta mais forte do que o prompt supôs, o que me faz propor um acréscimo. Está na §5.
 
-Entrada: `prompt.md` (Cowork).
+## O que confirmei no banco e no código
 
----
+```
+políticas de DELETE vivas:  public.rsvps   "admin deletes rsvps"
+                            public.people  "admin deletes people"
+                            storage.objects "admin deletes photos"   ← fica, é outro assunto
 
-## Risco 1 — onde o filtro entra: **um lugar só**
+delete de verdade nas RPCs: create_rsvp 0 · cancel_rsvp 0 · admin_remove_rsvp 0
+                            (os três fazem `set deleted_at`)
 
-Levantei todas as leituras. São menos do que parece, e isso é consequência direta da decisão da
-Fatia 12 ("as abas não carregam nada"):
+.delete() no js/:           nenhum — a única ocorrência é o comentário que explica por que não
 
-| Onde | O quê | Filtro |
-|---|---|---|
-| `admin.js:1107` `loadRSVPs()` | `from("rsvps").select("*")` | **sim** — `.is("deleted_at", null)` |
-| `admin.js:1108` `loadRSVPs()` | `from("people").select("*")` | **sim** — ver abaixo, é o pulo do gato |
-| `admin.js:555` `loadCelebrants()` | `from("people").eq("role","celebrant")` | **não** — aniversariante não tem `rsvp_id`, cancelamento não o alcança |
-| `admin.js:610/611` | update/insert de aniversariante | escrita, não leitura |
-| `supabase-setup.sql:31` | `count(*) from rsvps` na trava do reset | **não** — ver abaixo |
-| `supabase-setup.sql:419` | o dedupe do `create_rsvp` | **sim** — vira update, risco 4 |
+rsvps hoje:                 8 colunas, deleted_at presente, ZERO linhas canceladas
+```
 
-**Todo o resto do painel deriva de `lastGroups` e `lastPeople`**, que só o `loadRSVPs()` escreve.
-Resumo, Quem vem, Compras e Contas não tocam no banco: leem essas duas variáveis. Então o filtro
-entra em **um ponto** e cobre a aba inteira. Vou marcar isso com comentário no lugar, porque é a
-propriedade que torna o risco 1 tratável — e que alguém pode destruir sem perceber ao adicionar
-uma consulta nova.
+Um detalhe da primeira medição que quase me enganou e vale registrar: procurar `delete` no corpo
+das funções dá **verdadeiro nas três**, porque casa com `deleted_at`. Só olhando `delete from` como
+palavra é que a resposta aparece. Mesma família do erro que a Fatia 17 cometeu no `verify.sh`, onde
+o padrão casava com o comentário que citava a chamada.
 
-⚠️ **O pulo do gato:** `deleted_at` mora em `rsvps`, não em `people`. Filtrar só os grupos deixaria
-as *pessoas* do grupo cancelado dentro de `lastPeople` — e elas continuariam contando em
-estimativa, rateio e acerto. **É exatamente o modo de falha do risco 1**: chopp comprado a mais.
+## §1 — Schema
 
-Filtro as pessoas **no cliente**, logo depois do fetch, contra o conjunto de grupos sobreviventes:
-mantenho a linha se `rsvp_id` é null (aniversariante) ou se o grupo dela sobreviveu. Fazer isso no
-PostgREST exigiria um `!inner` que derrubaria os aniversariantes junto — mais frágil que a linha
-de código.
+`rsvps.deleted_by text null check (deleted_by in ('guest','admin'))`, aditivo, e o
+`supabase-setup.sql` junto. `cancel_rsvp` grava `'guest'`, `admin_remove_rsvp` grava `'admin'`,
+`restore_rsvp` limpa os dois.
 
-**A trava do reset conta cancelados de propósito.** Uma confirmação cancelada continua sendo dado
-real de convidado — é justamente o conteúdo da futura lixeira. Se a trava passasse a ignorá-los, um
-recreate apagaria a lixeira em silêncio. Registro isso em comentário lá.
+`null` fica sendo "não registrado" e a tela diz isso — não vou inventar procedência para linha
+antiga. Hoje não há nenhuma, mas a coluna sobrevive à minha memória.
 
-## Risco 2 — o uuid no navegador
+Uma consequência que o prompt não menciona e eu quero explícita: **o `check` também protege contra
+a terceira porta que não existe**. Se um dia alguém acrescentar um caminho de cancelamento e
+esquecer de gravar procedência, o insert falha alto em vez de gravar `null` silencioso.
 
-| Situação | O que acontece |
+## §2 — A lixeira sai da mesma leitura, e onde fica a cerca
+
+O `loadRSVPs()` já traz tudo; as canceladas são hoje **descartadas** no filtro. A lixeira se
+alimenta desse descarte, no mesmo bloco:
+
+```js
+const activeGroups  = (g.data||[]).filter(r => r.deleted_at == null);
+const deletedGroups = (g.data||[]).filter(r => r.deleted_at != null);   // ← o complemento
+```
+
+Nenhuma consulta nova. A invariante que eu mesmo escrevi na 17 (`sb.from("rsvps")` == 1) continua
+valendo, e ela está certa.
+
+**Risco 1 — por que o complemento não consegue vazar.** A cerca não é disciplina, é topologia:
+
+- `recompute()`, `peopleForCalc()`, `Calc.split()` e `Calc.settlement()` leem **só**
+  `lastPeople`/`lastGroups`. Conferi as 9 referências no arquivo: linhas 667, 679, 875, 882, 883 —
+  todas leem, só 1142 e 1143 escrevem.
+- `lastDeleted` será uma variável **separada**, escrita no mesmo ponto e lida **só** pelo
+  `renderTrash()`. Não entra em `recompute()`, não entra em `render()`.
+- A atribuição continua sendo `lastPeople = activePeople` — o filtro que já existe. Para vazar,
+  alguém teria de trocar essa linha, que é justamente a linha coberta pela invariante
+  `deleted_at == null` do `verify.sh`.
+
+As pessoas dos grupos cancelados vão num **segundo mapa** (`deletedByGroup`), não no `byGroup` que
+o `render()` recebe. Dois mapas, duas telas, sem interseção.
+
+E a leitura de `role='celebrant'` da aba Ajustes fica como está: ela nunca vê linha de convidado.
+Concordo com o prompt, não vou "consertar".
+
+## §3 — `restore_rsvp`, e a colisão
+
+`security definer`, `search_path` fixo, `revoke from public, anon`, `grant to authenticated`,
+`is_admin()` obrigatório, gate único de custo lançado com a saída de emergência dentro da mensagem
+— igual ao `admin_remove_rsvp`. A regra vira uma só para as três portas: **lançar custo congela a
+lista.**
+
+### A pergunta que o prompt me fez: a mensagem basta, ou aponto a atual?
+
+**Aponto a atual.** Duas razões:
+
+1. A pergunta seguinte do organizador é sempre "então qual é a que vale?". Se a mensagem não
+   responde, ele vai caçar na lista — e a lista pode ter 40 grupos.
+2. **Não custa consulta nenhuma.** `contact_norm` é coluna gerada e vem no `select("*")`; a linha
+   ativa concorrente já está em `lastGroups`, na memória. É um `find` num array que eu já tenho.
+
+E vou além, porque dá para fazer melhor do que traduzir erro: **detecto a colisão antes de chamar a
+RPC**, e aí a frase sai completa e sem round-trip:
+
+> "**Fulano** já confirmou de novo em 12/09, depois de cancelar. Restaurar esta criaria duas
+> confirmações para o mesmo contato — a que vale é a de 12/09."
+
+**E ainda assim capturo o `23505`.** Não é redundância: o estado do cliente pode estar velho (outra
+aba, outro organizador, ou um convidado reconfirmando entre o meu carregar e o meu clicar). A
+checagem no cliente é para a **boa mensagem**; o `23505` é para a **correção**. Se eu só fizesse a
+primeira, uma corrida devolveria despejo de Postgres na tela.
+
+O `23505` traduzido dá a mesma frase sem o nome e sem a data — é o que dá para dizer sem consultar.
+
+## §4 — A tela
+
+Fim da aba "Quem vem", depois do `#listNoResult`, bloco recolhido, título "Fora da lista (N)", e
+**só existe no DOM quando N > 0** — nada de bloco vazio ocupando o fim da aba o ano inteiro.
+
+Cada item traz o que faz decidir: responsável, contato, quem convidou, as pessoas com o consumo, o
+recado, quando saiu e **por qual porta**:
+
+| `deleted_by` | o que a tela diz |
 |---|---|
-| uuid válido, linha ativa | cancela; a tela mostra cancelado e o formulário volta limpo |
-| uuid de linha **já cancelada** | no-op silencioso — o `update` casa zero linhas e a RPC não reclama |
-| uuid **inexistente** (recreate, admin apagou de verdade) | idêntico: zero linhas, mesma resposta |
-| uuid aleatório | idêntico. **Sem oráculo**: as três respondem igual |
+| `guest` | "cancelou pelo link" |
+| `admin` | "você tirou da lista" |
+| `null` | "saiu da lista" (sem inventar procedência) |
 
-A RPC não devolve conteúdo nem distingue os casos — é o que o prompt pede, e é o que impede usar o
-endpoint para descobrir se um uuid existe.
+Mais recente primeiro. Fora da busca e dos filtros — eles são lente sobre quem vem; aqui é tudo,
+sempre. A contagem do título é a única contagem, e ela não passa por `recompute()`.
 
-⚠️ **Limitação que assumo e escrevo na tela:** o navegador não consegue *verificar* o que guardou.
-Não existe leitura de RSVP para o anônimo (e criar uma seria o oráculo que acabamos de evitar).
-Então, se o organizador apagar a confirmação pelo painel, o convidado continua vendo "você
-confirmou em DD/MM" até tentar cancelar ou reenviar. Reenviar resolve sozinho; cancelar vira no-op.
-Nenhum dos dois causa dano — só uma tarja desatualizada.
+"Trazer de volta" com `confirm` nomeando quem volta, e `loadRSVPs()` depois — a mesma recarga que o
+excluir já faz, que é o que garante Resumo, Compras e Contas mudando junto.
 
-## Risco 3 — RLS
+## §5 — Fechar a porta, e o acréscimo que eu quero propor
 
-`cancel_rsvp` é anônima e **muta**. `security definer`, `search_path` fixo, `revoke from public`,
-`grant execute to anon, authenticated`. A prova é a de sempre neste repo: **pelo estado do banco**.
+O prompt manda derrubar as duas políticas. Faço isso. **Mas descobri que só isso deixa a porta
+encostada, não trancada** — e a diferença é grande o bastante para eu não decidir sozinho.
 
-Vou provar quatro coisas: o uuid certo marca `deleted_at`; um uuid aleatório não mexe em nada
-(contagem de `deleted_at is not null` inalterada); o anon continua sem `UPDATE` direto em `rsvps`;
-e o cancelamento não apaga a linha.
+O grant de tabela está lá, herdado do padrão do Supabase:
 
-## Risco 4 — o dedupe
-
-Hoje: `delete from rsvps where contact_norm = …`. Vira:
-
-```sql
-update public.rsvps
-   set deleted_at = now()
- where contact_norm = public.normalize_contact(p_contact)
-   and deleted_at is null;
+```
+rsvps   anon DELETE · authenticated DELETE · service_role DELETE
+people  anon DELETE · authenticated DELETE · service_role DELETE
 ```
 
-Duas mudanças no comportamento, as duas necessárias:
-- a busca por duplicata passa a considerar **só as ativas** — senão uma cancelada antiga bloquearia
-  ou ressuscitaria;
-- o substituído fica **cancelado**, não some. Reenviar três vezes deixa duas canceladas e uma ativa,
-  e o histórico existe.
+Com o grant presente e a política ausente, o `DELETE` **não dá erro**: a RLS torna as linhas
+invisíveis para o comando, ele apaga zero e devolve **sucesso**. O prompt já viu isso e por isso
+mandou provar por `select` antes/depois, o que está certo.
 
-O índice único parcial `rsvps_contact_norm_idx` precisa acompanhar: hoje ele garante um contato por
-linha; com exclusão reversível, ele tem de garantir **um contato entre as ativas**. Vira
-`where deleted_at is null`. Sem isso, o segundo envio esbarra no índice antes de chegar no update.
-
-## Schema — aditivo
+Só que "sucesso silencioso" é um jeito ruim de uma porta ficar fechada. Proponho **também**:
 
 ```sql
-alter table public.rsvps add column if not exists deleted_at timestamptz;
+revoke delete on public.rsvps, public.people from anon, authenticated;
 ```
 
-Aplicado **à parte** no banco, e o `supabase-setup.sql` atualizado para descrever o schema inteiro.
-Nada de recreate: `party` e `settings` têm dado real e a trava — que acabei de ressuscitar — vai
-abortar, corretamente.
+O que muda: a mesma tentativa passa a devolver **`42501 permission denied`** — alto, achável no
+log, impossível de confundir com "apagou". E fecha o `anon`, que hoje tem grant de DELETE e é
+barrado **só** pela RLS: uma política mal escrita no futuro (um `using (true)` distraído) reabriria
+para o mundo. Com o revoke, não reabre.
 
-## Convite
+Verifiquei o que isso **não** quebra:
 
-Retomo o commit 6 que saiu da Fatia 11, agora com o cancelar que faltava:
+- as três RPCs são `security definer` e rodam como dono — grant de `anon`/`authenticated` não as
+  toca;
+- nada no `js/` apaga (grep confirma);
+- a trava do reset é DDL, passa por cima de RLS e de grant;
+- a cascata do FK `people.rsvp_id … on delete cascade` é ação de integridade referencial, executada
+  internamente e não sujeita ao grant do chamador — e, de todo modo, **nada dispara delete** hoje;
+- `service_role` mantém tudo, e ele nunca entra no repositório.
 
-- no sucesso, guardo `{ rsvpId, payload, quando }`;
-- no load, com registro **e prazo aberto**, preencho e mostro a tarja;
-- **"Mudar minha confirmação"** reabre o formulário preenchido (já existe, da Fatia 11);
-- **"Não vou mais poder ir"** → confirmação nomeando quem sai → `cancel_rsvp` → tela de cancelado,
-  com o formulário disponível de novo;
-- sem registro no navegador: sem cancelar, com o texto "fale com quem te convidou".
+**Não vou aplicar o revoke sem tua palavra**, porque ele mexe em permissão de papel e não é o que o
+prompt pediu. Se preferires ficar só com o drop das políticas, faço só isso e a fatia fecha igual —
+some a garantia contra política futura mal escrita, e a prova continua sendo `select` antes/depois.
 
-## Painel
+## §6 — A nona invariante
 
-O excluir do card passa a marcar `deleted_at`. Mantenho a confirmação nomeada e o toast com o
-conteúdo — que agora é **rede redundante**, não a única: o dado deixou de evaporar.
+Estática sobre o `supabase-setup.sql`: nenhum `create policy … for delete` em `rsvps` ou `people`.
+Provada nos dois sentidos, plantando a política de volta — como fiz com as três da 17.
 
-O `status.md` vai dizer, com todas as letras, que **restaurar é a Fatia 18** e que até lá o
-cancelado só volta por SQL. Sem isso parece esquecimento.
+O padrão vai exigir a tabela junto, não só `for delete`, senão ele derruba a política de fotos, que
+tem de continuar existindo. E vou testar exatamente isso: plantar a de fotos e o script ficar
+**verde**.
 
----
+## Riscos 2, 3 e 4 — como provo
 
-## Commits
+| risco | prova |
+|---|---|
+| restaurar com custo lançado | planto `actual_beer_cost`, `restore_rsvp` recusa com saída crua; limpo, passa; `select` mostrando `deleted_at` antes e depois |
+| colisão do índice | cancelo, reconfirmo o mesmo contato, tento restaurar → frase humana na tela + `23505` cru no `status.md`, e as duas linhas provadas: a antiga **ainda cancelada**, a atual **ainda ativa** |
+| porta fechada | `select` antes/depois com JWT de admin de verdade, em `rsvps` **e** em `people` — nunca "não deu erro, logo fechou" |
+| `anon` no `restore_rsvp` | `42501`, linha intacta |
 
-1. `feat`: schema (`deleted_at` + índice parcial) e o `cancel_rsvp`
-2. `feat`: dedupe do `create_rsvp` sob o modelo novo
-3. `feat`: o filtro nas leituras do painel + excluir reversível
-4. `feat`: convite — lembrar, mudar e cancelar
+## O que fica de fora
 
-## Verificação
+`js/calc.js`, o convite, apagar definitivo (**não construo esse botão**), e lixeira para o
+convidado. Do lado dele o cancelar é final por decisão, não por esquecimento.
 
-`./verify.sh` verde, 63 asserções.
+## Ordem dos commits
 
-1. **Cancelar ponta a ponta em produção**: confirmar pelo formulário, cancelar pelo botão,
-   `SELECT` mostrando a linha viva com `deleted_at` preenchido, e sumida de lista, Resumo, Compras
-   e Contas.
-2. **Prazo**: com o prazo vencido, `cancel_rsvp` recusa — saída crua.
-3. **Sem oráculo**: uuid aleatório, uuid já cancelado e uuid inexistente dão a mesma resposta e
-   não mexem em nada.
-4. **Dedupe**: reenviar com o mesmo contato deixa o anterior cancelado, não duplicado nem
-   ressuscitado; e o índice parcial aceita o segundo envio.
-5. **`localStorage`**: confirmar → recarregar → tarja; cancelar → recarregar → limpo; limpar
-   storage → limpo.
-6. **Contagens**: uma cancelada não aparece em número nenhum de aba nenhuma — incluindo as
-   **pessoas** dela, que é o modo de falha do risco 1.
-7. **Nada de recreate**: provar que foi `alter table`, e que `party`, `settings` e as fotos seguem.
-8. **Convite intacto** e **modo escuro idêntico**.
-9. Tabela de hashes.
+1. schema: `deleted_by`, `restore_rsvp`, procedência nas duas RPCs que cancelam
+2. painel: o complemento, a lixeira, o restaurar com a colisão tratada
+3. fechar a porta: drop das políticas (+ revoke, se autorizado) e a nona invariante
+4. `status.md`
 
----
+## Duas coisas fora do plano, que continuam de pé
 
-## Pergunta
+**O deploy.** O `main` está em `86a40b6` e **não publicou**: o GitHub abriu incidente crítico de
+Actions e Pages às 15:22 UTC de 06/08, e o build falhou por `Failed to resolve action download
+info`. Git está operacional — o commit chegou. O convite no ar ainda é o da Fatia 16, então **o
+cancelamento da 17 não está em produção**. Vou reconferir antes de mexer em qualquer coisa, e se o
+incidente tiver fechado, um push reenfileira.
 
-**P1 — o excluir do organizador precisa de trava de prazo, como o cancelar do convidado?**
+**O painel logado eu continuo sem conseguir dirigir** — ele pede a senha do Bruno. Vale para esta
+fatia inteira: vou provar a lixeira pelo banco e pelo bloco de código executado com linhas reais,
+como fiz na 17, mas o olho na tela renderizada logada é dele.
 
-O prompt manda parar e perguntar se o modelo colidir com o rateio. Colide, e num lugar só:
+## Pendência do Bruno, que não é fatia
 
-- **O cancelar do convidado está protegido**: obedece o prazo (01/10), e o fechamento acontece
-  depois da festa (31/10). Nunca se encontram.
-- **O excluir do organizador não tem trava nenhuma.** Se ele apagar um grupo depois de lançar
-  `actual_beer_cost`, o rateio recalcula na hora: **o mesmo dinheiro dividido entre menos gente**,
-  mudando quanto cada aniversariante paga, com a compra já feita.
-
-E isso contradiz a regra §4.2, que é a razão de no-show não mexer no rateio: **o custo é
-comprometido na confirmação**. Quem confirmou e não foi continua na conta. Apagar a confirmação
-depois do prazo faz por outro caminho o que a regra proíbe.
-
-Três saídas, em ordem de força:
-
-1. **Mesma trava do convidado** — depois do prazo, o painel não exclui. Simples e coerente, mas
-   tira do organizador o poder de corrigir um engano (grupo duplicado, teste esquecido).
-2. **Trava só depois do fechamento começar** (`actual_*_cost` preenchido) — o organizador corrige
-   à vontade entre o prazo e a compra, e trava quando o dinheiro entra na conta. **É a que eu
-   recomendo.**
-3. **Aviso, sem trava** — o confirm passa a dizer que isso altera contas já fechadas. Mais fraco,
-   mas preserva o controle.
-
-Não decido sozinho porque é regra de negócio e é dinheiro. Os commits 1, 2 e 4 não dependem da
-resposta; só o 3 (excluir do painel) depende.
+Rotacionar a senha do Postgres. Ela circulou no chat.
