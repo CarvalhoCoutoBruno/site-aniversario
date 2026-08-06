@@ -1238,9 +1238,16 @@
      Comprimento desconhecido não vira link: melhor não ter botão do que
      ter botão que abre conversa com desconhecido. */
   function numeroWhats(contato) {
-    const bruto = String(contato || "");
+    const bruto = String(contato || "").trim();
     if (bruto.includes("@")) return null;
     const d = bruto.replace(/\D/g, "");
+
+    // O "+" é declaração explícita de DDI e vence qualquer heurística de
+    // comprimento. Sem esta saída, +34611223344 (Espanha, 11 dígitos)
+    // caía na regra do celular brasileiro e virava 5534611223344 — uma
+    // conversa com um desconhecido no Brasil.
+    if (bruto.startsWith("+")) return d.length >= 8 && d.length <= 15 ? d : null;
+
     if (d.length === 10 || d.length === 11) return "55" + d;                  // DDD + número
     if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d; // já tem DDI
     return null;
