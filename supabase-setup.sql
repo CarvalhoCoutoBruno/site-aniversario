@@ -24,7 +24,7 @@ create extension if not exists pgcrypto;
 do $$
 declare
   v_cfg    jsonb;
-  v_motivo text;
+  v_reason text;
 begin
   -- (1) confirmações
   if to_regclass('public.rsvps') is not null then
@@ -51,26 +51,26 @@ begin
        or (v_cfg->>'custo_real_agua')         is not null
        or (v_cfg->>'preco_real_pizza_adulto') is not null
        or (v_cfg->>'preco_real_pizza_crianca')is not null then
-        v_motivo := 'custo real de fechamento lancado';
+        v_reason := 'custo real de fechamento lancado';
       elsif (v_cfg->>'pago_por_chopp') is not null
          or (v_cfg->>'pago_por_refri') is not null
          or (v_cfg->>'pago_por_agua')  is not null
          or (v_cfg->>'pago_por_pizza') is not null then
-        v_motivo := 'pagadores do acerto marcados';
+        v_reason := 'pagadores do acerto marcados';
       elsif (v_cfg->>'prazo_confirmacao') is not null then
-        v_motivo := 'prazo de confirmacao definido';
+        v_reason := 'prazo de confirmacao definido';
       elsif coalesce((v_cfg->>'preco_litro_chopp')::numeric, 0)   > 0
          or coalesce((v_cfg->>'preco_litro_refri')::numeric, 0)   > 0
          or coalesce((v_cfg->>'preco_litro_agua')::numeric, 0)    > 0
          or coalesce((v_cfg->>'preco_pizza_adulto')::numeric, 0)  > 0
          or coalesce((v_cfg->>'preco_pizza_crianca')::numeric, 0) > 0 then
-        v_motivo := 'precos de referencia preenchidos';
+        v_reason := 'precos de referencia preenchidos';
       end if;
 
-      if v_motivo is not null then
+      if v_reason is not null then
         raise exception
           'ABORTADO: public.config tem dado real (%). Recriar o schema apagaria preco, prazo e fechamento. Limpe a config manualmente antes se o descarte for intencional.',
-          v_motivo;
+          v_reason;
       end if;
     end if;
   end if;
@@ -89,12 +89,12 @@ begin
   end if;
 end $$;
 
-drop function if exists public.criar_rsvp(text, text, smallint[], text, jsonb);
-drop function if exists public.status_rsvp();
-drop table if exists public.pessoas;
+drop function if exists public.create_rsvp(text, text, smallint[], text, jsonb);
+drop function if exists public.rsvp_status();
+drop table if exists public.people;
 drop table if exists public.rsvps;
-drop table if exists public.config;
-drop table if exists public.festa;
+drop table if exists public.settings;
+drop table if exists public.party;
 -- admins e is_admin() sobrevivem ao reset: guardam os UIDs das contas
 -- do painel, que não têm nada a ver com o modelo de dados da festa.
 
@@ -106,8 +106,8 @@ drop table if exists public.festa;
 -- =============================================================
 create table if not exists public.admins (
   uid       uuid primary key,
-  nome      text not null,
-  criado_em timestamptz not null default now()
+  name      text not null,
+  created_at timestamptz not null default now()
 );
 
 -- SECURITY DEFINER para ler admins sem esbarrar na RLS da própria
@@ -138,7 +138,7 @@ create policy "admin le admins" on public.admins
 -- aniversariante — admin, aniversariante e pagante são eixos
 -- independentes, e é por isso que a autorização passa por esta tabela
 -- em vez de um papel fixo.
-insert into public.admins (uid, nome) values
+insert into public.admins (uid, name) values
   ('406ce6c3-f700-4393-b587-1322f04d1564', 'Bruno'),
   ('e3d8d44b-d748-48d5-bd38-b0782ef6f38d', 'Braz'),
   ('f595acd0-8f69-4972-a613-5e49f4107b8f', 'Bocão'),
@@ -154,7 +154,7 @@ on conflict (uid) do nothing;
 --  E-mail  -> minúsculo, sem espaços
 --  Telefone-> só os dígitos: "(51) 99999-9999" == "51999999999"
 -- =============================================================
-create or replace function public.normaliza_contato(p text)
+create or replace function public.normalize_contact(p text)
 returns text
 language sql
 immutable
@@ -175,7 +175,7 @@ $$;
 --  Regras: 1 a 3 itens, todos em {1,2,3}, sem repetição.
 --  (função auxiliar porque CHECK não aceita subconsulta direto)
 -- =============================================================
-create or replace function public.convidado_por_valido(a smallint[])
+create or replace function public.valid_invited_by(a smallint[])
 returns boolean
 language sql
 immutable
@@ -192,76 +192,76 @@ $$;
 -- =============================================================
 create table public.rsvps (
   id             uuid primary key default gen_random_uuid(),
-  criado_em      timestamptz not null default now(),
-  nome_principal text not null check (length(btrim(nome_principal)) between 1 and 120),
-  contato        text not null check (length(btrim(contato)) between 3 and 160),
-  contato_norm   text generated always as (public.normaliza_contato(contato)) stored,
-  convidado_por  smallint[] not null check (public.convidado_por_valido(convidado_por)),
-  observacoes    text check (observacoes is null or length(observacoes) <= 500)
+  created_at      timestamptz not null default now(),
+  lead_name text not null check (length(btrim(lead_name)) between 1 and 120),
+  contact        text not null check (length(btrim(contact)) between 3 and 160),
+  contact_norm   text generated always as (public.normalize_contact(contact)) stored,
+  invited_by  smallint[] not null check (public.valid_invited_by(invited_by)),
+  notes    text check (notes is null or length(notes) <= 500)
 );
 
-create index rsvps_criado_em_idx    on public.rsvps (criado_em desc);
-create index rsvps_contato_norm_idx on public.rsvps (contato_norm);
+create index rsvps_created_at_idx    on public.rsvps (created_at desc);
+create index rsvps_contact_norm_idx on public.rsvps (contact_norm);
 
 -- =============================================================
 --  TABELA: pessoas — unidade de consumo
 --  Principal, acompanhante e aniversariante são todos linhas aqui.
 -- =============================================================
-create table public.pessoas (
+create table public.people (
   id                uuid primary key default gen_random_uuid(),
   rsvp_id           uuid references public.rsvps(id) on delete cascade,
-  nome              text,
-  tipo              text not null check (tipo in ('adulto', 'crianca')),
-  bebe_agua         boolean not null default false,
-  bebe_refri        boolean not null default false,
-  bebe_chopp        boolean not null default false,
-  come_pizza        boolean not null default false,
-  papel             text not null check (papel in ('principal', 'acompanhante', 'aniversariante')),
+  name              text,
+  age_group              text not null check (age_group in ('adult', 'child')),
+  wants_water         boolean not null default false,
+  wants_soda        boolean not null default false,
+  wants_beer        boolean not null default false,
+  wants_pizza        boolean not null default false,
+  role             text not null check (role in ('lead', 'companion', 'celebrant')),
   -- 1/2/3 só para aniversariante: é o elo entre convidado_por e a
   -- linha pagante. Mesmos valores que convidado_por usa.
-  aniversariante_id smallint,
-  ordem             smallint not null default 0,
-  criado_em         timestamptz not null default now(),
+  celebrant_id smallint,
+  sort_order             smallint not null default 0,
+  created_at         timestamptz not null default now(),
 
   -- regra dura: criança não bebe chopp
-  constraint chopp_nao_para_crianca
-    check (not (bebe_chopp and tipo = 'crianca')),
+  constraint no_beer_for_children
+    check (not (wants_beer and age_group = 'child')),
 
   -- aniversariante vive fora de grupo; todo o resto pertence a um grupo.
   -- Efeito: o formulário público (que sempre manda rsvp_id) não consegue
   -- forjar um aniversariante.
-  constraint aniversariante_sem_grupo
+  constraint celebrant_has_no_group
     check (
-      (papel =  'aniversariante' and rsvp_id is null) or
-      (papel <> 'aniversariante' and rsvp_id is not null)
+      (role =  'celebrant' and rsvp_id is null) or
+      (role <> 'celebrant' and rsvp_id is not null)
     ),
 
   -- aniversariante_id existe se e somente se papel = 'aniversariante'.
   -- CASE (e não OR de dois ramos) porque CHECK só rejeita em FALSE:
   -- com id NULL, "papel = 'aniversariante' and id between 1 and 3"
   -- avalia para NULL, e a linha passaria batido.
-  constraint aniversariante_id_coerente
+  constraint celebrant_id_consistent
     check (
-      case when papel = 'aniversariante'
-           then aniversariante_id is not null and aniversariante_id between 1 and 3
-           else aniversariante_id is null
+      case when role = 'celebrant'
+           then celebrant_id is not null and celebrant_id between 1 and 3
+           else celebrant_id is null
       end
     ),
 
   -- nome é obrigatório só para quem preencheu o formulário
-  constraint principal_tem_nome
-    check (papel <> 'principal' or length(btrim(coalesce(nome, ''))) > 0)
+  constraint lead_has_name
+    check (role <> 'lead' or length(btrim(coalesce(name, ''))) > 0)
 );
 
-create index pessoas_rsvp_idx on public.pessoas (rsvp_id);
+create index people_rsvp_idx on public.people (rsvp_id);
 
 -- no máximo um principal por grupo
-create unique index pessoas_um_principal_por_grupo
-  on public.pessoas (rsvp_id) where papel = 'principal';
+create unique index people_one_lead_per_group
+  on public.people (rsvp_id) where role = 'lead';
 
 -- cada aniversariante cadastrado uma única vez
-create unique index pessoas_aniversariante_id_unico
-  on public.pessoas (aniversariante_id) where papel = 'aniversariante';
+create unique index people_celebrant_id_unique
+  on public.people (celebrant_id) where role = 'celebrant';
 
 -- =============================================================
 --  TABELA: festa — os dados do convite, editáveis pelo painel
@@ -275,25 +275,25 @@ create unique index pessoas_aniversariante_id_unico
 --  em aniversariante_id. Em colunas nomeadas, e não num array, a
 --  posição fica explícita — não dá para reordenar sem perceber.
 -- =============================================================
-create table public.festa (
+create table public.party (
   id            smallint primary key default 1 check (id = 1),
-  titulo        text not null check (length(btrim(titulo)) between 1 and 120),
-  subtitulo     text check (subtitulo is null or length(subtitulo) <= 200),
+  title        text not null check (length(btrim(title)) between 1 and 120),
+  subtitle     text check (subtitle is null or length(subtitle) <= 200),
   -- ISO com offset -03:00; base do countdown
-  data          timestamptz not null,
+  starts_at          timestamptz not null,
   -- vazio = gerado a partir de `data` na tela
-  data_texto    text check (data_texto is null or length(data_texto) <= 160),
-  local         text not null check (length(btrim(local)) between 1 and 200),
-  local_mapa    text check (local_mapa is null or local_mapa ~ '^https?://'),
-  nome_aniv_1   text not null check (length(btrim(nome_aniv_1)) between 1 and 60),
-  nome_aniv_2   text not null check (length(btrim(nome_aniv_2)) between 1 and 60),
-  nome_aniv_3   text not null check (length(btrim(nome_aniv_3)) between 1 and 60),
+  date_text    text check (date_text is null or length(date_text) <= 160),
+  venue         text not null check (length(btrim(venue)) between 1 and 200),
+  map_url    text check (map_url is null or map_url ~ '^https?://'),
+  celebrant_1_name   text not null check (length(btrim(celebrant_1_name)) between 1 and 60),
+  celebrant_2_name   text not null check (length(btrim(celebrant_2_name)) between 1 and 60),
+  celebrant_3_name   text not null check (length(btrim(celebrant_3_name)) between 1 and 60),
   -- NULL até alguém salvar pelo painel; é o sinal da trava do reset
-  atualizado_em timestamptz
+  updated_at timestamptz
 );
 
-insert into public.festa (id, titulo, subtitulo, data, data_texto, local, local_mapa,
-                          nome_aniv_1, nome_aniv_2, nome_aniv_3)
+insert into public.party (id, title, subtitle, starts_at, date_text, venue, map_url,
+                          celebrant_1_name, celebrant_2_name, celebrant_3_name)
 values (1,
   'Festa dos 160 anos',
   null,
@@ -309,46 +309,46 @@ on conflict (id) do nothing;
 --  custo_real_* nasce NULL de propósito:
 --  NULL = "ainda não fechei"; 0 = "não gastei nada".
 -- =============================================================
-create table public.config (
+create table public.settings (
   id smallint primary key default 1 check (id = 1),
 
   -- preços de referência (estimativa)
-  preco_litro_chopp       numeric(10,2) not null default 0,
-  preco_litro_refri       numeric(10,2) not null default 0,
-  preco_litro_agua        numeric(10,2) not null default 0,
-  preco_pizza_adulto      numeric(10,2) not null default 0,
-  preco_pizza_crianca     numeric(10,2) not null default 0,
+  beer_price_per_liter       numeric(10,2) not null default 0,
+  soda_price_per_liter       numeric(10,2) not null default 0,
+  water_price_per_liter        numeric(10,2) not null default 0,
+  adult_pizza_price      numeric(10,2) not null default 0,
+  child_pizza_price     numeric(10,2) not null default 0,
 
   -- taxas de consumo (sementes definidas na regra de negócio, editáveis na tela)
-  litros_chopp_por_adulto numeric(6,3) not null default 2.0,
-  litros_refri_por_pessoa numeric(6,3) not null default 0.6,
-  litros_agua_por_pessoa  numeric(6,3) not null default 0.5,
+  beer_liters_per_adult numeric(6,3) not null default 2.0,
+  soda_liters_per_person numeric(6,3) not null default 0.6,
+  water_liters_per_person  numeric(6,3) not null default 0.5,
 
   -- prazo de confirmação: NULL = sem limite.
   -- O painel grava a data escolhida como fim do dia (23:59:59-03:00).
-  prazo_confirmacao       timestamptz,
+  rsvp_deadline       timestamptz,
 
   -- fechamento (preenchido depois da compra)
-  custo_real_chopp        numeric(10,2),
-  custo_real_refri        numeric(10,2),
-  custo_real_agua         numeric(10,2),
-  preco_real_pizza_adulto numeric(10,2),
-  preco_real_pizza_crianca numeric(10,2),
+  actual_beer_cost        numeric(10,2),
+  actual_soda_cost        numeric(10,2),
+  actual_water_cost         numeric(10,2),
+  actual_adult_pizza_price numeric(10,2),
+  actual_child_pizza_price numeric(10,2),
 
   -- acerto: quem bancou cada item. NULL = ninguém marcado ainda.
   -- O valor do item não é digitado — vem do custo já calculado no
   -- fechamento; aqui só se registra o pagador.
   -- CHECK simples basta: "x is null or ..." nunca avalia para NULL, ao
   -- contrário do que aconteceu em aniversariante_id_coerente.
-  pago_por_chopp  smallint check (pago_por_chopp  is null or pago_por_chopp  between 1 and 3),
-  pago_por_refri  smallint check (pago_por_refri  is null or pago_por_refri  between 1 and 3),
-  pago_por_agua   smallint check (pago_por_agua   is null or pago_por_agua   between 1 and 3),
-  pago_por_pizza  smallint check (pago_por_pizza  is null or pago_por_pizza  between 1 and 3),
+  beer_paid_by  smallint check (beer_paid_by  is null or beer_paid_by  between 1 and 3),
+  soda_paid_by  smallint check (soda_paid_by  is null or soda_paid_by  between 1 and 3),
+  water_paid_by   smallint check (water_paid_by   is null or water_paid_by   between 1 and 3),
+  pizza_paid_by  smallint check (pizza_paid_by  is null or pizza_paid_by  between 1 and 3),
 
-  atualizado_em timestamptz not null default now()
+  updated_at timestamptz not null default now()
 );
 
-insert into public.config (id) values (1) on conflict (id) do nothing;
+insert into public.settings (id) values (1) on conflict (id) do nothing;
 
 -- =============================================================
 --  RPC: criar_rsvp — insert atômico (grupo + pessoas numa transação)
@@ -358,12 +358,12 @@ insert into public.config (id) values (1) on conflict (id) do nothing;
 --  anon — o único caminho de escrita do visitante é esta função, que
 --  valida tudo antes. Mais restritivo que liberar insert direto.
 -- =============================================================
-create or replace function public.criar_rsvp(
-  p_nome_principal text,
-  p_contato        text,
-  p_convidado_por  smallint[],
-  p_observacoes    text,
-  p_pessoas        jsonb
+create or replace function public.create_rsvp(
+  p_lead_name text,
+  p_contact        text,
+  p_invited_by  smallint[],
+  p_notes    text,
+  p_people        jsonb
 )
 returns uuid
 language plpgsql
@@ -372,66 +372,66 @@ set search_path = public, pg_temp
 as $$
 declare
   v_id         uuid;
-  v_qtd        int;
-  v_principais int;
-  v_prazo      timestamptz;
+  v_count        int;
+  v_leads int;
+  v_deadline      timestamptz;
 begin
   -- prazo de confirmação: o banco é a última linha de defesa.
   -- A tela também fecha (via status_rsvp), mas isso não é confiável sozinho.
-  select prazo_confirmacao into v_prazo from public.config where id = 1;
-  if v_prazo is not null and now() > v_prazo then
+  select rsvp_deadline into v_deadline from public.settings where id = 1;
+  if v_deadline is not null and now() > v_deadline then
     raise exception 'As confirmações foram encerradas em %.',
-      to_char(v_prazo at time zone 'America/Sao_Paulo', 'DD/MM/YYYY');
+      to_char(v_deadline at time zone 'America/Sao_Paulo', 'DD/MM/YYYY');
   end if;
 
-  if coalesce(btrim(p_nome_principal), '') = '' then
+  if coalesce(btrim(p_lead_name), '') = '' then
     raise exception 'Informe o seu nome.';
   end if;
 
-  if coalesce(btrim(p_contato), '') = '' then
+  if coalesce(btrim(p_contact), '') = '' then
     raise exception 'Informe um contato (WhatsApp ou e-mail).';
   end if;
 
-  if not public.convidado_por_valido(p_convidado_por) then
+  if not public.valid_invited_by(p_invited_by) then
     raise exception 'Escolha de 1 a 3 aniversariantes, sem repetir.';
   end if;
 
-  if p_pessoas is null or jsonb_typeof(p_pessoas) <> 'array' then
+  if p_people is null or jsonb_typeof(p_people) <> 'array' then
     raise exception 'Lista de pessoas inválida.';
   end if;
 
   -- 1 principal + teto de 5 acompanhantes
-  v_qtd := jsonb_array_length(p_pessoas);
-  if v_qtd < 1 or v_qtd > 6 then
+  v_count := jsonb_array_length(p_people);
+  if v_count < 1 or v_count > 6 then
     raise exception 'O grupo precisa ter de 1 a 6 pessoas (você + até 5 acompanhantes).';
   end if;
 
-  select count(*) into v_principais
-  from jsonb_array_elements(p_pessoas) e
-  where e->>'papel' = 'principal';
+  select count(*) into v_leads
+  from jsonb_array_elements(p_people) e
+  where e->>'papel' = 'lead';
 
-  if v_principais <> 1 then
+  if v_leads <> 1 then
     raise exception 'O grupo precisa ter exatamente um responsável.';
   end if;
 
   -- dedupe: reenvio com o mesmo contato substitui o anterior
   -- (pessoas somem junto pelo ON DELETE CASCADE)
   delete from public.rsvps
-   where contato_norm = public.normaliza_contato(p_contato);
+   where contact_norm = public.normalize_contact(p_contact);
 
-  insert into public.rsvps (nome_principal, contato, convidado_por, observacoes)
+  insert into public.rsvps (lead_name, contact, invited_by, notes)
   values (
-    btrim(p_nome_principal),
-    btrim(p_contato),
-    p_convidado_por,
-    nullif(btrim(coalesce(p_observacoes, '')), '')
+    btrim(p_lead_name),
+    btrim(p_contact),
+    p_invited_by,
+    nullif(btrim(coalesce(p_notes, '')), '')
   )
   returning id into v_id;
 
   -- aniversariante_id fica NULL: a constraint aniversariante_id_coerente
   -- garante que ninguém vindo do formulário público é pagante.
-  insert into public.pessoas
-    (rsvp_id, nome, tipo, bebe_agua, bebe_refri, bebe_chopp, come_pizza, papel, ordem)
+  insert into public.people
+    (rsvp_id, name, age_group, wants_water, wants_soda, wants_beer, wants_pizza, role, sort_order)
   select
     v_id,
     nullif(btrim(coalesce(e->>'nome', '')), ''),
@@ -442,34 +442,34 @@ begin
     coalesce((e->>'come_pizza')::boolean, false),
     e->>'papel',
     (ord - 1)::smallint
-  from jsonb_array_elements(p_pessoas) with ordinality as t(e, ord);
+  from jsonb_array_elements(p_people) with ordinality as t(e, ord);
 
   return v_id;
 end;
 $$;
 
-revoke all on function public.criar_rsvp(text, text, smallint[], text, jsonb) from public;
-grant execute on function public.criar_rsvp(text, text, smallint[], text, jsonb) to anon, authenticated;
+revoke all on function public.create_rsvp(text, text, smallint[], text, jsonb) from public;
+grant execute on function public.create_rsvp(text, text, smallint[], text, jsonb) to anon, authenticated;
 
 -- =============================================================
 --  RPC: status_rsvp — o formulário público precisa saber se ainda
 --  está aberto, mas o anon NÃO pode ler a tabela config (lá tem preço).
 --  Esta função devolve só o necessário: aberto? e qual o prazo.
 -- =============================================================
-create or replace function public.status_rsvp()
-returns table (aberto boolean, prazo timestamptz)
+create or replace function public.rsvp_status()
+returns table (is_open boolean, deadline timestamptz)
 language sql
 security definer
 set search_path = public, pg_temp
 as $$
-  select (c.prazo_confirmacao is null or now() <= c.prazo_confirmacao),
-         c.prazo_confirmacao
-    from public.config c
+  select (c.rsvp_deadline is null or now() <= c.rsvp_deadline),
+         c.rsvp_deadline
+    from public.settings c
    where c.id = 1
 $$;
 
-revoke all on function public.status_rsvp() from public;
-grant execute on function public.status_rsvp() to anon, authenticated;
+revoke all on function public.rsvp_status() from public;
+grant execute on function public.rsvp_status() to anon, authenticated;
 
 -- =============================================================
 --  HIGIENE: o anon só deve executar criar_rsvp e status_rsvp.
@@ -478,26 +478,26 @@ grant execute on function public.status_rsvp() to anon, authenticated;
 --  chama a partir do anon: rodam na coluna gerada, no CHECK da tabela
 --  e dentro do criar_rsvp, sempre com o privilégio do dono.
 -- =============================================================
-revoke all on function public.normaliza_contato(text) from public, anon, authenticated;
-revoke all on function public.convidado_por_valido(smallint[]) from public, anon, authenticated;
+revoke all on function public.normalize_contact(text) from public, anon, authenticated;
+revoke all on function public.valid_invited_by(smallint[]) from public, anon, authenticated;
 
 -- =============================================================
 --  RLS — acesso administrativo via is_admin().
 --  NUNCA use o papel genérico "authenticated" como autorização.
 -- =============================================================
-alter table public.festa   enable row level security;
+alter table public.party   enable row level security;
 alter table public.rsvps   enable row level security;
-alter table public.pessoas enable row level security;
-alter table public.config  enable row level security;
+alter table public.people enable row level security;
+alter table public.settings  enable row level security;
 
 -- ---- festa: leitura PÚBLICA (é o convite), escrita só admin ----
-drop policy if exists "festa leitura publica" on public.festa;
-create policy "festa leitura publica" on public.festa
+drop policy if exists "party leitura publica" on public.party;
+create policy "party leitura publica" on public.party
   for select to anon, authenticated
   using (true);
 
-drop policy if exists "admin edita festa" on public.festa;
-create policy "admin edita festa" on public.festa
+drop policy if exists "admin edita party" on public.party;
+create policy "admin edita party" on public.party
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());
@@ -514,36 +514,36 @@ create policy "admin apaga rsvps" on public.rsvps
   using (public.is_admin());
 
 -- ---- pessoas ----
-drop policy if exists "admin le pessoas" on public.pessoas;
-create policy "admin le pessoas" on public.pessoas
+drop policy if exists "admin le people" on public.people;
+create policy "admin le people" on public.people
   for select to authenticated
   using (public.is_admin());
 
 -- insert direto serve para cadastrar os 3 aniversariantes pelo painel
-drop policy if exists "admin cadastra pessoas" on public.pessoas;
-create policy "admin cadastra pessoas" on public.pessoas
+drop policy if exists "admin cadastra people" on public.people;
+create policy "admin cadastra people" on public.people
   for insert to authenticated
   with check (public.is_admin());
 
-drop policy if exists "admin edita pessoas" on public.pessoas;
-create policy "admin edita pessoas" on public.pessoas
+drop policy if exists "admin edita people" on public.people;
+create policy "admin edita people" on public.people
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
-drop policy if exists "admin apaga pessoas" on public.pessoas;
-create policy "admin apaga pessoas" on public.pessoas
+drop policy if exists "admin apaga people" on public.people;
+create policy "admin apaga people" on public.people
   for delete to authenticated
   using (public.is_admin());
 
 -- ---- config ----
-drop policy if exists "admin le config" on public.config;
-create policy "admin le config" on public.config
+drop policy if exists "admin le settings" on public.settings;
+create policy "admin le settings" on public.settings
   for select to authenticated
   using (public.is_admin());
 
-drop policy if exists "admin edita config" on public.config;
-create policy "admin edita config" on public.config
+drop policy if exists "admin edita settings" on public.settings;
+create policy "admin edita settings" on public.settings
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());

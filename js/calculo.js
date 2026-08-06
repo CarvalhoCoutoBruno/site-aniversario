@@ -29,66 +29,66 @@
      grupos[]  — { id, convidado_por: [1..3], nome_principal, contato }
      config    — mesma forma da tabela `config` (reais, não centavos)
    ============================================================= */
-(function (raiz) {
+(function (root) {
   "use strict";
 
   // Peso interno em SEXTOS de pessoa. |convidado_por| ∈ {1,2,3}, então
   // 6/n é sempre inteiro (6, 3 ou 2) — o rateio roda em aritmética
   // inteira do começo ao fim, sem erro de ponto flutuante.
-  const SEXTOS = 6;
+  const SIXTHS = 6;
 
   /* ---------- conversão reais <-> centavos ---------- */
 
   // "12,50" | "12.50" | 12.5 | null  ->  1250 | 0
-  function paraCentavos(valor) {
-    if (valor === null || valor === undefined || valor === "") return 0;
-    const n = typeof valor === "number" ? valor : Number(String(valor).replace(",", "."));
+  function toCents(amount) {
+    if (amount === null || amount === undefined || amount === "") return 0;
+    const n = typeof amount === "number" ? amount : Number(String(amount).replace(",", "."));
     if (!isFinite(n)) return 0;
     return Math.round(n * 100);
   }
 
-  function paraReais(centavos) {
+  function toReais(centavos) {
     return (centavos || 0) / 100;
   }
 
-  function formatarBRL(centavos) {
+  function formatBRL(centavos) {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
-      .format(paraReais(centavos));
+      .format(toReais(centavos));
   }
 
   /* ---------- predicados ---------- */
 
-  const confirmados = (pessoas) => (pessoas || []).filter(Boolean);
+  const confirmedPeople = (people) => (people || []).filter(Boolean);
 
-  const ehAdulto = (p) => p.tipo === "adulto";
-  const ehAniversariante = (p) => p.papel === "aniversariante";
-  const bebeChopp = (p) => !!p.bebe_chopp && ehAdulto(p); // criança nunca conta
-  const bebeRefri = (p) => !!p.bebe_refri;
-  const bebeAgua = (p) => !!p.bebe_agua;
-  const comePizza = (p) => !!p.come_pizza;
+  const isAdult = (p) => p.age_group === "adult";
+  const isCelebrant = (p) => p.role === "celebrant";
+  const wantsBeer = (p) => !!p.wants_beer && isAdult(p); // criança nunca conta
+  const wantsSoda = (p) => !!p.wants_soda;
+  const wantsWater = (p) => !!p.wants_water;
+  const wantsPizza = (p) => !!p.wants_pizza;
 
-  const CONSOME = { chopp: bebeChopp, refri: bebeRefri, agua: bebeAgua };
+  const CONSUMES = { beer: wantsBeer, soda: wantsSoda, water: wantsWater };
 
   /* ---------- contagens ---------- */
 
-  function contagens(pessoas) {
-    const lista = confirmados(pessoas);
+  function counts(people) {
+    const list = confirmedPeople(people);
     const c = {
-      totalPessoas: lista.length,
-      adultos: 0,
-      criancas: 0,
-      chopp: 0,
-      refri: 0,
-      agua: 0,
-      pizzaAdultos: 0,
-      pizzaCriancas: 0,
+      totalPeople: list.length,
+      adults: 0,
+      children: 0,
+      beer: 0,
+      soda: 0,
+      water: 0,
+      adultPizzas: 0,
+      childPizzas: 0,
     };
-    for (const p of lista) {
-      if (ehAdulto(p)) c.adultos++; else c.criancas++;
-      if (bebeChopp(p)) c.chopp++;
-      if (bebeRefri(p)) c.refri++;
-      if (bebeAgua(p)) c.agua++;
-      if (comePizza(p)) { if (ehAdulto(p)) c.pizzaAdultos++; else c.pizzaCriancas++; }
+    for (const p of list) {
+      if (isAdult(p)) c.adults++; else c.children++;
+      if (wantsBeer(p)) c.beer++;
+      if (wantsSoda(p)) c.soda++;
+      if (wantsWater(p)) c.water++;
+      if (wantsPizza(p)) { if (isAdult(p)) c.adultPizzas++; else c.childPizzas++; }
     }
     return c;
   }
@@ -98,35 +98,35 @@
      confirmadas, aniversariantes inclusive. Serve para saber quanto
      comprar, não quem paga. */
 
-  function estimativa(pessoas, config) {
-    const c = contagens(pessoas);
-    const cfg = config || {};
+  function estimate(people, settings) {
+    const c = counts(people);
+    const cfg = settings || {};
     const taxa = (v, padrao) => (v === null || v === undefined ? padrao : Number(v));
 
-    const litrosChopp = c.chopp * taxa(cfg.litros_chopp_por_adulto, 2.0);
-    const litrosRefri = c.refri * taxa(cfg.litros_refri_por_pessoa, 0.6);
-    const litrosAgua = c.agua * taxa(cfg.litros_agua_por_pessoa, 0.5);
+    const beerLiters = c.beer * taxa(cfg.beer_liters_per_adult, 2.0);
+    const sodaLiters = c.soda * taxa(cfg.soda_liters_per_person, 0.6);
+    const waterLiters = c.water * taxa(cfg.water_liters_per_person, 0.5);
 
     // volume × preço/litro: arredonda só no fim, uma vez por bebida
-    const custoEstimado =
-      Math.round(litrosChopp * paraCentavos(cfg.preco_litro_chopp)) +
-      Math.round(litrosRefri * paraCentavos(cfg.preco_litro_refri)) +
-      Math.round(litrosAgua * paraCentavos(cfg.preco_litro_agua)) +
-      c.pizzaAdultos * paraCentavos(cfg.preco_pizza_adulto) +
-      c.pizzaCriancas * paraCentavos(cfg.preco_pizza_crianca);
+    const estimatedCost =
+      Math.round(beerLiters * toCents(cfg.beer_price_per_liter)) +
+      Math.round(sodaLiters * toCents(cfg.soda_price_per_liter)) +
+      Math.round(waterLiters * toCents(cfg.water_price_per_liter)) +
+      c.adultPizzas * toCents(cfg.adult_pizza_price) +
+      c.childPizzas * toCents(cfg.child_pizza_price);
 
     return {
-      contagens: c,
-      litrosChopp: arredonda3(litrosChopp),
-      litrosRefri: arredonda3(litrosRefri),
-      litrosAgua: arredonda3(litrosAgua),
-      pizzaAdultos: c.pizzaAdultos,
-      pizzaCriancas: c.pizzaCriancas,
-      custoEstimado,
+      counts: c,
+      beerLiters: round3(beerLiters),
+      sodaLiters: round3(sodaLiters),
+      waterLiters: round3(waterLiters),
+      adultPizzas: c.adultPizzas,
+      childPizzas: c.childPizzas,
+      estimatedCost,
     };
   }
 
-  function arredonda3(n) {
+  function round3(n) {
     return Math.round(n * 1000) / 1000;
   }
 
@@ -144,30 +144,30 @@
      centavos × peso ≤ ~1e5 = 1e13 < 2^53), então piso e resto são
      exatos, sem depender de tolerância de float.
   --------------------------------------------------------- */
-  function ratearCentavos(totalCentavos, itens) {
+  function splitCents(totalInCents, items) {
     const out = new Map();
-    const lista = (itens || []).filter((i) => i.peso > 0);
-    const somaPesos = lista.reduce((s, i) => s + i.peso, 0);
-    if (somaPesos <= 0 || totalCentavos === 0) return out;
+    const list = (items || []).filter((i) => i.weight > 0);
+    const weightSum = list.reduce((s, i) => s + i.weight, 0);
+    if (weightSum <= 0 || totalInCents === 0) return out;
 
-    const calc = lista.map((i) => {
-      const num = totalCentavos * i.peso;
-      let base = Math.floor(num / somaPesos);
+    const calc = list.map((i) => {
+      const num = totalInCents * i.weight;
+      let base = Math.floor(num / weightSum);
       // correção de borda: garante piso exato mesmo se a divisão em
       // ponto flutuante cair do lado errado de um inteiro
-      while (base * somaPesos > num) base--;
-      while ((base + 1) * somaPesos <= num) base++;
-      return { id: i.id, base, resto: num - base * somaPesos };
+      while (base * weightSum > num) base--;
+      while ((base + 1) * weightSum <= num) base++;
+      return { id: i.id, base, rest: num - base * weightSum };
     });
 
-    let sobra = totalCentavos - calc.reduce((s, x) => s + x.base, 0);
+    let remainder = totalInCents - calc.reduce((s, x) => s + x.base, 0);
 
     // maior resto primeiro; empate pelo id, para ser determinístico
-    const ordem = [...calc].sort(
-      (a, b) => b.resto - a.resto || String(a.id).localeCompare(String(b.id))
+    const sort_order = [...calc].sort(
+      (a, b) => b.rest - a.rest || String(a.id).localeCompare(String(b.id))
     );
-    for (let i = 0; i < ordem.length; i++) {
-      out.set(ordem[i].id, ordem[i].base + (i < sobra ? 1 : 0));
+    for (let i = 0; i < sort_order.length; i++) {
+      out.set(sort_order[i].id, sort_order[i].base + (i < remainder ? 1 : 0));
     }
     return out;
   }
@@ -180,125 +180,125 @@
   // A chave `null` acumula consumo sem dono (grupo sem convidado_por
   // válido) — não deveria existir, mas se existir é preciso que o
   // dinheiro NÃO seja redistribuído: ele some do rateio e derruba o selo.
-  function pesosDaPessoa(p, grupos) {
-    if (ehAniversariante(p)) {
-      return p.aniversariante_id ? [{ id: p.aniversariante_id, peso: SEXTOS }] : [{ id: null, peso: SEXTOS }];
+  function weightsForPerson(p, groups) {
+    if (isCelebrant(p)) {
+      return p.celebrant_id ? [{ id: p.celebrant_id, weight: SIXTHS }] : [{ id: null, weight: SIXTHS }];
     }
-    const g = grupos.get(p.rsvp_id);
-    const donos = g && Array.isArray(g.convidado_por) ? g.convidado_por : [];
-    if (!donos.length) return [{ id: null, peso: SEXTOS }];
-    const fatia = SEXTOS / donos.length; // 6, 3 ou 2 — sempre inteiro
-    return donos.map((k) => ({ id: k, peso: fatia }));
+    const g = groups.get(p.rsvp_id);
+    const owners = g && Array.isArray(g.invited_by) ? g.invited_by : [];
+    if (!owners.length) return [{ id: null, weight: SIXTHS }];
+    const share = SIXTHS / owners.length; // 6, 3 ou 2 — sempre inteiro
+    return owners.map((k) => ({ id: k, weight: share }));
   }
 
-  function acumular(mapa, pesos) {
-    for (const { id, peso } of pesos) {
+  function accumulate(map, weights) {
+    for (const { id, weight } of weights) {
       const chave = id === null ? "__sem_dono__" : id;
-      mapa.set(chave, (mapa.get(chave) || 0) + peso);
+      map.set(chave, (map.get(chave) || 0) + weight);
     }
   }
 
   /* ---------- fechamento / rateio ---------- */
 
-  function precoPizza(config, tipo) {
-    const cfg = config || {};
+  function pizzaPrice(settings, age_group) {
+    const cfg = settings || {};
     // preço real manda quando preenchido; senão cai no estimado
-    const real = tipo === "adulto" ? cfg.preco_real_pizza_adulto : cfg.preco_real_pizza_crianca;
-    const est = tipo === "adulto" ? cfg.preco_pizza_adulto : cfg.preco_pizza_crianca;
-    return paraCentavos(real === null || real === undefined ? est : real);
+    const real = age_group === "adult" ? cfg.actual_adult_pizza_price : cfg.actual_child_pizza_price;
+    const est = age_group === "adult" ? cfg.adult_pizza_price : cfg.child_pizza_price;
+    return toCents(real === null || real === undefined ? est : real);
   }
 
-  function rateio(pessoas, config, grupos) {
-    const cfg = config || {};
-    const lista = confirmados(pessoas);
-    const mapaGrupos = new Map((grupos || []).map((g) => [g.id, g]));
+  function split(people, settings, groups) {
+    const cfg = settings || {};
+    const list = confirmedPeople(people);
+    const groupsById = new Map((groups || []).map((g) => [g.id, g]));
 
-    const custos = {
-      chopp: paraCentavos(cfg.custo_real_chopp),
-      refri: paraCentavos(cfg.custo_real_refri),
-      agua: paraCentavos(cfg.custo_real_agua),
+    const costs = {
+      beer: toCents(cfg.actual_beer_cost),
+      soda: toCents(cfg.actual_soda_cost),
+      water: toCents(cfg.actual_water_cost),
     };
     const preenchido = (v) => v !== null && v !== undefined && v !== "";
-    const fechamentoCompleto =
-      preenchido(cfg.custo_real_chopp) &&
-      preenchido(cfg.custo_real_refri) &&
-      preenchido(cfg.custo_real_agua);
+    const closingComplete =
+      preenchido(cfg.actual_beer_cost) &&
+      preenchido(cfg.actual_soda_cost) &&
+      preenchido(cfg.actual_water_cost);
 
     // conta de cada aniversariante, por item
-    const contas = new Map(); // aniversariante_id -> { chopp, refri, agua, pizza }
-    const zera = (k) => {
-      if (!contas.has(k)) contas.set(k, { chopp: 0, refri: 0, agua: 0, pizza: 0 });
-      return contas.get(k);
+    const accounts = new Map(); // aniversariante_id -> { chopp, refri, agua, pizza }
+    const ensureAccount = (k) => {
+      if (!accounts.has(k)) accounts.set(k, { beer: 0, soda: 0, water: 0, pizza: 0 });
+      return accounts.get(k);
     };
-    for (const p of lista) if (ehAniversariante(p) && p.aniversariante_id) zera(p.aniversariante_id);
+    for (const p of list) if (isCelebrant(p) && p.celebrant_id) ensureAccount(p.celebrant_id);
 
     /* --- bebidas: custo real do item distribuído por unidades --- */
-    for (const item of ["chopp", "refri", "agua"]) {
-      const consumidores = lista.filter(CONSOME[item]);
+    for (const item of ["beer", "soda", "water"]) {
+      const consumers = list.filter(CONSUMES[item]);
       // Item com custo lançado e nenhum consumidor: pulado, sem dividir
       // por zero. O custo segue em custoRealTotal, então Σ ≠ total e o
       // selo `confere` acusa o erro de lançamento sozinho.
-      if (!consumidores.length) continue;
+      if (!consumers.length) continue;
 
-      const pesos = new Map();
-      for (const p of consumidores) acumular(pesos, pesosDaPessoa(p, mapaGrupos));
+      const weights = new Map();
+      for (const p of consumers) accumulate(weights, weightsForPerson(p, groupsById));
 
-      const partes = ratearCentavos(
-        custos[item],
-        [...pesos.entries()].map(([id, peso]) => ({ id, peso }))
+      const partes = splitCents(
+        costs[item],
+        [...weights.entries()].map(([id, weight]) => ({ id, weight }))
       );
       for (const [id, centavos] of partes) {
         if (id === "__sem_dono__") continue; // dinheiro sem pagante: some
-        zera(id)[item] += centavos;
+        ensureAccount(id)[item] += centavos;
       }
     }
 
     /* --- pizza: preço por cabeça, atribuído com o mesmo peso --- */
-    for (const p of lista) {
-      if (!comePizza(p)) continue;
-      const preco = precoPizza(cfg, p.tipo);
-      if (!preco) continue;
-      const partes = ratearCentavos(preco, pesosDaPessoa(p, mapaGrupos));
+    for (const p of list) {
+      if (!wantsPizza(p)) continue;
+      const price = pizzaPrice(cfg, p.age_group);
+      if (!price) continue;
+      const partes = splitCents(price, weightsForPerson(p, groupsById));
       for (const [id, centavos] of partes) {
         if (id === "__sem_dono__" || id === null) continue;
-        zera(id).pizza += centavos;
+        ensureAccount(id).pizza += centavos;
       }
     }
 
     /* --- monta o resultado --- */
-    const nomes = new Map();
-    for (const p of lista) {
-      if (ehAniversariante(p) && p.aniversariante_id) nomes.set(p.aniversariante_id, p.nome || null);
+    const names = new Map();
+    for (const p of list) {
+      if (isCelebrant(p) && p.celebrant_id) names.set(p.celebrant_id, p.name || null);
     }
 
-    const porAniversariante = [...contas.entries()]
+    const perCelebrant = [...accounts.entries()]
       .map(([id, det]) => ({
-        aniversarianteId: id,
-        nome: nomes.get(id) || `Aniversariante ${id}`,
-        detalhe: det,
-        total: det.chopp + det.refri + det.agua + det.pizza,
+        celebrantId: id,
+        name: names.get(id) || `Aniversariante ${id}`,
+        breakdown: det,
+        total: det.beer + det.soda + det.water + det.pizza,
       }))
-      .sort((a, b) => a.aniversarianteId - b.aniversarianteId);
+      .sort((a, b) => a.celebrantId - b.celebrantId);
 
-    const totalRateado = porAniversariante.reduce((s, a) => s + a.total, 0);
+    const splitTotal = perCelebrant.reduce((s, a) => s + a.total, 0);
 
     // total gasto: bebidas pelo custo real + pizzas pelo preço por cabeça
-    let totalPizza = 0;
-    for (const p of lista) if (comePizza(p)) totalPizza += precoPizza(cfg, p.tipo);
-    const custoRealTotal = custos.chopp + custos.refri + custos.agua + totalPizza;
+    let pizzaTotal = 0;
+    for (const p of list) if (wantsPizza(p)) pizzaTotal += pizzaPrice(cfg, p.age_group);
+    const actualCostTotal = costs.beer + costs.soda + costs.water + pizzaTotal;
 
     return {
-      porAniversariante,
-      totalRateado,
-      custoRealTotal,
+      perCelebrant,
+      splitTotal,
+      actualCostTotal,
       // O acerto precisa de quanto custou CADA item para saber o que
       // quem pagou aquele item desembolsou. Expor daqui em vez de
       // recalcular lá evita que os dois lados divirjam sobre o mesmo
       // número.
-      custosPorItem: { chopp: custos.chopp, refri: custos.refri, agua: custos.agua, pizza: totalPizza },
-      fechamentoCompleto,
+      costPerItem: { beer: costs.beer, soda: costs.soda, water: costs.water, pizza: pizzaTotal },
+      closingComplete,
       // verde só com os três custos lançados e as contas fechando
-      confere: fechamentoCompleto && totalRateado === custoRealTotal,
+      balances: closingComplete && splitTotal === actualCostTotal,
     };
   }
 
@@ -314,88 +314,88 @@
      sempre fecha. As transferências saem do guloso (maior devedor com
      maior credor), que para 3 pessoas é ótimo: no máximo 2.
   ------------------------------------------------------------- */
-  const ITENS = ["chopp", "refri", "agua", "pizza"];
-  const NOME_ITEM = { chopp: "chopp", refri: "refrigerante", agua: "água", pizza: "pizza" };
+  const ITEMS = ["beer", "soda", "water", "pizza"];
+  const ITEM_NAME = { beer: "chopp", soda: "refrigerante", water: "água", pizza: "pizza" };
 
-  function acerto(resultadoRateio, pagoPor) {
-    const r = resultadoRateio || {};
-    const custos = r.custosPorItem || { chopp: 0, refri: 0, agua: 0, pizza: 0 };
-    const pp = pagoPor || {};
+  function settlement(splitResult, paidBy) {
+    const r = splitResult || {};
+    const costs = r.costPerItem || { beer: 0, soda: 0, water: 0, pizza: 0 };
+    const pp = paidBy || {};
 
-    const pagou = new Map();
-    const faltaPagador = [];
-    for (const item of ITENS) {
-      const valor = custos[item] || 0;
-      if (valor <= 0) continue; // item sem custo dispensa pagador
+    const paid = new Map();
+    const missingPayer = [];
+    for (const item of ITEMS) {
+      const amount = costs[item] || 0;
+      if (amount <= 0) continue; // item sem custo dispensa pagador
       const k = Number(pp[item]) || null;
-      if (!k) { faltaPagador.push(item); continue; }
-      pagou.set(k, (pagou.get(k) || 0) + valor);
+      if (!k) { missingPayer.push(item); continue; }
+      paid.set(k, (paid.get(k) || 0) + amount);
     }
 
     // todo aniversariante do rateio entra, mesmo com saldo zero
-    const saldos = (r.porAniversariante || []).map((a) => {
-      const p = pagou.get(a.aniversarianteId) || 0;
+    const balancesPerCelebrant = (r.perCelebrant || []).map((a) => {
+      const p = paid.get(a.celebrantId) || 0;
       return {
-        aniversarianteId: a.aniversarianteId,
-        nome: a.nome,
-        deve: a.total,
-        pagou: p,
-        saldo: a.total - p,
+        celebrantId: a.celebrantId,
+        name: a.name,
+        owes: a.total,
+        paid: p,
+        balance: a.total - p,
       };
     });
 
     // quem pagou item mas não tem linha no rateio (aniversariante sem
     // cadastro): não pode sumir com o dinheiro dele
-    for (const [k, p] of pagou) {
-      if (!saldos.some((s) => s.aniversarianteId === k)) {
-        saldos.push({ aniversarianteId: k, nome: `Aniversariante ${k}`, deve: 0, pagou: p, saldo: -p });
+    for (const [k, p] of paid) {
+      if (!balancesPerCelebrant.some((s) => s.celebrantId === k)) {
+        balancesPerCelebrant.push({ celebrantId: k, name: `Aniversariante ${k}`, owes: 0, paid: p, balance: -p });
       }
     }
-    saldos.sort((a, b) => a.aniversarianteId - b.aniversarianteId);
+    balancesPerCelebrant.sort((a, b) => a.celebrantId - b.celebrantId);
 
     /* status: exige as DUAS condições. Só checar "todo item tem
        pagador" deixaria passar o caso órfão — onde o rateio não confere,
        Σ deve ≠ Σ pagou, Σ saldo ≠ 0 e as transferências não quitam nada.
        O acerto sairia silenciosamente errado. */
     let status = "completo";
-    let motivo = "";
-    if (!r.fechamentoCompleto) {
+    let reason = "";
+    if (!r.closingComplete) {
       status = "incompleto";
-      motivo = "Feche o custo real primeiro: falta lançar o gasto de chopp, refrigerante ou água.";
-    } else if (!r.confere) {
+      reason = "Feche o custo real primeiro: falta lançar o gasto de chopp, refrigerante ou água.";
+    } else if (!r.balances) {
       status = "incompleto";
-      motivo = "As contas do rateio não fecham — resolva isso antes de acertar entre vocês.";
-    } else if (faltaPagador.length) {
+      reason = "As contas do rateio não fecham — resolva isso antes de acertar entre vocês.";
+    } else if (missingPayer.length) {
       status = "incompleto";
-      motivo = "Indique quem pagou: " + faltaPagador.map((i) => NOME_ITEM[i]).join(", ") + ".";
+      reason = "Indique quem pagou: " + missingPayer.map((i) => ITEM_NAME[i]).join(", ") + ".";
     }
 
-    const transferencias = status === "completo" ? minimizarTransferencias(saldos) : [];
-    return { saldos, transferencias, status, motivo, faltaPagador };
+    const transfers = status === "completo" ? minimizeTransfers(balancesPerCelebrant) : [];
+    return { balancesPerCelebrant, transfers, status, reason, missingPayer };
   }
 
   // Guloso: casa o maior devedor com o maior credor. Com soma zero e 3
   // pessoas, gera no máximo 2 transferências — que é o mínimo possível.
-  function minimizarTransferencias(saldos) {
-    const devedores = saldos.filter((s) => s.saldo > 0)
-      .map((s) => ({ id: s.aniversarianteId, nome: s.nome, resta: s.saldo }))
-      .sort((a, b) => b.resta - a.resta || a.id - b.id);
-    const credores = saldos.filter((s) => s.saldo < 0)
-      .map((s) => ({ id: s.aniversarianteId, nome: s.nome, resta: -s.saldo }))
-      .sort((a, b) => b.resta - a.resta || a.id - b.id);
+  function minimizeTransfers(balancesPerCelebrant) {
+    const debtors = balancesPerCelebrant.filter((s) => s.balance > 0)
+      .map((s) => ({ id: s.celebrantId, name: s.name, left: s.balance }))
+      .sort((a, b) => b.left - a.left || a.id - b.id);
+    const creditors = balancesPerCelebrant.filter((s) => s.balance < 0)
+      .map((s) => ({ id: s.celebrantId, name: s.name, left: -s.balance }))
+      .sort((a, b) => b.left - a.left || a.id - b.id);
 
     const out = [];
     let i = 0, j = 0;
-    while (i < devedores.length && j < credores.length) {
-      const valor = Math.min(devedores[i].resta, credores[j].resta);
-      if (valor > 0) {
-        out.push({ de: devedores[i].id, deNome: devedores[i].nome,
-                   para: credores[j].id, paraNome: credores[j].nome, valor });
+    while (i < debtors.length && j < creditors.length) {
+      const amount = Math.min(debtors[i].left, creditors[j].left);
+      if (amount > 0) {
+        out.push({ from: debtors[i].id, fromName: debtors[i].name,
+                   to: creditors[j].id, toName: creditors[j].name, amount });
       }
-      devedores[i].resta -= valor;
-      credores[j].resta -= valor;
-      if (devedores[i].resta === 0) i++;
-      if (credores[j].resta === 0) j++;
+      debtors[i].left -= amount;
+      creditors[j].left -= amount;
+      if (debtors[i].left === 0) i++;
+      if (creditors[j].left === 0) j++;
     }
     return out;
   }
@@ -405,29 +405,29 @@
      formatarBRL. Fica aqui para entrar no verify e ganhar teste.
      Devolve "" quando o acerto não está completo: sem acerto fechado
      não há o que compartilhar.                                     */
-  function resumoAcerto(resultadoAcerto, titulo) {
-    const a = resultadoAcerto || {};
+  function settlementSummary(settlementResult, title) {
+    const a = settlementResult || {};
     if (a.status !== "completo") return "";
 
-    const cabecalho = titulo ? `${titulo}\n\n` : "";
-    if (!a.transferencias || !a.transferencias.length) {
-      return cabecalho + "Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte. 🎉";
+    const header = title ? `${title}\n\n` : "";
+    if (!a.transfers || !a.transfers.length) {
+      return header + "Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte. 🎉";
     }
-    const linhas = a.transferencias
-      .map((t) => `• ${t.deNome} → ${t.paraNome}: ${formatarBRL(t.valor)}`)
+    const lines = a.transfers
+      .map((t) => `• ${t.fromName} → ${t.toName}: ${formatBRL(t.amount)}`)
       .join("\n");
-    return cabecalho + "Acerto das contas:\n" + linhas;
+    return header + "Acerto das contas:\n" + lines;
   }
 
   /* ---------- export (browser + node) ---------- */
   const API = {
-    paraCentavos, paraReais, formatarBRL,
-    confirmados, contagens, estimativa,
-    ratearCentavos, pesosDaPessoa, precoPizza, rateio,
-    acerto, minimizarTransferencias, resumoAcerto,
-    SEXTOS,
+    toCents, toReais, formatBRL,
+    confirmedPeople, counts, estimate,
+    splitCents, weightsForPerson, pizzaPrice, split,
+    settlement, minimizeTransfers, settlementSummary,
+    SIXTHS,
   };
 
   if (typeof module === "object" && module.exports) module.exports = API;
-  else raiz.Calculo = API;
+  else root.Calc = API;
 })(typeof globalThis !== "undefined" ? globalThis : this);
