@@ -1,150 +1,179 @@
-# Plano — Fatia 14: Admin, aba "Ajustes"
+# Plano — Fatia 15: Admin, aba "Contas" (as 4 fases)
 
-Branch: `feat/fatia-14-admin-ajustes`
+Branch: `feat/fatia-15-admin-contas`
 
-Entradas: `prompt.md` (Cowork) + `docs/revisao/design/admin/prompt-design.md` §2/§3/§4 e o mockup.
+Entradas: `prompt.md` (Cowork), `design/admin/prompt-design.md` §5/§3/§4, o mockup, e
+`docs/REGRAS-NEGOCIO.md` v6 §4.2/§4.3.
+
+---
+
+## Achado que precisa de decisão antes de qualquer código
+
+**O item 6 (nome nulo na linha de aniversariante) colide com o item 5 (compartilhar), e a colisão
+é dentro do `calculo.js`, que não pode mudar.**
+
+O módulo monta o mapa de nomes a partir do que recebe:
+
+```js
+// calculo.js:261-263
+const nomes = new Map();
+if (ehAniversariante(p) && p.aniversariante_id) nomes.set(p.aniversariante_id, p.nome || null);
+```
+
+e o texto de compartilhar sai daí, já pronto:
+
+```js
+// calculo.js — resumoAcerto()
+`• ${t.deNome} → ${t.paraNome}: ${formatarBRL(t.valor)}`
+```
+
+Com `pessoas.nome` nulo, `rateio()` devolve `nome: "Aniversariante 1"` e o **texto que vai para o
+WhatsApp** vira *"Aniversariante 1 → Aniversariante 3: R$ 240,00"*. A tela eu conserto com o
+`nomeDoAniversariante()` que já existe; o texto do módulo, não — e reescrevê-lo no `admin.js`
+seria exatamente o "derive na tela" que o risco 2 proíbe.
+
+**Proposta: fazer o item 6, corrigindo na ENTRADA em vez de na saída.** O módulo é puro e recebe
+`pessoas`; quem chama decide o que entregar. Antes de `Calculo.rateio()`, o `admin.js` passa a
+mandar uma cópia de `ultimasPessoas` com o `nome` das linhas de aniversariante preenchido a partir
+da `festa`:
+
+```js
+const pessoasComNome = ultimasPessoas.map((p) =>
+  p.papel === "aniversariante" && p.aniversariante_id
+    ? { ...p, nome: nomeDoAniversariante(p.aniversariante_id, p.nome) }
+    : p);
+```
+
+`calculo.js` não muda, as 63 asserções não mudam, o snapshot pode ficar nulo, e a `festa` vira a
+fonte **no ponto em que o dado entra na conta** — que é onde ela deveria ter sido desde sempre.
+
+Ver **P1**: quero isso confirmado antes de escrever, porque muda o contrato de quem alimenta o
+módulo, e o Cowork pediu para eu parar e perguntar nesse caso exato.
 
 ---
 
 ## Os quatro riscos
 
-### 1. `update` estreito — e a boa notícia é que o mockup ajuda
+### 1. `update` estreito, com o dinheiro do Bruno do outro lado
 
-Esta é a aba que mais escreve, e o mockup **quebra o `configForm` de hoje em três acordeões com
-um Salvar cada** (Preços de referência · Consumo por pessoa · Prazo). Isso não é só layout: cada
-`update` passa a carregar naturalmente só as colunas do seu bloco, em vez de um objeto com
-preços + taxas + prazo juntos.
+Contas escreve `custo_real_chopp/refri/agua`, `preco_real_pizza_adulto/crianca` e
+`pago_por_chopp/refri/agua/pizza`. Nada mais.
 
-Os arrays já existem separados no código (`CAMPOS_PRECO`, `CAMPOS_TAXA`), então o corte cai
-exatamente onde a estrutura já estava. Ver **P1** — mudar o número de "Salvar" é comportamento,
-não layout, e por isso pergunto.
+Dois formulários, dois `patch` escritos à mão — o mesmo corte que funcionou na 14. **Prova
+invertida**: planto valor em `preco_pizza_adulto`, `litros_chopp_por_adulto` e
+`prazo_confirmacao` (campos da Ajustes, hoje com os valores reais do Bruno), salvo os dois
+formulários desta aba, e mostro por `SELECT` que sobreviveram.
 
-O que vale em qualquer cenário: **nenhum formulário monta objeto por varredura**. Cada `patch`
-lista as colunas dele, escritas à mão. `custo_real_*` e `pago_por_*` não aparecem em `patch`
-nenhum desta fatia, e isso vira asserção por `SELECT` depois de cada salvamento.
+⚠️ E o inverso do vazio: em Ajustes, campo vazio é **erro**; aqui, campo vazio é **"ainda não
+sei"** e grava `NULL`. Placeholder `não sei`, borda âmbar, e nunca `0,00` cinza — é a semântica
+que a Fatia 5 fixou, e trocá-la faria o `fechamentoCompleto` virar verdadeiro sem ninguém ter
+lançado nada.
 
-### 2. Renomear aniversariante e as duas moradas
+### 2. De onde vem cada número da tela
 
-O nome vive em `festa.nome_aniv_*` (fonte da verdade) e em `pessoas.nome` (snapshot de quando o
-aniversariante foi cadastrado). O `nomeDoAniversariante()` já lê da `festa`, então a UI inteira
-segue o nome novo **sem** re-salvar Aniversariantes — foi o que eu confirmei à mão quando o
-"Bocão" virou "JH Boca".
+Nenhuma cifra é calculada no `admin.js`. A tabela completa:
 
-Nesta fatia isso vira **teste**, não confiança: renomear pelo Convite e provar que Resumo, cards
-de "Quem vem", filtros e o bloco de Aniversariantes mostram o nome novo, e que a Rosaura continua
-com `convidado_por [3]` — o id não se mexe.
+| O que a tela mostra | De onde vem |
+|---|---|
+| conta de cada aniversariante | `rateio().porAniversariante[].total` |
+| detalhe por item de cada um | `rateio().porAniversariante[].detalhe.{chopp,refri,agua,pizza}` |
+| nome de cada um | `rateio().porAniversariante[].nome` (com a correção de entrada acima) |
+| total rateado | `rateio().totalRateado` |
+| custo real total | `rateio().custoRealTotal` |
+| valor ao lado de "quem pagou" | `rateio().custosPorItem[item]` |
+| fase do selo | `fechamentoCompleto`, `confere`, `acerto().faltaPagador`, `acerto().status` |
+| texto do impedimento | `acerto().motivo` — **não reescrito na tela** |
+| saldos | `acerto().saldos[]` |
+| transferências | `acerto().transferencias[]` |
+| texto de compartilhar | `Calculo.resumoAcerto()` |
+| toda formatação de moeda | `Calculo.formatarBRL()` |
 
-⚠️ O snapshot continua podendo divergir. **Proponho fechar isso aqui**, já que estou no
-formulário que renomeia: ao salvar o Convite, atualizar também `pessoas.nome` das linhas
-`papel='aniversariante'` cujo nome mudou. É a mesma coisa que fiz à mão, agora automática. Não
-muda schema e não mexe em `convidado_por`.
+Se a tela precisar de algo fora dessa lista, eu paro e pergunto em vez de derivar.
 
-### 3. Prazo e fuso
+### 3. Espaço não-quebrável na moeda
 
-Já foi corrigido duas vezes nesta base. O invariante do `verify.sh` cobre a formatação; a **ida e
-volta** é teste de tela: salvar 01/10 → recarregar → continuar 01/10, sob pelo menos dois fusos de
-navegador. `dataDoPrazo`/`prazoDaData` não mudam — só mudam de lugar.
+O `formatarBRL` usa `Intl` e separa `R$` do número com **U+00A0**, não com espaço comum. Já deu
+falso negativo na Fatia 4. Toda comparação da verificação normaliza com
+`.replace(/ /g, " ")` antes de comparar — e vou provar que a armadilha existe imprimindo o
+código do caractere.
 
-### 4. Fotos
+### 4. Alcançar as 4 fases de verdade
 
-Upload e exclusão mexem no Storage, não no Postgres, e também não têm desfazer. A confirmação
-nomeia o arquivo e diz onde ele aparece: *"Apagar a foto IMG_1234.jpg? Ela sai do carrossel do
-convite e isso não tem como desfazer."*
+Planto o estado de cada uma no banco, mostro a tela, e limpo:
 
-Diferente do RSVP, aqui **não dá para mostrar o conteúdo apagado em texto** — é uma imagem. Então
-o toast diz o nome do arquivo, que é o que permite reenviar o original se a pessoa ainda o tiver.
+| Fase | Como planto |
+|---|---|
+| `pendente` | `custo_real_agua = NULL` (falta lançar um) |
+| `nao-confere` | os três lançados, mas um grupo sem `convidado_por` válido → dinheiro sem dono |
+| `falta-pagador` | tudo fechando, `pago_por_refri = NULL` |
+| `completo` | tudo lançado e todo item com pagador |
 
-### 5. O bloco `@media (prefers-color-scheme: dark)` — pode sair, e já podia
-
-Fui verificar em vez de supor. Existem 14 seletores globais que leem `var(--*)` (`body`, `a`,
-`.btn-primary`, `.chip`, `input`…), mas **os dois `<body>` já carregam classe de escopo**:
-
-```
-index.html:29  <body class="pagina-convite">
-admin.html:16  <body class="pagina-admin">
-```
-
-Uma variável declarada em `.pagina-*` vence a de `:root` para toda a subárvore, inclusive no modo
-escuro. Ou seja, o bloco **já está morto desde a Fatia 12** — a aba Contas ser provisória não muda
-nada, porque ela também mora dentro de `.pagina-admin`. As medições das Fatias 12 e 13 (claro e
-escuro idênticos nas duas páginas) são a prova empírica disso.
-
-**Removo nesta fatia**, com uma medição antes e depois para não confiar só no raciocínio.
+O **caso órfão** (custo lançado para item que ninguém consome) entra no `nao-confere`: é
+justamente o que faz `totalRateado ≠ custoRealTotal` sem que nenhum item fique sem pagador.
 
 ---
 
 ## Como a aba fica
 
-Seis blocos, na ordem do mockup — cinco acordeões e as fotos sempre abertas:
+Quatro blocos, na ordem do mockup:
 
-| Bloco | Descrição | Escreve em |
-|---|---|---|
-| **O convite** | título, subtítulo, data e hora, local, mapa, os 3 nomes | `festa` |
-| **Preços de referência** | os 5 preços | `config` |
-| **Consumo por pessoa** | as 3 taxas de litros | `config` |
-| **Prazo** | quando o formulário fecha | `config` |
-| **Aniversariantes** | o que cada um consome | `pessoas` |
-| **Fotos do convite** | enviar, listar, excluir | Storage |
-
-O acordeão nasce fechado, como no mockup. Não guardo qual estava aberto: diferente da aba, isso
-não é lugar onde se volta — e um `#ajustes` que reabre um acordeão específico seria estado demais
-para o ganho.
-
-**O aviso das `<meta>` `og:`** entra **dentro do acordeão "O convite"**, colado nos campos de
-data e local — que são exatamente os que ficam mentindo no preview. Não em rodapé: quem edita a
-data tem que ler ali.
+1. **Custo real** — os 5 campos, vazio = "não sei", com o aviso de que o que está em Compras é
+   estimativa e isto é gasto.
+2. **Rateio** — as 3 contas, cada uma com o detalhe por item; o total gasto e o total rateado lado
+   a lado; e a nota **"convidado não paga — quem chamou banca"** dentro do card, não em rodapé.
+3. **O selo** — âmbar `○`, vermelho `!` ou azul `✓`, com o texto do `motivo` do módulo.
+4. **Acerto** — quem pagou cada item (seletor de nome, com o valor calculado ao lado, ninguém
+   digita valor), e, só na fase completa, as transferências e o botão de compartilhar.
 
 ---
 
 ## Commits
 
-1. `feat`: a casca da aba — os seis blocos, acordeão, e os formulários existentes remontados
-2. `feat`: os `Salvar` por bloco, com `patch` explícito por formulário
-3. `feat`: sincronizar `pessoas.nome` ao renomear pelo Convite + o aviso das `<meta>` `og:`
-4. `feat`: fotos no visual novo, com confirmação nomeada
-5. `chore`: remoção do `@media prefers-color-scheme` do `:root`, das seções provisórias e do CSS órfão
+1. `feat`: custo real e rateio, no visual novo
+2. `feat`: o selo nas 4 fases + acerto e quem pagou
+3. `feat`: compartilhar (`wa.me` + queda para `<textarea>`)
+4. `feat`: o conserto do nome — correção na entrada do módulo e `pessoas.nome` nulo
+5. `chore`: sai a última seção provisória, o CSS órfão, e acaba a era do `<details>`
 
 ---
 
 ## Verificação
 
-`./verify.sh` verde em cada commit, com o invariante de fuso. Depois:
+`./verify.sh` verde, **com as 63 asserções inalteradas** — se o número mudar, `calculo.js` mudou.
 
-1. **`update` estreito, formulário por formulário**, por `SELECT`: salvar Convite não toca
-   `config`; salvar Preços não toca taxas, prazo, `custo_real_*`, `pago_por_*` nem `festa`; e
-   assim por diante. Vou **plantar valor** em `custo_real_chopp` e `pago_por_chopp` antes da
-   bateria e provar que sobrevivem a todos os salvamentos — depois limpo.
-2. **Ida e volta do prazo**: salvar 01/10 → recarregar → 01/10, em dois fusos de navegador.
-3. **Renomear aniversariante**: nome novo em Resumo, cards, filtros e no bloco de Aniversariantes;
-   `convidado_por` da Rosaura segue `[3]`; e `pessoas.nome` acompanha.
-4. **Fotos**: subir uma de teste, listar, excluir **essa**; provar por listagem que as fotos reais
-   do bucket não foram tocadas.
-5. **Modo escuro idêntico** antes **e depois** de remover o bloco do `:root`.
-6. **Convite intacto** (site contra site, como nas duas últimas).
-7. **Confirmações reais intactas** ao fim, saída crua.
-8. **Screenshots a 390px** de cada bloco aberto, mais um de desktop.
-9. **Tabela de hashes no `status.md`** — Branch, commit e `origin/main` pós-push. A da Fatia 13
-   saiu sem ela; é o que o `fechou` confere, e a falha foi minha.
+1. **As 4 fases**, screenshot a 390px de cada, com a saída crua do estado que a produziu.
+2. **Reconciliação**: com fechamento completo, `Σ das 3 contas === custoRealTotal`, ao centavo,
+   comparado em **centavos inteiros**, não em string formatada.
+3. **O caso do ×6,5** (§4.2): monto a base — convidados só do Bruno, um dividido Bruno/Braz, e o
+   próprio Bruno, todos no chopp — e confiro na tela que a conta do Bruno é `6,5 × C_chopp`.
+4. **`update` estreito** com plantio nos campos da Ajustes.
+5. **O conserto do nome**: com `pessoas.nome` **nulo** nas três linhas, provar que contas, saldos,
+   transferências, o texto de compartilhar, os filtros de "Quem vem" e o Resumo mostram os nomes
+   certos.
+6. **Compartilhar**: o texto bate com as transferências da tela; e o caminho de clipboard negada.
+7. **Confirmações reais intactas** ao fim; `custo_real_*` e `pago_por_*` de volta a `NULL`.
+8. **Convite intacto** e **modo escuro idêntico**.
+9. **Tabela de hashes** no `status.md`.
 
 ---
 
 ## Perguntas
 
-**P1 — três "Salvar" no lugar de um.** O mockup quebra preços, taxas e prazo em três acordeões,
-cada um com seu botão. Hoje é um formulário e um salvamento. **Sou a favor de seguir o mockup**:
-cada `update` fica naturalmente estreito, e o toast passa a dizer exatamente o que mudou. O risco
-é editar dois blocos e salvar um só — **proponho marcar o cabeçalho do acordeão com "não salvo"**
-enquanto houver alteração pendente. Confirma? (Mudar o número de salvamentos é comportamento, por
-isso não decidi sozinho.)
+**P1 — corrigir o nome na entrada do módulo.** É a proposta do topo. Ela mantém `calculo.js`
+intocado e resolve o item 6 sem quebrar o item 5, mas **muda o contrato de quem chama**: a partir
+daí, quem alimenta o módulo é responsável por entregar os nomes resolvidos. Acho isso mais correto
+do que o estado atual (o módulo depende de um snapshot que pode envelhecer), mas é decisão de
+arquitetura e não minha. Confirma?
 
-**P2 — o mockup não cobre o editor de Aniversariantes.** Ele mostra `["Bruno", "chopp · pizza"]`
-como campo de texto, o que é claramente placeholder: o editor real são três blocos com chips de
-consumo por pessoa, e a regra do chopp para criança vale ali também. **Proponho** manter a
-estrutura de blocos + chips que já existe, só revestida com os tokens novos e dentro do acordeão.
-É hierarquia, então pergunto em vez de decidir — mas não vejo outra leitura possível.
+**P2 — se o P1 for não, o item 6 sai da fatia?** Sem a correção na entrada, nulificar
+`pessoas.nome` faz o texto compartilhado dizer "Aniversariante 1 → Aniversariante 3". Nesse
+cenário eu **não** faço o item 6 e ele volta para a fila junto da lixeira — a sincronia automática
+da Fatia 14 já resolve a divergência prática, que era o problema real.
 
-**P3 — sincronizar `pessoas.nome` ao renomear (o risco 2).** Isso resolve a divergência de vez,
-mas é uma escrita a mais que o formulário do Convite não fazia. Entra nesta fatia, ou é fatia
-própria junto com a lixeira/`cancelar_rsvp`, que também mexe em `pessoas`?
+**P3 — a base de teste do ×6,5.** Montá-lo exige criar convidados de teste (5 só do Bruno, 1
+dividido Bruno/Braz). Hoje o banco tem uma confirmação real. **Proponho** criar os grupos de teste
+com prefixo `zz-teste-`, conferir, e apagar por prefixo — sem tocar na Rosaura. Se preferir que eu
+não escreva RSVP nenhum no banco real, faço o ×6,5 pelo `jsc` contra o `calculo.js` e digo
+claramente que a conferência **não** foi na tela. Qual?
 
-Os commits 1, 4 e 5 não dependem de nenhuma das três.
+Os commits 1, 2, 3 e 5 não dependem de nenhuma das três.
