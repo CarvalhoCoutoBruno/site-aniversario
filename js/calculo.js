@@ -15,6 +15,14 @@
    gasto real. Aqui tudo é inteiro e a sobra é distribuída pelo método
    do maior resto (ver ratearCentavos).
 
+   ⚠️ CONTRATO DO NOME: este módulo lê `nome` das linhas de
+   aniversariante para rotular contas, saldos e o texto do acerto. Ele
+   NÃO sabe onde o nome mora — quem chama é que entrega o dado resolvido.
+   No painel a linha de aniversariante tem `nome` NULO (a fonte única é a
+   tabela `festa`), e o `pessoasParaCalculo()` do admin.js resolve antes
+   de chamar. Um chamador que passar as linhas cruas recebe
+   "Aniversariante 1" — e estará certo, porque não entregou o nome.
+
    Entradas:
      pessoas[] — { id, rsvp_id, nome, tipo, bebe_agua, bebe_refri,
                    bebe_chopp, come_pizza, papel, aniversariante_id }

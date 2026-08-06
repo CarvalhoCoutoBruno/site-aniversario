@@ -186,11 +186,6 @@
       return erroConvite("local_mapa", "O link do mapa precisa começar com http:// ou https://.");
     }
 
-    // os nomes de antes, para saber quais mudaram de verdade
-    const anteriores = ultimaFesta
-      ? [ultimaFesta.nome_aniv_1, ultimaFesta.nome_aniv_2, ultimaFesta.nome_aniv_3]
-      : [null, null, null];
-
     const patch = {
       titulo: txt("titulo"),
       subtitulo: txt("subtitulo") || null,
@@ -215,8 +210,6 @@
       console.error(error);
       return toastConvite("Não consegui salvar o convite.", "err");
     }
-    await sincronizarNomeDosAniversariantes(anteriores, patch);
-
     limparSujo("convite");
     toastConvite("Convite salvo. ✅ O site já está mostrando isso.", "ok");
     // await antes dos dependentes: os rótulos dos blocos e a coluna
@@ -225,29 +218,6 @@
     carregarAniversariantes();
     carregarRSVPs();
   });
-
-  /* O nome do aniversariante mora em dois lugares: `festa.nome_aniv_*`,
-     que é a fonte da verdade e o que toda a tela lê, e `pessoas.nome`,
-     que é o snapshot de quando ele foi cadastrado como consumidor. A tela
-     já ficava coerente sem isto (nomeDoAniversariante lê da festa), mas o
-     banco ficava divergindo — foi o que tive de acertar à mão quando o
-     "Bocão" virou "JH Boca".
-
-     Três limites, como o review pediu: só a coluna `nome`, só linhas com
-     papel='aniversariante', e só para quem mudou. Quem ainda não foi
-     cadastrado como consumidor não tem linha e o update não faz nada.
-     `convidado_por` não é tocado — ele aponta por id, não por nome. */
-  async function sincronizarNomeDosAniversariantes(anteriores, patch) {
-    const novos = [patch.nome_aniv_1, patch.nome_aniv_2, patch.nome_aniv_3];
-    for (let i = 0; i < 3; i++) {
-      if (novos[i] === anteriores[i]) continue;
-      const { error } = await sb.from("pessoas")
-        .update({ nome: novos[i] })
-        .eq("papel", "aniversariante")
-        .eq("aniversariante_id", i + 1);
-      if (error) console.warn("nome do aniversariante não sincronizou:", error);
-    }
-  }
 
   function erroConvite(col, msg) {
     toastConvite(msg, "err");
@@ -617,8 +587,10 @@
       const k = Number(bloco.dataset.aniv);
       const tipo = bloco.querySelector('.a-tipo input[value="crianca"]').checked ? "crianca" : "adulto";
       const registro = {
-        // nome sempre do config.js: renomear lá propaga aqui no próximo save
-        nome: nomesAniversariantes()[k - 1],
+        // `nome` fica de fora de propósito: a linha de aniversariante NÃO
+        // guarda nome. A `festa` é a fonte única, e quem alimenta o
+        // calculo.js resolve pelo pessoasParaCalculo(). Gravar aqui
+        // repopularia a coluna e a divergência voltaria pelo outro lado.
         tipo,
         papel: "aniversariante",
         aniversariante_id: k,
@@ -701,7 +673,7 @@
 
   function atualizarEstimativa() {
     if (!ultimaConfig || !ultimasPessoas) return;
-    const e = Calculo.estimativa(ultimasPessoas, ultimaConfig);
+    const e = Calculo.estimativa(pessoasParaCalculo(), ultimaConfig);
     const c = e.contagens;
 
     // Litro é litro: NÃO arredondo para barril. Quantos barris comprar é
@@ -876,50 +848,51 @@
   /* ---- o rateio (só leitura) ---- */
   const ITENS_CONTA = [["chopp", "Chopp"], ["refri", "Refri"], ["agua", "Água"], ["pizza", "Pizza"]];
 
+  /* ================= O CONTRATO COM O calculo.js =================
+     O módulo é PURO: dado entra, número sai. Não é papel dele saber onde
+     o nome do aniversariante mora — é papel de quem chama entregar o dado
+     já resolvido.
+
+     Por isso a linha de aniversariante em `pessoas` tem `nome` NULO: a
+     `festa` é a fonte única. Este helper resolve o nome antes de o dado
+     entrar na conta, e TODO ponto que alimenta o módulo passa por aqui —
+     não há `.map()` inline espalhado.
+
+     Sem isto, o resumoAcerto() montaria a frase do WhatsApp com
+     "Aniversariante 1 → Aniversariante 3", porque ele lê o nome de dentro
+     do que recebeu. Consertar depois, na tela, seria derivar número (ou
+     texto) fora do módulo — que é justamente o que não se faz aqui. */
+  function pessoasParaCalculo() {
+    return (ultimasPessoas || []).map((p) =>
+      p.papel === "aniversariante" && p.aniversariante_id
+        ? { ...p, nome: nomeDoAniversariante(p.aniversariante_id, p.nome) }
+        : p);
+  }
+
   function atualizarRateio() {
     if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos) return;
-    const r = Calculo.rateio(ultimasPessoas, ultimaConfig, ultimosGrupos);
+    const r = Calculo.rateio(pessoasParaCalculo(), ultimaConfig, ultimosGrupos);
 
     $("#fecContas").innerHTML = r.porAniversariante.length
       ? r.porAniversariante.map((a) => {
           const itens = ITENS_CONTA
             .filter(([k]) => a.detalhe[k] > 0)
-            .map(([k, rot]) => `<span class="pill">${esc(rot)}: ${esc(Calculo.formatarBRL(a.detalhe[k]))}</span>`)
+            .map(([k, rot]) => `<span class="ct-item"><span>${esc(rot)}</span><b class="mono">${esc(Calculo.formatarBRL(a.detalhe[k]))}</b></span>`)
             .join("");
-          return `<div class="conta-aniv">
-            <div class="conta-topo">
-              <b>${esc(nomeDoAniversariante(a.aniversarianteId, a.nome))}</b>
-              <span class="conta-total">${esc(Calculo.formatarBRL(a.total))}</span>
+          return `<div class="ct-conta">
+            <div class="ct-conta-topo">
+              <b>${esc(a.nome)}</b>
+              <b class="mono ct-conta-total">${esc(Calculo.formatarBRL(a.total))}</b>
             </div>
-            <div class="conta-itens">${itens || "<small>não consumiu nada</small>"}</div>
+            <div class="ct-itens">${itens || '<span class="ct-nada">não consumiu nada</span>'}</div>
           </div>`;
         }).join("")
       : '<p class="vazio">Nenhum aniversariante cadastrado ainda.</p>';
 
-    $("#fecTotais").innerHTML = [
-      cartao(Calculo.formatarBRL(r.custoRealTotal), "Total gasto"),
-      cartao(Calculo.formatarBRL(r.totalRateado), "Total rateado"),
-    ].join("");
-
-    // Três estados. Verde exige as DUAS condições: fechamento completo
-    // E soma batendo. Só comparar os totais deixaria passar por verde um
-    // fechamento incompleto cujas somas coincidem por acaso.
-    const selo = $("#fecSelo");
-    if (!r.fechamentoCompleto) {
-      selo.className = "selo cinza";
-      selo.textContent = "Fechamento incompleto — lance o custo real de chopp, refrigerante e água para fechar as contas.";
-    } else if (r.confere) {
-      selo.className = "selo verde";
-      selo.textContent = "✓ As contas fecham: a soma das 3 é exatamente o total gasto.";
-    } else {
-      const dif = r.custoRealTotal - r.totalRateado;
-      selo.className = "selo vermelho";
-      selo.textContent =
-        `✗ A soma das contas não bate com o total gasto — diferença de ${Calculo.formatarBRL(Math.abs(dif))}. ` +
-        (dif > 0
-          ? "Sobrou custo sem ninguém para ratear: confira se lançou algo que ninguém consumiu."
-          : "O rateio passou do total: confira os valores lançados.");
-    }
+    // os dois números que têm de coincidir para o selo ficar azul
+    $("#fecTotais").innerHTML = `
+      <div class="ct-total-linha"><span>Total gasto</span><b class="mono">${esc(Calculo.formatarBRL(r.custoRealTotal))}</b></div>
+      <div class="ct-total-linha"><span>Total rateado</span><b class="mono">${esc(Calculo.formatarBRL(r.totalRateado))}</b></div>`;
 
     montarPagadores(r.custosPorItem);
     preencherPagadores(ultimaConfig);
@@ -931,10 +904,72 @@
      quanto cada um PAGOU — só o pagador de cada item; o valor vem do
      custo já calculado no fechamento.
 
-     ⚠️ O acerto só aparece quando o rateio CONFERE. Se o fechamento tem
+     ⚠️ O acerto só fecha quando o rateio CONFERE. Se o fechamento tem
      custo órfão, Σ deve ≠ Σ pagou, os saldos não somam zero e as
-     transferências não quitariam nada. Checar só "todo item tem
-     pagador" produziria um acerto silenciosamente errado.        */
+     transferências não quitariam nada. Checar só "todo item tem pagador"
+     produziria um acerto silenciosamente errado.                    */
+
+  /* As 4 fases do selo. O gatilho e o TEXTO do impedimento vêm do
+     módulo — a tela não reescreve motivo nenhum. */
+  function faseDoAcerto(r, a) {
+    if (!r.fechamentoCompleto) return "pendente";
+    if (!r.confere) return "nao-confere";
+    if (a.faltaPagador.length) return "falta-pagador";
+    return "completo";
+  }
+
+  const SELO = {
+    "pendente":      { icone: "○", classe: "pendente" },
+    "nao-confere":   { icone: "!", classe: "erro" },
+    "falta-pagador": { icone: "✓", classe: "ok" },
+    "completo":      { icone: "✓", classe: "ok" },
+  };
+
+  function atualizarAcerto(resultadoRateio) {
+    const pagoPor = {};
+    for (const [col, item] of CAMPOS_PAGO_POR) pagoPor[item] = ultimaConfig[col];
+    const a = Calculo.acerto(resultadoRateio, pagoPor);
+    const fase = faseDoAcerto(resultadoRateio, a);
+
+    const selo = $("#fecSelo");
+    selo.hidden = false;
+    selo.dataset.fase = fase;
+    selo.className = "ct-selo " + SELO[fase].classe;
+    selo.innerHTML =
+      `<span class="ct-selo-ico" aria-hidden="true">${SELO[fase].icone}</span>` +
+      `<span>${esc(fase === "completo"
+        ? "As contas fecham: a soma do que cada um paga bate com o gasto total, até o centavo."
+        : a.motivo)}</span>`;
+
+    $("#acertoSaldos").innerHTML = a.saldos.map((s) => {
+      const rotulo = s.saldo > 0 ? "a pagar" : s.saldo < 0 ? "a receber" : "quite";
+      const classe = s.saldo > 0 ? "pagar" : s.saldo < 0 ? "receber" : "";
+      return `<div class="ct-conta">
+        <div class="ct-conta-topo">
+          <b>${esc(s.nome)}</b>
+          <b class="mono ct-conta-total ${classe}">${esc(Calculo.formatarBRL(Math.abs(s.saldo)))} <small>${rotulo}</small></b>
+        </div>
+        <div class="ct-itens">
+          <span class="ct-item"><span>deve</span><b class="mono">${esc(Calculo.formatarBRL(s.deve))}</b></span>
+          <span class="ct-item"><span>pagou</span><b class="mono">${esc(Calculo.formatarBRL(s.pagou))}</b></span>
+        </div>
+      </div>`;
+    }).join("");
+
+    const lista = $("#acertoTransferencias");
+
+    // Antes do return: se ficasse depois, o acerto voltando a incompleto
+    // deixaria o botão de compartilhar na tela com o texto anterior —
+    // pronto para mandar no grupo um acerto que não vale mais.
+    prepararCompartilhar(a);
+
+    if (a.status !== "completo") { lista.innerHTML = ""; return; }
+    lista.innerHTML = a.transferencias.length
+      ? `<ul class="ct-transf">${a.transferencias.map((t) =>
+          `<li><b>${esc(t.deNome)}</b> → <b>${esc(t.paraNome)}</b><b class="mono">${esc(Calculo.formatarBRL(t.valor))}</b></li>`
+        ).join("")}</ul>`
+      : '<p class="res-nota">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte. 🎉</p>';
+  }
 
   const CAMPOS_PAGO_POR = [
     ["pago_por_chopp", "chopp", "Chopp"],
@@ -944,25 +979,47 @@
   ];
 
   function montarPagadores(custosPorItem) {
-    const opcoes = ['<option value="">—</option>']
-      .concat(nomesAniversariantes().map((nome, i) => `<option value="${i + 1}">${esc(nome)}</option>`))
-      .join("");
+    const nomes = nomesAniversariantes();
     $("#acertoPagadores").innerHTML = CAMPOS_PAGO_POR
       .map(([col, item, rotulo]) => {
+        // o valor ao lado vem do módulo (custosPorItem); ninguém digita
         const valor = custosPorItem ? Calculo.formatarBRL(custosPorItem[item] || 0) : "";
-        return `<label class="config-campo">
-          <span>${esc(rotulo)} <small>${esc(valor)}</small></span>
-          <select id="ac_${col}">${opcoes}</select>
-        </label>`;
+        const opcoes = nomes.map((nome, i) =>
+          `<button type="button" class="ct-opcao" data-col="${col}" data-id="${i + 1}">${esc(nome)}</button>`
+        ).join("");
+        return `<div class="ct-pagador">
+          <div class="ct-pagador-topo">
+            <b>${esc(rotulo)}</b>
+            <span class="mono ct-pagador-valor">${esc(valor)}</span>
+          </div>
+          <div class="ct-opcoes" data-grupo="${col}">${opcoes}</div>
+        </div>`;
       })
       .join("");
+
+    // clicar de novo no escolhido volta para "ninguém": sem isso não há
+    // como desfazer uma escolha errada sem recarregar
+    $$(".ct-opcao").forEach((b) => b.addEventListener("click", () => {
+      const grupo = b.closest(".ct-opcoes");
+      const jaEra = b.classList.contains("escolhido");
+      $$(".ct-opcao", grupo).forEach((o) => o.classList.remove("escolhido"));
+      if (!jaEra) b.classList.add("escolhido");
+    }));
   }
 
   function preencherPagadores(cfg) {
     for (const [col] of CAMPOS_PAGO_POR) {
-      const el = $(`#ac_${col}`);
-      if (el) el.value = cfg[col] === null || cfg[col] === undefined ? "" : String(cfg[col]);
+      const grupo = document.querySelector(`.ct-opcoes[data-grupo="${col}"]`);
+      if (!grupo) continue;
+      const valor = cfg[col] === null || cfg[col] === undefined ? "" : String(cfg[col]);
+      $$(".ct-opcao", grupo).forEach((b) => b.classList.toggle("escolhido", b.dataset.id === valor));
     }
+  }
+
+  // lê os botões em vez do <select> que saiu
+  function pagadorEscolhido(col) {
+    const b = document.querySelector(`.ct-opcoes[data-grupo="${col}"] .ct-opcao.escolhido`);
+    return b ? Number(b.dataset.id) : null;
   }
 
   function toastAcerto(msg, classe) {
@@ -980,8 +1037,7 @@
     // (Fatia 5) nem nos campos da Fatia 2.
     const patch = { atualizado_em: new Date().toISOString() };
     for (const [col] of CAMPOS_PAGO_POR) {
-      const v = $(`#ac_${col}`).value;
-      patch[col] = v === "" ? null : Number(v);
+      patch[col] = pagadorEscolhido(col);   // null = ninguém escolhido ainda
     }
 
     btn.disabled = true;
@@ -998,49 +1054,6 @@
     toastAcerto("Pagadores salvos. ✅", "ok");
     carregarConfig();
   });
-
-  function atualizarAcerto(resultadoRateio) {
-    const pagoPor = {};
-    for (const [col, item] of CAMPOS_PAGO_POR) pagoPor[item] = ultimaConfig[col];
-    const a = Calculo.acerto(resultadoRateio, pagoPor);
-
-    $("#acertoSaldos").innerHTML = a.saldos.map((s) => {
-      const rotulo = s.saldo > 0 ? "a pagar" : s.saldo < 0 ? "a receber" : "quite";
-      const classe = s.saldo > 0 ? "saldo-pagar" : s.saldo < 0 ? "saldo-receber" : "";
-      return `<div class="conta-aniv">
-        <div class="conta-topo">
-          <b>${esc(nomeDoAniversariante(s.aniversarianteId, s.nome))}</b>
-          <span class="conta-total ${classe}">${esc(Calculo.formatarBRL(Math.abs(s.saldo)))} <small>${rotulo}</small></span>
-        </div>
-        <div class="conta-itens">
-          <span class="pill">deve: ${esc(Calculo.formatarBRL(s.deve))}</span>
-          <span class="pill">pagou: ${esc(Calculo.formatarBRL(s.pagou))}</span>
-        </div>
-      </div>`;
-    }).join("");
-
-    const selo = $("#acertoSelo");
-    const lista = $("#acertoTransferencias");
-
-    // Antes do return: se ficasse depois, o acerto voltando a incompleto
-    // deixaria o botão de compartilhar na tela com o texto anterior —
-    // pronto para mandar no grupo um acerto que não vale mais.
-    prepararCompartilhar(a);
-
-    if (a.status !== "completo") {
-      selo.className = "selo cinza";
-      selo.textContent = a.motivo;
-      lista.innerHTML = "";
-      return;
-    }
-    selo.className = "selo verde";
-    selo.textContent = "✓ Acerto fechado: os saldos somam zero.";
-    lista.innerHTML = a.transferencias.length
-      ? `<ul class="transferencias">${a.transferencias.map((t) =>
-          `<li><b>${esc(nomeDoAniversariante(t.de, t.deNome))}</b> → <b>${esc(nomeDoAniversariante(t.para, t.paraNome))}</b>: ${esc(Calculo.formatarBRL(t.valor))}</li>`
-        ).join("")}</ul>`
-      : '<p class="campo-dica">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte.</p>';
-  }
 
   /* ---- compartilhar o acerto ----
      Só aparece com o acerto completo: sem acerto fechado não há o que

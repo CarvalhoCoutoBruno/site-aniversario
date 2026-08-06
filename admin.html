@@ -142,67 +142,61 @@
       <!-- ---------- Contas (provisório até a Fatia 15) ---------- -->
       <section class="ad-aba" id="aba-contas" role="tabpanel" aria-labelledby="tab-contas" hidden>
       <!-- Fechamento e rateio -->
-      <details class="admin-secao config-secao" id="fecSecao">
-        <summary><h2>Fechamento e rateio 🧾</h2></summary>
+      <!-- Nenhuma cifra desta aba é calculada aqui: tudo vem de
+           Calculo.rateio() / Calculo.acerto() / Calculo.resumoAcerto().
+           A tela formata e posiciona; ela não conta. -->
 
+      <div class="res-bloco">
+        <b class="res-titulo">Custo real</b>
+        <p class="res-nota">
+          O que foi pago de verdade, depois da compra. Deixe em branco o que ainda não fechou —
+          <strong>vazio quer dizer "ainda não sei", não zero</strong>.
+        </p>
         <form id="fecForm" novalidate>
-          <fieldset class="config-bloco">
-            <legend>Custo real gasto (R$)</legend>
-            <p class="campo-dica">
-              O que foi pago de verdade, depois da compra. Deixe em branco o que ainda não fechou —
-              vazio significa "ainda não sei", não zero.
-            </p>
-            <div class="config-grid" id="fecCustos"></div>
-          </fieldset>
-
-          <fieldset class="config-bloco">
-            <legend>Preço real da pizza (R$) — opcional</legend>
-            <p class="campo-dica">
-              Se em branco, o rateio usa o preço de referência da configuração.
-            </p>
-            <div class="config-grid" id="fecPizzas"></div>
-          </fieldset>
-
-          <div class="config-acoes">
-            <button type="submit" class="btn btn-primary" id="btnSalvarFec">Salvar fechamento</button>
-          </div>
+          <div id="fecCustos"></div>
+          <p class="res-nota ct-sub">Preço real da pizza — em branco, vale o preço de referência dos Ajustes.</p>
+          <div id="fecPizzas"></div>
+          <button type="submit" class="aj-salvar" id="btnSalvarFec">Salvar custo real</button>
           <p class="msg-toast" id="fecMsg"></p>
         </form>
+      </div>
 
-        <h3 class="est-titulo">Quanto cada aniversariante paga</h3>
-        <p class="campo-dica">
-          Convidado não paga: o consumo dele é bancado por quem o convidou, dividido igualmente
-          quando foi mais de um.
+      <div class="res-bloco">
+        <b class="res-titulo">Rateio</b>
+        <p class="res-nota ct-nota-convidado">
+          Convidado não paga: o consumo dele é bancado por <strong>quem o convidou</strong>,
+          dividido igualmente quando foi mais de um.
         </p>
         <div id="fecContas"></div>
+        <div class="ct-totais" id="fecTotais"></div>
+      </div>
 
-        <div class="selo" id="fecSelo"></div>
-        <div class="stats" id="fecTotais"></div>
+      <div class="ct-selo" id="fecSelo" hidden></div>
 
-        <h3 class="est-titulo">Acerto entre vocês</h3>
-        <p class="campo-dica">
-          Marque quem bancou cada item. O valor vem do fechamento acima — não precisa digitar.
+      <div class="res-bloco">
+        <b class="res-titulo">Quem pagou cada item</b>
+        <p class="res-nota">
+          O valor vem do custo real acima — <strong>ninguém digita valor aqui</strong>, só escolhe
+          o nome.
         </p>
-
         <form id="acertoForm" novalidate>
-          <div class="config-grid" id="acertoPagadores"></div>
-          <div class="config-acoes">
-            <button type="submit" class="btn btn-primary" id="btnSalvarAcerto">Salvar quem pagou</button>
-          </div>
+          <div id="acertoPagadores"></div>
+          <button type="submit" class="aj-salvar" id="btnSalvarAcerto">Salvar quem pagou</button>
           <p class="msg-toast" id="acertoMsg"></p>
         </form>
+      </div>
 
+      <div class="res-bloco" id="acertoBloco">
+        <b class="res-titulo">Acerto entre vocês</b>
         <div id="acertoSaldos"></div>
-        <div class="selo" id="acertoSelo"></div>
         <div id="acertoTransferencias"></div>
-
-        <div class="config-acoes" id="acertoCompartilhar" hidden>
-          <button type="button" class="btn btn-ghost" id="btnCopiarAcerto">📋 Copiar resumo</button>
-          <a class="btn btn-ghost" id="btnWhatsAcerto" target="_blank" rel="noopener">💬 Mandar no WhatsApp</a>
-          <small class="campo-dica" id="acertoCopiaMsg"></small>
+        <div class="ct-compartilhar" id="acertoCompartilhar" hidden>
+          <button type="button" class="ad-btn ad-btn-largo" id="btnCopiarAcerto">&#128203; Copiar resumo</button>
+          <a class="ad-btn ad-btn-largo" id="btnWhatsAcerto" target="_blank" rel="noopener">&#128172; Mandar no WhatsApp</a>
+          <p class="res-nota" id="acertoCopiaMsg"></p>
+          <textarea id="acertoTexto" class="compras-texto" rows="6" readonly hidden></textarea>
         </div>
-        <textarea id="acertoTexto" class="acerto-texto" rows="4" readonly hidden></textarea>
-      </details>
+      </div>
       </section>
 
       <!-- ---------- Ajustes (provisório até a Fatia 14) ---------- -->

@@ -610,6 +610,91 @@ textarea { resize: vertical; }
   background: rgba(20,17,13,.72); color: #fff; font-size: 14px;
 }
 
+/* ---------------------------------------------------------------------
+   ABA "CONTAS" — a do dinheiro
+   --------------------------------------------------------------------- */
+.pagina-admin .ct-sub { margin: 4px 0 0; }
+.pagina-admin .ct-nota-convidado { margin: 4px 0 14px; }
+
+.pagina-admin .ct-conta {
+  padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2);
+}
+.pagina-admin .ct-conta:last-child { border-bottom: none; padding-bottom: 0; }
+.pagina-admin .ct-conta-topo {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.pagina-admin .ct-conta-topo b:first-child { font-size: 15px; }
+.pagina-admin .ct-conta-total { font-size: 16px; font-weight: 500; }
+.pagina-admin .ct-conta-total small { font-size: 11px; font-weight: 400; color: var(--ad-mudo); }
+.pagina-admin .ct-conta-total.pagar { color: var(--ad-erro-txt); }
+.pagina-admin .ct-conta-total.receber { color: var(--ad-ok-txt); }
+
+.pagina-admin .ct-itens { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+.pagina-admin .ct-item { display: flex; gap: 6px; font-size: 12.5px; color: var(--ad-mudo); }
+.pagina-admin .ct-item b { font-size: 12.5px; font-weight: 500; color: var(--ad-tinta); }
+.pagina-admin .ct-nada { font-size: 12.5px; color: var(--ad-mudo); }
+
+.pagina-admin .ct-totais {
+  margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--ad-borda);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pagina-admin .ct-total-linha {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 14px;
+}
+.pagina-admin .ct-total-linha b { font-size: 16px; font-weight: 500; }
+
+/* O selo, nas 4 fases. As cores saem do pacote de design: âmbar para
+   pendente, vermelho para não-confere, azul para as duas fases boas. */
+.pagina-admin .ct-selo {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 14px 16px; border-radius: 14px;
+  font-size: 13.5px; line-height: 1.5;
+}
+.pagina-admin .ct-selo-ico {
+  flex: 0 0 auto; width: 20px; height: 20px; border-radius: 999px;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  border: 1.5px solid currentColor;
+}
+.pagina-admin .ct-selo.pendente {
+  background: var(--ad-ambar-bg); border: 1px solid var(--ad-ambar-borda); color: var(--ad-ambar-txt);
+}
+.pagina-admin .ct-selo.erro {
+  background: var(--ad-erro-bg); border: 1px solid var(--ad-erro-borda); color: var(--ad-erro-txt);
+}
+.pagina-admin .ct-selo.ok {
+  background: var(--ad-ok-bg); border: 1px solid var(--ad-ok-borda); color: var(--ad-ok-txt);
+}
+
+.pagina-admin .ct-pagador { padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2); }
+.pagina-admin .ct-pagador:last-of-type { border-bottom: none; }
+.pagina-admin .ct-pagador-topo {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;
+}
+.pagina-admin .ct-pagador-topo b { font-size: 14.5px; }
+.pagina-admin .ct-pagador-valor { font-size: 14px; font-weight: 500; color: var(--ad-mudo); }
+.pagina-admin .ct-opcoes { display: flex; gap: 6px; }
+.pagina-admin .ct-opcao {
+  flex: 1; text-align: center; cursor: pointer; font-family: inherit;
+  font-size: 13.5px; font-weight: 600; padding: 11px 4px;
+  border: 1px solid var(--ad-borda-2); border-radius: 10px;
+  background: var(--ad-card); color: var(--ad-tinta);
+}
+.pagina-admin .ct-opcao.escolhido {
+  background: var(--ad-tinta); color: var(--ad-painel); border-color: var(--ad-tinta);
+}
+
+.pagina-admin .ct-transf { list-style: none; margin: 12px 0 0; padding: 0; }
+.pagina-admin .ct-transf li {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2); font-size: 14.5px;
+}
+.pagina-admin .ct-transf li:last-child { border-bottom: none; }
+.pagina-admin .ct-transf li b:last-child { margin-left: auto; font-size: 16px; font-weight: 500; }
+
+.pagina-admin .ct-compartilhar { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.pagina-admin .ct-compartilhar .ad-btn-largo { margin-top: 0; text-align: center; text-decoration: none; line-height: 1.2; }
+
 /* =====================================================================
    CONVITE — pele "cartaz de boteco" (Fatia 11)
    =====================================================================

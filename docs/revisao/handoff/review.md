@@ -1,63 +1,62 @@
-# Review — Fatia 14 (admin: aba "Ajustes")
+# Review — Fatia 15 (admin: aba "Contas")
 
-**Veredito: aprovado.** As três perguntas respondidas abaixo; nada a mudar no plano.
+**Veredito: aprovado**, com duas condições no item 6 e uma nota no plantio das fases. As três
+perguntas respondidas.
 
-## O que está certo e vale registrar
+## O achado do topo — obrigado por parar
+Você encontrou uma colisão entre dois itens do **meu próprio prompt**: nulificar `pessoas.nome`
+(item 6) quebra o texto de compartilhar (item 5), porque o `resumoAcerto()` monta a frase **dentro
+do módulo**, a partir do `nome` que veio nas linhas. Consertar isso no `admin.js` seria exatamente
+o "derive na tela" que o risco 2 proíbe. Era o caso em que eu pedi para parar e perguntar, e você
+parou. Certo.
 
-**O corte em três `Salvar` deixa o `update` estreito de graça.** A observação é boa: o mockup
-quebrou `configForm` exatamente onde a estrutura do código já estava separada (`CAMPOS_PRECO`,
-`CAMPOS_TAXA`). Em vez de disciplina, vira arquitetura — o `patch` fica pequeno porque o
-formulário é pequeno. E a regra que você manteve é a que importa: **nenhum `patch` montado por
-varredura**, cada um lista as colunas à mão.
+## P1 — corrigir na entrada: **sim**, e é a arquitetura certa
+`calculo.js` é módulo puro: dado entra, número sai. **Não é papel dele saber onde o nome mora** — é
+papel de quem chama entregar o dado resolvido. Hoje o módulo depende, implicitamente, de um
+snapshot que pode envelhecer; depois da mudança ele depende do que o chamador passa, e o chamador
+resolve da fonte única. Isso é o contrato correto de uma função pura, não um contorno.
 
-**"Fui verificar em vez de supor" no bloco do modo escuro.** Os dois `<body>` já carregam classe de
-escopo, então o `@media (prefers-color-scheme: dark)` do `:root` está morto desde a Fatia 12 — e a
-aba Contas ainda ser provisória não muda nada, porque ela também mora dentro de `.pagina-admin`. Com
-medição antes e depois, pode sair.
+**Duas condições, e as duas são para o item 6 não se desfazer sozinho:**
 
-**Fotos:** a confirmação nomeando o arquivo e dizendo *onde ele aparece* ("sai do carrossel do
-convite") é melhor que a genérica, e reconhecer que aqui não dá para ecoar o conteúdo — é imagem —
-com o nome do arquivo servindo de pista para reenviar, resolve bem o que dava para resolver.
+1. **Remova a sincronia que a Fatia 14 acabou de criar.** Ela atualiza `pessoas.nome` ao renomear
+   pelo Convite — ou seja, **repopularia a coluna no próximo rename**, e aí você fica com o pior
+   estado possível: algumas linhas nulas, outras não. Ela existia para resolver a divergência
+   enquanto o snapshot era usado; com a correção na entrada, ela vira o problema.
+2. **Pare de escrever `nome` no cadastro de aniversariante** (o `upsert` de Ajustes, herdado da
+   Fatia 3, grava o nome vindo da lista). Se ficar, a coluna repopula pelo outro lado.
 
-## As três perguntas
+E uma de forma: a resolução tem de morar em **um helper nomeado** (algo como
+`pessoasParaCalculo()`), usado por todos os pontos que alimentam o módulo — não um `.map()` inline
+repetido. Como o contrato passa a ser "quem chama entrega os nomes resolvidos", isso precisa de um
+lugar só e de uma linha de comentário no cabeçalho do `calculo.js` dizendo isso. Senão o próximo
+chamador — um relatório, uma outra tela — recebe "Aniversariante 1" e ninguém entende por quê.
 
-**P1 — três `Salvar`: sim, siga o mockup**, com o marcador de "não salvo" no cabeçalho do acordeão.
-O ganho (cada `update` nasce estreito) vale mais que o risco, e o marcador cobre o risco.
+## P2 — prejudicada
+Com o P1 aprovado, o item 6 fica.
 
-Uma tranquilidade a mais sobre o cenário que te preocupou: como as abas são só troca de
-visibilidade, **trocar de aba e voltar não perde edição pendente** — o input continua no DOM com o
-valor digitado. A perda só acontece em recarga ou logout, que é exatamente onde o marcador aparece.
-Detalhe de implementação: o marcador tem de ligar no `input` do usuário e **não** no preenchimento
-programático do `carregarConfig()`, senão nasce sujo; e limpar após salvar.
+## P3 — base de teste do ×6,5: **sim, com o prefixo**
+Escrever RSVP de teste no banco real é o que a gente vem fazendo em todas as fatias, e a regra já
+está no lugar: apagar **pelo próprio identificador**, nunca em bloco. `zz-teste-` serve. Prefiro
+isso à conferência só por `jsc` justamente porque o que está sendo verificado aqui **é a tela** — o
+módulo já tem 63 asserções em cima; o que ninguém provou ainda é que a tela mostra o número do
+módulo.
 
-**P2 — editor de Aniversariantes: sim, mantenha blocos + chips.** O `["Bruno", "chopp · pizza"]` do
-mockup é placeholder, e a regra do chopp para criança vive ali — regra não vem do mockup. Revestir
-com os tokens novos dentro do acordeão é a leitura certa, e concordo que não há outra.
+Uma nota para a montagem: a Rosaura está na base e consome **água e pizza, não chopp** — então ela
+não perturba o `C_chopp` do ×6,5, mas **entra no total gasto e na parte de pizza**. Ancore a
+asserção no componente de chopp da conta do Bruno, ou declare os valores esperados já com ela
+dentro. Não vá comparar o total achando que ela não está lá.
 
-**P3 — sincronizar `pessoas.nome` ao renomear: sim, entra nesta fatia** — e a razão de eu não
-mandar para outra é que aqui é o único lugar onde a informação existe (você está no formulário que
-renomeia). São poucas linhas, mata a divergência prática de hoje e não mexe em `convidado_por`.
+## Nota no plantio das 4 fases
+No `nao-confere` você lista "um grupo sem `convidado_por` válido". Esse caminho é **inalcançável**:
+`convidado_por_valido()` exige 1 a 3 itens em {1,2,3} e a FK impede pessoa sem grupo. Não gaste
+tempo tentando — o **órfão** (custo lançado para item que ninguém consome) é o caminho real, e você
+já o citou na linha seguinte. Use só ele.
 
-Duas condições: o `update` tem de ser **estreito também aqui** (só a coluna `nome`, só linhas com
-`papel='aniversariante'`, só quando o nome mudou), e **no-op** quando o aniversariante ainda não
-foi cadastrado como consumidor.
-
-**E fica registrado o conserto de verdade, para a Fatia 15:** o certo não é manter duas cópias em
-acordo, é **parar de guardar o nome na linha de aniversariante** — a `festa` é a fonte, e a coluna
-pode ficar nula nessas linhas (a constraint `principal_tem_nome` só exige nome para
-`papel='principal'`). Não faço agora porque exigiria auditar todos os leitores de `pessoas.nome`, e
-os principais — contas, saldos, transferências — **estão prestes a ser reescritos na Fatia 15**.
-Auditar tela que vai ser refeita é trabalho jogado fora. Na 15 sai de graça.
-
-## Nota de copy
-O aviso das `<meta>` `og:` está no lugar certo (dentro do acordeão do Convite, colado em data e
-local). Diga também **o que fazer** — que o preview só muda quando alguém editar o `index.html` —
-senão o organizador lê que está errado e não sabe a quem recorrer.
-
-## Verificação
-Cobre o que importa, e **plantar valor em `custo_real_chopp` e `pago_por_chopp` antes da bateria**
-para provar que sobrevivem a todos os salvamentos é a forma certa de testar o invariante: prova, em
-vez de afirmação. Some no item 3 a conferência de que o nome novo aparece **sem** re-salvar o bloco
-de Aniversariantes.
+## O resto, aprovado
+A tabela de "de onde vem cada número" é exatamente o que eu queria: doze linhas, nenhuma derivada
+na tela, e a promessa de parar e perguntar se faltar alguma. O plantio invertido do `update`
+estreito (valores da Ajustes plantados antes da bateria) é a prova certa. E o cuidado com o
+**espaço não-quebrável** — comparar em **centavos inteiros** em vez de string formatada — é melhor
+que normalizar a string: some com a classe inteira do problema.
 
 Pode `executa`.
