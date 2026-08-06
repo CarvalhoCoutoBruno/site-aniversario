@@ -1,243 +1,180 @@
-# Status — Fatia 11: redesign do convite ("cartaz de boteco")
+# Status — Fatia 12: Admin, casca (abas + roteamento + login) e a aba Resumo
 
-**Fatia fechada,** com o recorte que o review pediu: o `localStorage` (commit 6) saiu e nasce
-junto com o P6. Depois do fechamento entraram o `UPDATE` do salão e a correção de um bug de
-fuso — as duas últimas seções.
+**Fatia fechada.** Os dois ajustes do review entraram, as três perguntas foram implementadas
+conforme as respostas, e o invariante de fuso achou um bug de verdade no caminho.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-11-convite-boteco` → merge `--ff-only` → apagada |
-| Commits | 9, cada um verde no `./verify.sh` |
-| `origin/main` após o push | `9111e6f320c4461c37ede3d0bb51e02020763535` |
-| `main == origin/main` | **sim** |
+| Branch | `feat/fatia-12-admin-casca` → merge `--ff-only` → apagada |
+| Commits | 5, cada um verde no `./verify.sh` |
 
 ## O que entrou
 
 | Commit | O quê |
 |---|---|
-| `d6943a6` | fontes (Anton + Space Grotesk + DM Mono), tokens e a coluna de 460px |
-| `fc70e33` | hero do cartaz, com a ficha `Dia / Onde` migrando para dentro dele |
-| `49c6611` | seção de fotos no bloco escuro, sem setas |
-| `56ef835` | RSVP: "Vai querer" numa lista só, sem `<select>`, sem nome duplicado, contador ao vivo |
-| `b58deb2` | `carregando`, `erro`, tela de sucesso, `.ics`, e `passou` fechando o formulário |
-| `a74fad9` | `og:image` + meta tags |
-| `2ad5209` | limpeza do CSS órfão + BRIEFING atualizado |
-| `563ad65` | **o achado da verificação integrada** (abaixo) |
-| `9111e6f` | botão Confirmar a 24px, por causa do contraste medido |
+| `feat` | escopo `.pagina-admin`, tokens, fontes, **e o prefixo nas 68 regras herdadas** |
+| `feat` | casca: cabeçalho fixo, 5 abas, roteamento por hash, conteúdo de hoje redistribuído |
+| `feat` | login no visual novo + seletor cobrindo `email` e `password` |
+| `feat` | aba Resumo |
+| `chore` | `verify.sh` ganha o invariante de fuso |
 
-## O achado que só a tela pegou
+## Os dois ajustes do review
 
-O `verify.sh` ficou verde o tempo todo e a página estava errada: título com gradiente roxo,
-cantos arredondados no countdown e no carrossel, rótulo "VOCÊ" azul e **200px de vazio** dentro
-do card de pessoa.
+### Ajuste 1 — o invariante de fuso, com as duas correções
 
-Uma causa só: **a pele PRÉ-Fatia 9 do convite morava fora de `.pagina-convite`**. Quando a Fatia
-9 escopou a pele nova, ninguém removeu a velha — e ela ficou dormente porque as duas usavam as
-mesmas classes e a nova vinha depois. Trocar a pele reacordou a antiga, e em alguns casos ela
-ganhava por especificidade:
+A regra ficou: nenhum `toLocaleDateString` / `toLocaleTimeString` / `Intl.DateTimeFormat` em
+`js/` sem `timeZone`. O `toLocaleString` genérico **ficou de fora** (o `fmtNumeroBR` e o
+`fmtLitros` o usam para número), e o `Intl.DateTimeFormat` **entrou** — sem ele o invariante
+protegeria o caminho antigo e deixaria aberto justamente o que passamos a usar.
 
+Precisou de uma terceira correção que só apareceu ao rodar: a primeira versão era `grep` de linha
+única e **acusou nove trechos corretos**, porque o objeto de opções quase sempre quebra em várias
+linhas. Virou `awk` com janela de 6 linhas.
+
+**E achou um bug real:** o `fmtData()` mostrava a hora de chegada de cada confirmação no fuso de
+**quem abre o painel**. São cinco organizadores; a resposta tem que ser a mesma para todos.
+Corrigido na mesma fatia.
+
+Testado plantando uma violação:
 ```
-.pessoa-card.responsavel .pessoa-rotulo   (0,3,0)  ← a velha, vencia
-.pagina-convite .pessoa-rotulo            (0,2,0)  ← a nova
+✗ formatação de data/hora sem timeZone (usa o fuso de quem abre a página):
+      js/main.js:711:const x = new Date().toLocaleDateString("pt-BR");
 ```
+e voltando a verde ao remover.
 
-Os 200px de vazio eram o `.pref-grupo { flex: 1 1 200px }`: no admin ele é coluna de 200px num
-flex horizontal; no card novo o contêiner é vertical, e `flex-basis` virou **altura**. Essa
-regra o admin usa, então ela ficou — o convite só sobrescreve com `flex: none`.
+### Ajuste 2 — prefixo em vez de inventário
 
-**Nota de processo:** a primeira tentativa de limpeza foi por regex e comeu os blocos `@media` e
-`@keyframes`, o que teria içado o `:root` do modo escuro para o topo e quebrado o admin. Revertido
-e refeito à mão. Regex não entende chave aninhada.
+As 68 regras herdadas do admin foram prefixadas com `.pagina-admin`. Não muda nada visualmente e
+elimina a pele órfã fora de escopo.
+
+**Mas o prefixo sozinho não bastou**, e a tela mostrou por quê: com os dois lados escopados, o
+empate de especificidade passa a ser decidido pela **ordem**, e o bloco novo estava *antes* do
+herdado. O cartão antigo do login (380px, centralizado, cantos arredondados) continuava vencendo
+o novo, com o seletor idêntico. Duas correções:
+
+- removidas as regras do `.login-box` antigo, que a pele nova substitui inteiras;
+- o bloco da Fatia 12 movido para **depois** das herdadas.
+
+É o mesmo problema da Fatia 11 aparecendo pela terceira vez — agora resolvido por ordem, que é
+determinística, em vez de por especificidade, que é acidente.
+
+## As três perguntas, implementadas
+
+**P1 — barra do prazo:** régua da primeira confirmação recebida até o prazo. Sem confirmação, sem
+barra. **Com o prazo vencido trava em 100%** e o texto vira "As confirmações estão encerradas" em
+vez de contar dias negativos — a borda que o review pediu.
+
+**P2 — modo escuro:** o painel é claro nos dois esquemas. Medição abaixo.
+
+**P3 — carimbo:** hora do último carregamento da sessão, no fuso da festa.
 
 ## Verificação integrada
 
-Cópia servida do scratchpad, a 390px, dirigida de verdade.
+### Guarda de completude — o teste da Fatia 4
 
-### Fail-loud — um estado só
+Com o `GET /rest/v1/pessoas` **pendurado para sempre** (interceptado no `fetch`, que é a camada
+real — a primeira tentativa, stubando o builder do supabase-js, não pegava porque
+`.select().order()` devolve outro builder):
+
 ```json
-{ "falhaDeCarga": { "erro": true, "hero": false, "secaoOnde": false, "secaoFotos": false,
-                    "secaoRsvp": false, "sucesso": false, "rodape": true, "chips": 0 } }
+{ "config_carregou": true, "festa_carregou": true, "pessoas": "GET pendurado — nunca resolve",
+  "estCusto": 0, "estVolumes": 0, "fecTotais": 0, "fecContas": 0,
+  "resumoConfirmados": "0", "resumoGrupos": "0" }
 ```
-A asserção que já quebrou três vezes segue verde, agora com `#rsvpSucesso` na conta.
+
+Config e festa chegaram; **nada** calculou com o estado pela metade.
 
 ### Modo escuro — idêntico
 ```
-claro : folha rgb(244,239,226) · input rgb(255,255,255) · texto rgb(20,17,13) · card rgb(255,255,255)
-escuro: folha rgb(244,239,226) · input rgb(255,255,255) · texto rgb(20,17,13) · card rgb(255,255,255)
+claro : body rgb(236,234,229) · coluna rgb(247,246,243) · card rgb(20,17,13) · input rgb(255,255,255)
+escuro: body rgb(236,234,229) · coluna rgb(247,246,243) · card rgb(20,17,13) · input rgb(255,255,255)
+diferenças: nenhuma
 ```
 
-### Os 7 estados
-```
-carregando       "160" pulsando, tela cheia
-contagem         countdown 86/13/45/30, CTA e formulário abertos
-e-hoje           {"tipo":"hoje","texto":"É hoje!11h, Salão 3. Corre.","countdown":false,"form":true}
-passou           {"tipo":"passou","cta":false,"form":false,"encerrado":true,"prazoAberto":false}
-rsvp-encerrado   {"form":false,"encerrado":true,"countdown":true,"cta":true,
-                  "texto":"As confirmações fecharam em 02/10/2026 — a pizza já foi encomendada."}
-enviado          {"sucessoVisivel":true,"heroEscondido":true,"formNoDom":true}
-erro             "POXA" + rodapé, e mais nada
-```
+### Convite intacto — comparação site contra site
 
-O `prazoAberto: false` no `passou` é a guarda de corrida funcionando: o `status_rsvp` respondeu
-"aberto" **depois** de o `tick()` já ter fechado o formulário, e o aviso não apareceu por cima.
-
-### RSVP ponta a ponta
-```
-rsvps:   [UUID('e747aee7-…'), 'Teste Fatia 11', '51940404011', '51940404011', [2], 'sem cebola']
-pessoas: ['Teste Fatia 11', 'adulto', 'principal', 0, True,  False, False, True,  None]
-         ['Léo Teste',      'crianca','acompanhante',1, False, True,  False, False, None]
-```
-O payload não mudou de forma. `bebe_chopp` False na criança (a regra ficou, divergindo do
-mockup de propósito), `aniversariante_id` NULL nos dois. Apagado depois:
-```
-rsvps: 0 | pessoas órfãs: 0 | config: prazo 2026-10-02, pizza 20.00
-aniversariantes: ['Bruno', 'Braz', 'Bocão']
-```
-
-### "Mudar minha confirmação"
-```json
-{ "sucessoEscondido": true, "heroDeVolta": true, "formDeVolta": true,
-  "nomePreservado": "Teste Fatia 11", "acompanhantePreservado": ["Léo Teste"],
-  "botao": "Confirmar", "botaoHabilitado": true }
-```
-
-### O `.ics`
-```
-DTSTART:20261031T140000Z
-LOCATION:Salão 3 — Av. Cel. Marcos\, 627\, Pedra Redonda\, Porto Alegre/RS
-```
-14:00 UTC = **11h em São Paulo**. Vírgulas escapadas. Servido por Blob URL, como o review pediu.
-
-### Admin intacto
-```
-fonteCorpo: Inter · fonteTitulo: Fraunces · temAnton: false · bodyClasse: (nenhuma)
-input[type=text]: bg rgb(30,24,48) / texto rgb(243,236,255)   (modo escuro preservado)
-```
-
-### Contraste — medido no CSS final, não no mockup
-24 pares lidos do DOM renderizado. **Todos passam.** Os apertados:
-
-| Par | Ratio | Mínimo | |
-|---|---|---|---|
-| título vermelho 66px | 4,10:1 | 3 | ✔ |
-| botão Confirmar (creme sobre vermelho) | 4,10:1 | 3 | ✔ **depois do ajuste** |
-| dica mono 11px | 4,97:1 | 4,5 | ✔ |
-| rótulo Dia/Onde 11px | 5,15:1 | 4,5 | ✔ |
-| selo e kicker vermelhos 11px | 5,51:1 | 4,5 | ✔ |
-
-**O botão reprovava.** O mockup pedia 23px, e o corte de "texto grande" no WCAG é 24px para peso
-400 — então 4,10:1 era medido contra 4,5, não contra 3. Subi para 24px. Não é improviso: o
-próprio `prompt-design.md` manda não usar `#d8352a` abaixo de 24px, então os 23px eram uma
-contradição interna da especificação, e o ajuste vai na direção que ela mesma escreve.
-
-## Divergências conscientes do mockup
-
-| O quê | Por quê |
-|---|---|
-| **Chopp bloqueado para criança** | a constraint do banco é a fonte da verdade; o design não manda em regra de negócio (P4, aprovado) |
-| **Carrossel com dots, sem setas** | o mockup tem 3 slides fixos; a vida real tem N do Storage (P1, aprovado). Dots com alvo de 30px e arrasto com limiar de 40px |
-| **Sem botão "Falar com o Bruno"** | não existe telefone em `festa` nem em `config`. A coluna vem na fatia do admin (P2, decisão do Bruno) |
-| **Botão Confirmar a 24px** | contraste medido (acima) |
-| **"É hoje!" só com o nome do salão** | `local` guarda o endereço inteiro e ele não cabe na frase |
-| **Rodapé visível no erro** | o mockup mostra o erro sozinho; o rodapé é a única pista de que a página é a certa |
-
-## Contrato de ids — mudou
-
-Saem `#carPrev` e `#carNext` (as setas). Entram `#ctaTopo`, `#totalPessoas`, `#rsvpSucesso`,
-`#sucessoResumo`, `#sucessoLista`, `#btnAgenda`, `#btnMudar`. `#secaoOnde` continua existindo,
-agora **dentro** do hero. O `BRIEFING.md` já está atualizado.
-
-## O que sobrou
-
-**Nada pendente do lado do Bruno.**
-
-**Para saber, não para fazer:**
-
-- **O WhatsApp cacheia preview de link com força.** Depois do push, o preview antigo pode
-  persistir por um tempo — não é bug, é cache. E as quatro `<meta>` de `og:` são o **único**
-  conteúdo escrito à mão do convite: o WhatsApp não executa JavaScript, então mudar data ou local
-  no painel exige mexer nelas junto. Está registrado no próprio `index.html`.
-- **Pendências antigas seguem:** rotacionar a senha do Postgres, e conferir preços antes de
-  divulgar o link. O prazo é **01/10/2026, 23:59:59 em São Paulo** — a saída bruta do bloco de
-  verificação diz `2026-10-02` porque `::date` casta o timestamp em UTC; o valor certo é o de
-  cima (ver *Depois do fechamento*).
-
-**Para a fatia do admin (Cowork):**
-
-- Os inputs de `email`, `password`, `date` e `url` do painel não são cobertos pelo seletor
-  `input[type=text], input[type=tel], textarea, select` e ficam com o visual padrão do navegador.
-  É anterior a esta fatia e o redesign do admin resolve de uma vez.
-- Se `whatsapp_contato` entrar na `festa` (P2), lembrar que essa tabela é **lida por qualquer
-  visitante** — o telefone ali é publicamente legível.
-
-## Depois do fechamento
-
-### O `UPDATE` do salão — feito
-
-Confirmado pelo Bruno. Backup da linha inteira impresso antes, conferência depois:
+Servi uma cópia do estado **antes** da fatia em `/antes/` e comparei 45 elementos × 14
+propriedades computadas:
 
 ```
-antes:  local = 'Salão 3 — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS'
-depois: local = 'Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS'
-        local_mapa, titulo, data_texto, data: inalterados · rsvps: 0 · festa: 1 linha
+elementosComparados: 45 · propriedadesPorElemento: 14
+diferenças: 1  →  .car-dots button  (backgroundColor)
 ```
 
-`replace()` no campo, não reescrita: endereço, bairro e cidade continuam byte a byte. O
-`local_mapa` não menciona o salão, então não precisou mudar. No ar:
-`ONDE  Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS`.
+A única diferença é **qual dot do carrossel está ativo** — ele avança sozinho a cada 5s, então
+depende do instante da medição. Confirmado lendo os três dots: o ativo é opaco, os outros a 40%,
+nos dois lados. Título do convite segue em `Anton, Impact, sans-serif`.
 
-### Um bug achado ao conferir o site publicado (`49e9f76`)
+### Não-regressão do que está em uso
 
-O rodapé do formulário dizia "confirme até 01/10/2026" e eu tinha escrito neste arquivo que o
-prazo era 02/10. **A tela estava certa e eu estava errado**: li `prazo_confirmacao::date`, que
-casta o timestamp em UTC. O prazo é `2026-10-01 23:59:59` em São Paulo.
-
-Mas a conferência destapou um defeito real: o `main.js` formatava o prazo com
-`toLocaleDateString("pt-BR")` **sem fixar o fuso**, então usava o do navegador. Como o instante
-gravado é 23:59:59-03:00, qualquer fuso a leste de São Paulo já está no dia seguinte:
+Editei e salvei **pelo painel**, com o formulário de verdade:
 
 ```
-America/Sao_Paulo   01/10/2026   certo — por coincidência
-UTC                 02/10/2026   errado
-Europe/Lisbon       02/10/2026   errado
-Asia/Tokyo          02/10/2026   errado
-Pacific/Kiritimati  02/10/2026   errado
+antes:  preco_pizza_adulto = 20,00
+salvo:  "Configuração salva. ✅"  →  banco: Decimal('23.45')
+custo_real_chopp / pago_por_chopp: None / None   ← o update foi ESTREITO
+restaurado: 20,00
 ```
 
-É a mesma armadilha da Fatia 7, que foi corrigida no `admin.js` e **nunca** no `main.js` — lá o
-problema estava no cálculo da data, aqui na formatação dela. Corrigido com
-`Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" })` nos dois pontos (o aviso de
-prazo aberto e o texto de prazo encerrado). Verificado nos cinco fusos acima.
+O `update` não tocou em `custo_real_*` nem em `pago_por_*`. É o invariante do item 4 do prompt,
+provado em vez de afirmado.
 
-**Lição para o `verify.sh`:** ele não tem asserção de fuso. Os dois bugs desta família foram
-achados por inspeção, não por teste. Vale uma asserção que rode o formatador sob `TZ` diferente
-— fica anotado para quem pegar a próxima fatia.
-
-### Renomear aniversariante — feito à mão, e o que isso revelou
-
-Um aniversariante pediu para trocar o nome; o Bruno não achou onde fazer isso no painel. Rodei:
-
+Carregamento na aba Ajustes, direto por `#ajustes`:
 ```
-antes:  festa   = ['Bruno', 'Braz', 'Bocão']      pessoas(id=3).nome = 'Bocão'
-depois: festa   = ['Bruno', 'Braz', 'JH Boca']    pessoas(id=3).nome = 'JH Boca'
-        rsvps: 0 · pessoas: 3 · titulo e local inalterados
+{ "convite": {"titulo":"Festa dos 160 anos","local":"Salão Grande — Av. C…","aniv3":"JH Boca"},
+  "precoPizza": "20,00", "prazo": "2026-10-01", "blocosAniv": 3, "fotos": 3 }
 ```
 
-**Dois achados para a fatia do admin, e nenhum deles é "falta a funcionalidade":**
+**O prazo lido pela tela é 01/10/2026** — não pelo `::date`, que foi o que me enganou na Fatia 11.
 
-1. **O campo existe** — `nome_aniv_1/2/3` estão no formulário **Convite** (`admin.js:112-136`),
-   não na seção **Aniversariantes**, que só edita consumo. Quem procura "onde renomeio o
-   aniversariante" procura no lugar com o nome dele. É problema de lugar, não de recurso, e o
-   mockup do admin já resolve ao juntar tudo em **Ajustes**.
+### Roteamento
+```
+inicial (sem hash)      → resumo
+clique em Contas        → #contas,  visível: contas
+hash mudado por fora    → #compras, visível: compras
+hash inválido           → #nao-existe, visível: resumo
+botão voltar            → #compras, visível: compras
+recarregar em #ajustes  → abre em Ajustes
+```
 
-2. **O nome mora em dois lugares e o painel só grava um.** `festa.nome_aniv_N` é a fonte única;
-   `pessoas.nome` é o snapshot de quando o aniversariante foi cadastrado. Salvar pelo Convite
-   atualiza a `festa` e **deixa o snapshot velho** — o próprio código reconhece isso
-   (`admin.js:165-171`) e mitiga fazendo `nomeDoAniversariante()` preferir a `festa`, então nada
-   quebra na tela. Mas a divergência fica no banco. Eu gravei os dois à mão; a fatia do admin
-   decide se o Convite passa a gravar os dois, ou se o snapshot morre.
+### Desktop
+```
+larguraColuna: 560 · larguraAbas: 560 · aba aberta: contas
+```
 
-## Próxima
+### Dado do Bruno, ao fim
+```
+precos: pizza 20.00 / pizza-criança 20.00 / chopp 10.00 / refri 5.00 / água 3.00
+litros_chopp_por_adulto: 2.500
+prazo (São Paulo): 01/10/2026 23:59:59
+custo_real_chopp / pago_por_chopp: None / None
+festa: 'Festa dos 160 anos' · 'Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS'
+       · Bruno · Braz · JH Boca
+aniversariantes: ['Bruno', 'Braz', 'JH Boca']
+admins: 4  (o usuário temporário de teste foi removido; auth.users com o e-mail de teste: 0)
+```
 
-O P6 (desconfirmar + `localStorage`) e a superfície do **admin**, que é sua. O pacote de design
-do admin já está commitado em `docs/revisao/design/admin/`.
+## ⚠️ A primeira confirmação de verdade chegou
+
+Durante esta fatia entrou um RSVP real:
+
+```
+rsvp:   'Rosaura', 51995509956, convidado_por [3] (JH Boca), 'Te amooooo'
+pessoa: 'Rosaura', adulto, principal, água + pizza
+```
+
+**Não encostei nela.** A partir daqui, todo teste que gravar RSVP apaga **por nome**, nunca em
+bloco — `delete from rsvps` sem `where` deixou de ser seguro neste projeto.
+
+Ela já aparece no Resumo: 4 confirmados (3 aniversariantes + Rosaura), 1 grupo, e o recado no
+bloco de "Recados e restrições", classificado como recado e não restrição.
+
+## O que fica para as próximas
+
+- **Fatia 13** (Quem vem + Compras): a tabela de 7 colunas ainda é a de hoje, dentro da aba.
+- **Fatia 14** (Ajustes): os quatro `<details>` provisórios saem; os inputs `date` e `url`
+  ganham o seletor (o `email`/`password` já foi pago aqui); e o aviso na tela de Ajustes de que
+  as `<meta>` `og:` do convite **não** seguem o painel.
+- **Fatia 15** (Contas): as 4 fases.
+- **Dívida aberta:** quando a Fatia 14 fechar, nenhuma página lerá o `:root` no escuro e o bloco
+  `@media (prefers-color-scheme: dark)` pode ser removido inteiro.
