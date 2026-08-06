@@ -213,6 +213,30 @@ prazo aberto e o texto de prazo encerrado). Verificado nos cinco fusos acima.
 achados por inspeção, não por teste. Vale uma asserção que rode o formatador sob `TZ` diferente
 — fica anotado para quem pegar a próxima fatia.
 
+### Renomear aniversariante — feito à mão, e o que isso revelou
+
+Um aniversariante pediu para trocar o nome; o Bruno não achou onde fazer isso no painel. Rodei:
+
+```
+antes:  festa   = ['Bruno', 'Braz', 'Bocão']      pessoas(id=3).nome = 'Bocão'
+depois: festa   = ['Bruno', 'Braz', 'JH Boca']    pessoas(id=3).nome = 'JH Boca'
+        rsvps: 0 · pessoas: 3 · titulo e local inalterados
+```
+
+**Dois achados para a fatia do admin, e nenhum deles é "falta a funcionalidade":**
+
+1. **O campo existe** — `nome_aniv_1/2/3` estão no formulário **Convite** (`admin.js:112-136`),
+   não na seção **Aniversariantes**, que só edita consumo. Quem procura "onde renomeio o
+   aniversariante" procura no lugar com o nome dele. É problema de lugar, não de recurso, e o
+   mockup do admin já resolve ao juntar tudo em **Ajustes**.
+
+2. **O nome mora em dois lugares e o painel só grava um.** `festa.nome_aniv_N` é a fonte única;
+   `pessoas.nome` é o snapshot de quando o aniversariante foi cadastrado. Salvar pelo Convite
+   atualiza a `festa` e **deixa o snapshot velho** — o próprio código reconhece isso
+   (`admin.js:165-171`) e mitiga fazendo `nomeDoAniversariante()` preferir a `festa`, então nada
+   quebra na tela. Mas a divergência fica no banco. Eu gravei os dois à mão; a fatia do admin
+   decide se o Convite passa a gravar os dois, ou se o snapshot morre.
+
 ## Próxima
 
 O P6 (desconfirmar + `localStorage`) e a superfície do **admin**, que é sua. O pacote de design
