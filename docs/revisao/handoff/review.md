@@ -1,73 +1,76 @@
-# Review — Fatia 12 (admin: casca + Resumo)
+# Review — Fatia 13 (admin: "Quem vem" + "Compras")
 
-**Veredito: aprovado, com dois ajustes** (a asserção de fuso tem um falso positivo garantido, e o
-CSS antigo do admin precisa de destino). As três perguntas respondidas no fim.
+**Veredito: aprovado**, com dois acréscimos pequenos e as três perguntas respondidas.
 
-## "As abas não carregam nada" — a melhor decisão do plano
-Eu tinha levantado a guarda de completude como risco número um, e você resolveu **não criando o
-problema**: as abas trocam visibilidade, o carregamento segue uma vez só no `mostrarPainel()` com a
-serialização de hoje. O argumento fecha — a guarda não sobrevive a carregamento sob demanda, e não
-há o que otimizar em ~30 grupos. Reintroduzir uma corrida para depois defendê-la seria trabalho
-para piorar. Aprovado sem ressalva.
+## Os quatro riscos — bem resolvidos
 
-## Ajuste 1 — a asserção de fuso vai dar falso positivo no dia um
-A ideia (invariante estático em vez de teste de execução) é certa e pega a família inteira,
-inclusive em arquivo que ainda não existe. Mas a regra como escrita — *nenhum `toLocaleString` sem
-`timeZone`* — **quebra em código legítimo que já está no repo**: `fmtNumeroBR` no `admin.js` e
-`fmtLitros` no `main.js` usam `Number(x).toLocaleString("pt-BR", …)`, que é formatação de **número**
-e não tem nada a ver com fuso. Vermelho no primeiro `verify.sh` convida a afrouxar a regra, e aí ela
-morre.
+**1. Exclusão.** Concordo com a confirmação nomeada e **concordo em não somar fricção**: o
+argumento está certo — fricção alta em ação frequente ensina a passar por ela no automático, e o
+botão já está atrás de dois toques deliberados. O **toast com o conteúdo apagado em texto** é a
+ideia boa da fatia: não é desfazer, mas é o que permite refazer à mão, e custa uma linha.
 
-Duas correções, as duas necessárias:
-- **Tire `toLocaleString` genérico da regra** (ou exija allowlist explícita), e mantenha
-  `toLocaleDateString` e `toLocaleTimeString`, que são inequivocamente data/hora.
-- **Inclua `Intl.DateTimeFormat`** — é justamente a API que a gente passou a usar nas correções, e
-  um `Intl.DateTimeFormat("pt-BR")` sem `timeZone` tem exatamente o mesmo bug e escaparia da regra
-  atual. Sem isso, o invariante protege o caminho antigo e deixa o novo aberto.
+Registro a dívida no lugar certo: quando o `cancelar_rsvp` (P6 da Fatia 11) virar fatia, **a
+lixeira anda junto** — "convidado cancela" e "admin apagou sem querer" são a mesma família
+(`apagado_em` + ajuste de RLS), e fazer as duas de uma vez é mais barato que duas mudanças de
+schema no mesmo lugar.
 
-## Ajuste 2 — o CSS antigo do admin precisa de destino, não de sorte
-Você identificou o risco certo ("nada de regra nova sem prefixo"), mas o perigo da Fatia 11 não
-veio de regra nova: veio da regra **velha** que ficou fora de escopo e **venceu por
-especificidade** (`.pessoa-card.responsavel .pessoa-rotulo` 0,3,0 batendo `.pagina-convite
-.pessoa-rotulo` 0,2,0). Aqui o CSS atual do admin é global e **vai conviver** com o novo durante as
-fatias 12–14, por causa das seções provisórias. É o mesmo cenário, com os papéis trocados.
+**2. Recarregar em vez de remendar os arrays.** Certo, e pelo motivo certo: remendar array à mão é
+onde nasce divergência silenciosa, e aqui ela apareceria como número errado de pizza. Uma ida a
+mais ao banco numa festa de 30 grupos não é custo.
 
-**Proponho resolver mecanicamente no commit 1: prefixar as regras existentes do admin com
-`.pagina-admin`.** Não muda nada visualmente (o `<body>` ganha a classe de qualquer forma), elimina
-a possibilidade de pele órfã não-escopada, e faz a ordem de cascata decidir em vez da
-especificidade acidental. Se preferir não mexer, então quero no `status.md` o **inventário** dos
-seletores antigos com especificidade ≥ (0,2,0) que possam ganhar dos novos, e a conferência deles no
-fecho da Fatia 14 — mas o prefixo é mais barato que o inventário.
+**3. WhatsApp.** A tabela está certa, e uma coisa que você acertou sem citar merece ficar
+explícita: **decidir por comprimento antes de olhar o prefixo** é o que salva o caso mais provável
+aqui. `55` é DDI do Brasil **e** é o DDD de Santa Maria/RS — um convidado de lá com 11 dígitos
+(`55987654321`) precisa virar `5555987654321`. Uma regra que checasse "começa com 55 → já tem DDI"
+mandaria a mensagem para o lugar errado, e vocês são de Porto Alegre: DDDs 51/54/55 vão aparecer
+de verdade nessa lista.
+
+**Acréscimo:** ponha esse caso no verify, ao lado do da Rosaura. É o teste que a regra ingênua
+reprova.
+
+E "melhor não ter botão do que ter botão que abre conversa com desconhecido" é a política certa
+para o caso inválido.
+
+**4. Escape.** Certo, incluindo o ponto de que `esc()` não basta no `href` — `encodeURIComponent`
+onde entra em URL.
+
+## Acréscimo 2 — o estado da lista depois da recarga
+Consequência de recarregar tudo no `delete`: a lista re-renderiza, e **busca, filtro ativo e quais
+cards estão expandidos** podem voltar ao zero. Excluir um grupo e ver a busca sumir é irritante
+justamente na hora em que o organizador está limpando várias coisas. Preserve pelo menos **busca e
+filtro** (o card expandido é aceitável perder). Não bloqueia, mas quero na verificação.
 
 ## As três perguntas
 
-**P1 — a régua da barra do prazo: aprovado**, com uma borda. `min(rsvps.criado_em)` como origem é
-dado real, já está carregado (nada de consulta nova) e responde à pergunta certa. Sem confirmação
-ainda → sem barra, só a data e o "faltam N dias": correto. **Falta o outro extremo:** com o prazo
-**vencido**, a barra tem que ler 100% e o texto virar "encerrado" — não pode passar de 100% nem
-mostrar dias negativos. Cubra esse caso.
+**P1 — dois estados vazios: aprovado.** "Nenhuma confirmação ainda" e "nenhum resultado" pedem
+coisas diferentes, e o botão de limpar no segundo é o certo.
 
-**P2 — modo escuro: claro nos dois esquemas.** (Decisão do Bruno, confirmada.) O pacote de design é
-claro e a tabela de contraste foi medida em fundo claro; um segundo conjunto de tokens que não
-existe não vai ser inventado aqui. Remap das globais dentro de `.pagina-admin`, no primeiro commit,
-como asserção — exatamente como você planejou. E anotada a dívida: quando a Fatia 14 fechar,
-nenhuma página lerá o `:root` no escuro e o bloco `@media` pode sair.
+**P2 — formato do texto do fornecedor: aprovado, com uma linha a mais.** Inclua a **data da
+festa** no cabeçalho — quem recebe a lista precisa saber para quando é, e é a primeira pergunta
+que o fornecedor faz:
 
-**P3 — "atualizado às HH:MM": último carregamento da sessão.** Aprovado, e pelo motivo que você
-deu: a pergunta de quem olha é "esse número na minha tela está velho?", não "quando o convite foi
-editado". `festa.atualizado_em` responderia outra coisa.
+```
+Festa dos 160 anos — 31/10/2026, sábado, 11h
+Lista de compra
+...
+```
 
-## O resto, aprovado
-Hash para o estado da aba (sobrevive ao reload, é compartilhável, degrada sozinho, e
-`replaceState` para não empilhar histórico) — certo, e melhor que `localStorage` aqui. Atualizar
-`render()` no **mesmo commit** que aposenta `#stats` — certo, e a lembrança da Fatia 11 é
-pertinente. Pagar a dívida dos seletores `email`/`password` agora, porque é a tela de login, e
-deixar `date`/`url` para a 14 com os formulários — bom recorte.
+Sem preço está certo (é lista, não orçamento). E confirmando o que a Fatia 5 já tinha decidido:
+**não arredonde para barril** — 92,5 L sai como 92,5 L; quantos barris comprar é decisão do
+organizador com o fornecedor, e embutir isso escondia uma regra de negócio num texto.
+
+**P3 — grupo com mais de um anfitrião aparece nos dois filtros: aprovado.** É a leitura certa —
+"quem o Bruno chamou" inclui quem ele chamou junto com outro. Uma nota para não confundir depois: o
+filtro é **lente**, não contabilidade. Quem paga o quê está em Contas, onde o mesmo convidado vale
+meia unidade para cada um. Então não mostre nessa aba nenhum total por aniversariante que possa ser
+lido como "a conta do Bruno".
+
+## Nit (opcional)
+A busca por "nome ou contato" poderia varrer também o **nome dos acompanhantes** — "o Léo vem?" é
+uma pergunta natural, e o nome já aparece no card expandido. Se for barato, entra; se não, fica.
 
 ## Verificação
-Cobre o que importa. Dois reforços: o item 4 (**convite intacto**) é o que me deixa dormir —
-compare `getComputedStyle` antes/depois de verdade, não só o `grep` de `Anton`. E no item 1, ao
-restaurar os dados do Bruno, confirme também que o **prazo continua 01/10/2026 23:59 SP** lido pela
-tela (não pelo `::date`, que foi o que enganou na Fatia 11).
+Cobre o que importa. Some os dois casos acima (DDD 55 e a preservação de busca/filtro após excluir)
+e mantenha a prova da **Rosaura intacta** ao fim.
 
 Pode `executa`.

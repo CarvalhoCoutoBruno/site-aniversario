@@ -97,53 +97,46 @@
            A tabela de 7 colunas sai na Fatia 13. Até lá mora aqui,
            inteira e funcionando: feio é aceitável, quebrado não é. -->
       <section class="ad-aba" id="aba-quem-vem" role="tabpanel" aria-labelledby="tab-quem-vem" hidden>
-      <!-- Tabela de confirmações -->
-      <div class="tabela-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Quando</th>
-              <th>Responsável</th>
-              <th>Convidou</th>
-              <th>Pessoas</th>
-              <th>Preferências</th>
-              <th>Recado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tabelaBody"></tbody>
-        </table>
+      <input type="search" id="buscaGrupos" class="ad-busca"
+             placeholder="Buscar por nome ou WhatsApp" autocomplete="off" />
+      <div class="ad-filtros" id="filtrosGrupos"></div>
+
+      <p class="msg-toast lista-msg" id="listaMsg"></p>
+      <div class="lista-grupos" id="listaGrupos"></div>
+
+      <!-- Dois vazios diferentes: banco vazio pede paciência; busca sem
+           resultado pede limpar o filtro. -->
+      <p class="vazio" id="listaVazia" hidden>Nenhuma confirmação ainda.</p>
+      <div class="vazio" id="listaSemResultado" hidden>
+        <p>Nenhuma confirmação bate com essa busca.</p>
+        <button type="button" class="ad-btn" id="btnLimparBusca">Limpar busca e filtros</button>
       </div>
-      <p class="vazio" id="tabelaVazia" hidden>Nenhuma confirmação ainda.</p>
       </section>
 
       <!-- ---------- Compras (provisório até a Fatia 13) ---------- -->
       <section class="ad-aba" id="aba-compras" role="tabpanel" aria-labelledby="tab-compras" hidden>
-      <!-- Estimativa de compra -->
-      <details class="admin-secao config-secao" id="estSecao">
-        <summary><h2>Estimativa de compra 🛒</h2></summary>
+      <div class="res-bloco">
+        <b class="res-titulo">Lista de compra</b>
+        <p class="res-nota" id="comprasBase">&mdash;</p>
+        <div class="compras-lista" id="comprasLista"></div>
+        <p class="msg-toast" id="comprasAviso" hidden></p>
+        <button type="button" class="ad-btn ad-btn-largo" id="btnCopiarCompras">
+          &#128203; Copiar para o fornecedor
+        </button>
+        <p class="res-nota" id="comprasCopiaMsg"></p>
+        <textarea class="compras-texto" id="comprasTexto" rows="10" readonly hidden></textarea>
+      </div>
 
-        <p class="campo-dica">
-          O que comprar, a partir de quem já confirmou — aniversariantes inclusive. Números para
-          passar ao fornecedor. <strong>Não é a conta final</strong>: o custo abaixo usa os preços
-          de referência da config, não o que foi gasto de verdade.
+      <div class="res-bloco">
+        <div class="res-bloco-topo">
+          <b>Custo estimado</b>
+          <b class="mono compras-custo" id="comprasCusto">&mdash;</b>
+        </div>
+        <p class="res-nota">
+          Usa os preços de referência dos Ajustes &mdash; não é o gasto real.
+          O que foi pago de verdade entra em Contas.
         </p>
-
-        <p class="msg-toast err" id="estAvisoAniv" hidden></p>
-
-        <h3 class="est-titulo">Bebidas (litros)</h3>
-        <div class="stats" id="estVolumes"></div>
-
-        <h3 class="est-titulo">Pizzas (por pessoa)</h3>
-        <div class="stats" id="estPizzas"></div>
-
-        <h3 class="est-titulo">Custo aproximado</h3>
-        <div class="stats" id="estCusto"></div>
-        <p class="campo-dica" id="estAvisoPrecos" hidden></p>
-
-        <h3 class="est-titulo">Quem consome o quê</h3>
-        <div class="stats" id="estContagens"></div>
-      </details>
+      </div>
       </section>
 
       <!-- ---------- Contas (provisório até a Fatia 15) ---------- -->

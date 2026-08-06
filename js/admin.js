@@ -603,32 +603,34 @@
     if (ultimoResumo) montarResumo(ultimoResumo.grupos, ultimoResumo.todas, ultimoResumo.cont);
   }
 
+  /* ================= ABA "COMPRAS" =================
+     Só leitura, sobre a mesma Calculo.estimativa() de sempre. */
+
   function atualizarEstimativa() {
     if (!ultimaConfig || !ultimasPessoas) return;
     const e = Calculo.estimativa(ultimasPessoas, ultimaConfig);
     const c = e.contagens;
 
-    $("#estVolumes").innerHTML = [
-      cartao(fmtLitros(e.litrosChopp) + " L", "Chopp"),
-      cartao(fmtLitros(e.litrosRefri) + " L", "Refrigerante"),
-      cartao(fmtLitros(e.litrosAgua) + " L", "Água"),
-    ].join("");
+    // Litro é litro: NÃO arredondo para barril. Quantos barris comprar é
+    // decisão do organizador com o fornecedor, e embutir isso aqui
+    // esconderia uma regra de negócio dentro de um texto.
+    const itens = [
+      ["Chopp", fmtLitros(e.litrosChopp) + " L"],
+      ["Refrigerante", fmtLitros(e.litrosRefri) + " L"],
+      ["Água", fmtLitros(e.litrosAgua) + " L"],
+      ["Pizza (adulto)", String(e.pizzaAdultos)],
+      ["Pizza (criança)", String(e.pizzaCriancas)],
+    ];
 
-    $("#estPizzas").innerHTML = [
-      cartao(e.pizzaAdultos, "Pizzas de adulto"),
-      cartao(e.pizzaCriancas, "Pizzas de criança"),
-    ].join("");
-
-    $("#estCusto").innerHTML = cartao(Calculo.formatarBRL(e.custoEstimado), "Custo aproximado");
-
-    $("#estContagens").innerHTML = [
-      cartao(c.totalPessoas, "Pessoas"),
-      cartao(c.adultos, "Adultos"),
-      cartao(c.criancas, "Crianças"),
-      cartao(c.chopp, "Bebem chopp"),
-      cartao(c.refri, "Bebem refri"),
-      cartao(c.agua, "Bebem água"),
-    ].join("");
+    $("#comprasBase").textContent =
+      `Calculada sobre ${c.totalPessoas} ${c.totalPessoas === 1 ? "confirmado" : "confirmados"}, ` +
+      "aniversariantes incluídos.";
+    $("#comprasLista").innerHTML = itens.map(([nome, valor]) => `
+      <div class="compras-linha">
+        <span>${esc(nome)}</span>
+        <b class="mono">${esc(valor)}</b>
+      </div>`).join("");
+    $("#comprasCusto").textContent = Calculo.formatarBRL(e.custoEstimado);
 
     // Com os preços ainda nas sementes (0), o custo sai zerado. Os
     // volumes seguem úteis; a tela avisa em vez de deixar o organizador
@@ -636,26 +638,54 @@
     const precos = ["preco_litro_chopp", "preco_litro_refri", "preco_litro_agua",
                     "preco_pizza_adulto", "preco_pizza_crianca"];
     const semPreco = precos.every((k) => Number(ultimaConfig[k]) === 0);
-    const avisoPrecos = $("#estAvisoPrecos");
-    avisoPrecos.hidden = !semPreco;
-    if (semPreco) {
-      avisoPrecos.textContent =
-        "Os preços de referência ainda estão zerados na configuração — por isso o custo dá R$ 0,00. Os volumes acima já valem.";
-    }
+    const aviso = $("#comprasAviso");
+    aviso.hidden = !semPreco;
+    aviso.className = "msg-toast" + (semPreco ? " err" : "");
+    aviso.textContent = semPreco
+      ? "Os preços ainda estão zerados em Ajustes — os volumes valem, o custo não."
+      : "";
 
-    // Aniversariante não cadastrado não consome nada no cálculo, e o
-    // resultado fica plausível e errado. Conto na própria lista para não
-    // depender de outro carregador (mesma corrida).
-    const cadastrados = ultimasPessoas.filter((p) => p.papel === "aniversariante").length;
-    const aviso = $("#estAvisoAniv");
-    aviso.hidden = cadastrados >= 3;
-    if (cadastrados < 3) {
-      const faltam = 3 - cadastrados;
-      aviso.textContent =
-        `Só ${cadastrados} de 3 aniversariantes cadastrados — falta o consumo de ` +
-        `${faltam === 1 ? "1 deles" : faltam + " deles"} nesta conta.`;
-    }
+    $("#comprasTexto").value = textoDoFornecedor(itens, c.totalPessoas);
   }
+
+  /* Texto para colar no WhatsApp do fornecedor. Sem preço: é lista, não
+     orçamento. Com a data no cabeçalho, que é a primeira coisa que o
+     fornecedor pergunta. */
+  function textoDoFornecedor(itens, total) {
+    const f = ultimaFesta;
+    const quando = f && f.data
+      ? new Intl.DateTimeFormat("pt-BR", {
+          timeZone: "America/Sao_Paulo", weekday: "long",
+          day: "2-digit", month: "2-digit", year: "numeric",
+          hour: "2-digit", minute: "2-digit", hour12: false,
+        }).format(new Date(f.data)).replace(",", " —")
+      : "";
+    return [
+      `${(f && f.titulo) || "Festa"}${quando ? " — " + quando : ""}`,
+      "Lista de compra",
+      "",
+      ...itens.map(([nome, valor]) => `${nome}: ${valor}`),
+      "",
+      `Base: ${total} ${total === 1 ? "confirmado" : "confirmados"}`,
+    ].join("\n");
+  }
+
+  $("#btnCopiarCompras").addEventListener("click", async () => {
+    const texto = $("#comprasTexto").value;
+    const msg = $("#comprasCopiaMsg");
+    try {
+      // exige contexto seguro e pode ser negada pelo usuário
+      await navigator.clipboard.writeText(texto);
+      msg.textContent = "Copiado! ✅";
+    } catch (e) {
+      // sem saída melhor que mostrar erro: expõe o texto para copiar na mão
+      console.warn("clipboard indisponível:", e);
+      const area = $("#comprasTexto");
+      area.hidden = false;
+      area.select();
+      msg.textContent = "Não consegui copiar sozinho — o texto está aí embaixo, selecionado.";
+    }
+  });
 
   /* ================= FECHAMENTO E RATEIO =================
      Lança o custo real e mostra as 3 contas — uma por aniversariante.
@@ -1090,41 +1120,196 @@
     ultimoResumo = { grupos, todas, cont };
     montarResumo(grupos, todas, cont);
 
-    const body = $("#tabelaBody");
-    $("#tabelaVazia").hidden = grupos.length > 0;
-    body.innerHTML = grupos.map((r) => {
-      const pessoas = porGrupo.get(r.id) || [];
-      const pessoasHTML = pessoas.map((p, i) => {
-        const nome = p.nome || `Acompanhante ${i}`;
-        const tipo = p.tipo === "crianca" ? " <small>(criança)</small>" : "";
-        return `<div><b>${esc(nome)}</b>${tipo}</div>`;
-      }).join("");
-      const prefsHTML = pessoas.map((p, i) => {
-        const nome = p.nome || `Acompanhante ${i}`;
-        const t = preferencias(p);
-        return `<div>${esc(nome)}: ${t.length ? t.map((x) => `<span class="pill">${esc(x)}</span>`).join("") : "<small>—</small>"}</div>`;
-      }).join("");
-      // convidado_por guarda o ID; o nome vem do config.js pelo índice
-      const anivHTML = (r.convidado_por || [])
-        .map((id) => `<span class="pill">${esc(nomesAniversariantes()[id - 1] || "?" + id)}</span>`)
-        .join("");
-      return `<tr>
-        <td>${fmtData(r.criado_em)}</td>
-        <td><b>${esc(r.nome_principal)}</b><br><small>${esc(r.contato)}</small></td>
-        <td>${anivHTML}</td>
-        <td>${pessoasHTML}</td>
-        <td>${prefsHTML}</td>
-        <td>${r.observacoes ? esc(r.observacoes) : "<small>—</small>"}</td>
-        <td><button class="p-remover" data-id="${r.id}" title="Apagar">✕</button></td>
-      </tr>`;
-    }).join("");
+    // busca e filtro NÃO são remontados aqui: moram em variáveis, então
+    // sobrevivem à recarga que o excluir dispara. Perder a busca no meio
+    // de uma limpeza seria irritante justamente na pior hora.
+    ultimaLista = { grupos, porGrupo };
+    montarFiltros();
+    montarLista();
+  }
 
-    $$(".p-remover", body).forEach((b) => b.addEventListener("click", async () => {
-      if (!confirm("Apagar esta confirmação?")) return;
-      const { error } = await sb.from("rsvps").delete().eq("id", b.dataset.id);
-      if (error) alert("Erro ao apagar."); else carregarRSVPs();
+  /* ================= ABA "QUEM VEM" =================
+     Um card por grupo, expansível. A tabela de 7 colunas saiu: no
+     celular — que é onde o painel é usado — ela era ilegível. */
+
+  let filtroAtivo = "todos";           // "todos" | "criancas" | "1" | "2" | "3"
+  const abertos = new Set();           // ids dos cards expandidos
+  let ultimaLista = null;              // { grupos, porGrupo } do último carregamento
+
+  function montarFiltros() {
+    const nomes = nomesAniversariantes();
+    const defs = [["todos", "Todos"], ["criancas", "Com crianças"],
+                  ["1", nomes[0]], ["2", nomes[1]], ["3", nomes[2]]];
+    $("#filtrosGrupos").innerHTML = defs.map(([id, nome]) =>
+      `<button type="button" class="ad-filtro${id === filtroAtivo ? " ativo" : ""}" data-filtro="${id}">${esc(nome)}</button>`
+    ).join("");
+    $$("#filtrosGrupos .ad-filtro").forEach((b) => b.addEventListener("click", () => {
+      filtroAtivo = b.dataset.filtro;
+      montarFiltros();
+      montarLista();
     }));
   }
+
+  // "Acompanhante N" quando não tem nome: a pessoa existe no rateio mesmo
+  // sem nome, e sumir com ela já foi bug uma vez.
+  const nomeDaPessoa = (p, i) => p.nome || `Acompanhante ${i}`;
+
+  function combinaBusca(g, pessoas, termo) {
+    if (!termo) return true;
+    // varre também o nome dos acompanhantes: "o Léo vem?" é pergunta natural
+    const alvo = [g.nome_principal, g.contato,
+                  ...pessoas.map((p, i) => nomeDaPessoa(p, i))].join(" ").toLowerCase();
+    return alvo.includes(termo);
+  }
+
+  function combinaFiltro(g, pessoas) {
+    if (filtroAtivo === "todos") return true;
+    if (filtroAtivo === "criancas") return pessoas.some((p) => p.tipo === "crianca");
+    // O filtro é LENTE, não contabilidade: um grupo com convidado_por
+    // [1,3] aparece nos dois. Quem paga o quê está em Contas, onde o
+    // mesmo convidado vale meia unidade para cada anfitrião — por isso
+    // esta aba não mostra total nenhum por aniversariante.
+    return (g.convidado_por || []).map(String).includes(filtroAtivo);
+  }
+
+  function montarLista() {
+    if (!ultimaLista) return;
+    const { grupos, porGrupo } = ultimaLista;
+    const termo = $("#buscaGrupos").value.trim().toLowerCase();
+
+    const visiveis = grupos.filter((g) => {
+      const pessoas = porGrupo.get(g.id) || [];
+      return combinaFiltro(g, pessoas) && combinaBusca(g, pessoas, termo);
+    });
+
+    const filtrando = !!termo || filtroAtivo !== "todos";
+    $("#listaVazia").hidden = grupos.length > 0;
+    $("#listaSemResultado").hidden = !(grupos.length > 0 && visiveis.length === 0 && filtrando);
+
+    $("#listaGrupos").innerHTML = visiveis.map((g) => cardDoGrupo(g, porGrupo.get(g.id) || [])).join("");
+    ligarCards();
+  }
+
+  function cardDoGrupo(g, pessoas) {
+    const aberto = abertos.has(g.id);
+    const anfitrioes = (g.convidado_por || [])
+      .map((id) => nomeDoAniversariante(id, "?" + id)).join(", ");
+    const linhas = pessoas.map((p, i) => {
+      const itens = preferencias(p);
+      return `<div class="pessoa-linha">
+        <span class="pessoa-linha-nome">${esc(nomeDaPessoa(p, i))}</span>
+        <span class="mono pessoa-linha-tipo${p.tipo === "crianca" ? " crianca" : ""}">${p.tipo === "crianca" ? "criança" : "adulto"}</span>
+        <span class="mono pessoa-linha-itens">${itens.length ? esc(itens.join(" · ").toLowerCase()) : "—"}</span>
+      </div>`;
+    }).join("");
+
+    return `<div class="grupo-card">
+      <button type="button" class="grupo-topo" data-toggle="${esc(g.id)}" aria-expanded="${aberto}">
+        <span class="grupo-quem">
+          <b>${esc(g.nome_principal)}</b>
+          <span class="mono grupo-meta">${esc(g.contato)}${anfitrioes ? " · convidado por " + esc(anfitrioes) : ""}</span>
+        </span>
+        <span class="mono grupo-qtd">${pessoas.length}</span>
+        <span class="grupo-seta" aria-hidden="true">${aberto ? "▲" : "▼"}</span>
+      </button>
+      ${aberto ? `<div class="grupo-corpo">
+        ${linhas}
+        ${g.observacoes ? `<p class="grupo-recado">${esc(g.observacoes)}</p>` : ""}
+        <p class="mono grupo-quando">chegou em ${esc(fmtData(g.criado_em))}</p>
+        <div class="grupo-acoes">
+          ${linkDeContato(g)}
+          <button type="button" class="grupo-excluir" data-excluir="${esc(g.id)}">Excluir</button>
+        </div>
+      </div>` : ""}
+    </div>`;
+  }
+
+  /* ---- contato -> link ----
+     `contato` é o que o convidado digitou. Um wa.me com os dígitos crus
+     manda para o país errado: a Rosaura está como 51995509956, e +51 é
+     o Peru.
+
+     ⚠️ A decisão é por COMPRIMENTO antes de prefixo, e isso não é
+     detalhe: 55 é o DDI do Brasil E o DDD de Santa Maria/RS. Um número
+     de lá (55987654321, 11 dígitos) tem que virar 5555987654321. Uma
+     regra do tipo "começa com 55, logo já tem DDI" mandaria a mensagem
+     para outra pessoa — e Porto Alegre convive com 51, 54 e 55.
+
+     Comprimento desconhecido não vira link: melhor não ter botão do que
+     ter botão que abre conversa com desconhecido. */
+  function numeroWhats(contato) {
+    const bruto = String(contato || "");
+    if (bruto.includes("@")) return null;
+    const d = bruto.replace(/\D/g, "");
+    if (d.length === 10 || d.length === 11) return "55" + d;                  // DDD + número
+    if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d; // já tem DDI
+    return null;
+  }
+
+  function linkDeContato(g) {
+    const contato = String(g.contato || "");
+    if (contato.includes("@")) {
+      return `<a class="grupo-acao" href="mailto:${encodeURIComponent(contato)}">Enviar e-mail</a>`;
+    }
+    const num = numeroWhats(contato);
+    if (!num) return `<span class="grupo-acao grupo-acao-morta">Contato: ${esc(contato)}</span>`;
+    return `<a class="grupo-acao" href="https://wa.me/${encodeURIComponent(num)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>`;
+  }
+
+  function ligarCards() {
+    $$("[data-toggle]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.toggle;
+      if (abertos.has(id)) abertos.delete(id); else abertos.add(id);
+      montarLista();
+    }));
+    $$("[data-excluir]").forEach((b) => b.addEventListener("click", () => excluirGrupo(b.dataset.excluir)));
+  }
+
+  async function excluirGrupo(id) {
+    const { grupos, porGrupo } = ultimaLista;
+    const g = grupos.find((x) => x.id === id);
+    if (!g) return;
+    const pessoas = porGrupo.get(id) || [];
+
+    // Nomear quem vai sumir, e a consequência. "Tem certeza?" genérico
+    // não diz o que se perde.
+    const frase = `Apagar a confirmação de ${g.nome_principal} e as ${pessoas.length} ` +
+      `${pessoas.length === 1 ? "pessoa" : "pessoas"} do grupo? Isso não tem como desfazer.`;
+    if (!confirm(frase)) return;
+
+    // O conteúdo apagado, em texto, montado ANTES de sumir: não é
+    // desfazer, mas é o que permite refazer à mão se foi engano.
+    const copia = [
+      `${g.nome_principal} · ${g.contato}`,
+      `convidado por: ${(g.convidado_por || []).map((i) => nomeDoAniversariante(i, "?" + i)).join(", ") || "—"}`,
+      ...pessoas.map((p, i) => `- ${nomeDaPessoa(p, i)} (${p.tipo}): ${preferencias(p).join(", ") || "nada"}`),
+      g.observacoes ? `recado: ${g.observacoes}` : null,
+    ].filter(Boolean).join("\n");
+
+    const { error } = await sb.from("rsvps").delete().eq("id", id);
+    if (error) { console.error(error); return toastLista("Não consegui apagar.", "err"); }
+
+    abertos.delete(id);
+    toastLista("Apagado. O que sumiu:\n" + copia, "ok");
+    // Recarrega em vez de remendar os arrays: é o que garante que Resumo,
+    // Compras e Contas mudem junto. Busca e filtro sobrevivem porque
+    // moram em variáveis, não no HTML.
+    await carregarRSVPs();
+  }
+
+  function toastLista(msg, classe) {
+    const el = $("#listaMsg");
+    el.className = "msg-toast" + (classe ? " " + classe : "");
+    el.textContent = msg;
+  }
+
+  $("#buscaGrupos").addEventListener("input", montarLista);
+  $("#btnLimparBusca").addEventListener("click", () => {
+    $("#buscaGrupos").value = "";
+    filtroAtivo = "todos";
+    montarFiltros();
+    montarLista();
+  });
 
   /* ================= FOTOS ================= */
   async function carregarFotos() {
