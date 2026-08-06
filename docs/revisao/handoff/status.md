@@ -1,174 +1,160 @@
-# Status — Fatia 15: Admin, aba "Contas" (as 4 fases)
+# Status — Fatia 16: fechar a refatoração de idioma
 
-**Fatia fechada. O painel está migrado por inteiro** — zero `<details>`, zero classes de CSS sem
-consumidor. O backlog do admin zerou.
+**Fatia fechada.** O convite voltou ao ar, a trava do reset está viva de novo, e o código não tem
+mais identificador em português — nem em comentário.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-15-admin-contas` → merge `--ff-only` → apagada |
-| Commits | 3, cada um verde no `./verify.sh` |
-| Commit do código | `d11fd5e3604b9bcbf2c90e1887a2c443e54f3764` |
-| `origin/main` após o push | `3b395c49a2dbd9a005e92e39559d6612f97a548b` |
+| Branch | `fix/fatia-16-fecha-idioma` → merge `--ff-only` → apagada |
+| Commits | 8, cada um verde no `./verify.sh` |
+| Commit do código | `HASH_CODIGO` |
+| `origin/main` após o push | `HASH_ORIGIN` |
 | `main == origin/main` | **sim** |
-| `tests/calculo.test.js` | **63 asserções, inalteradas** — `calculo.js` só ganhou comentário |
+| `tests/calc.test.js` | 63 asserções, inalteradas |
 
-## O conserto do nome, provado de ponta a ponta
+## Item zero — o site estava fora do ar, e o motivo era o Jekyll
 
-Com `pessoas.nome` **NULO** nas três linhas de aniversariante:
-
-```
-banco   : [[1, None], [2, None], [3, None]]
-tela    : Bruno · Braz · JH Boca          (rateio, saldos, filtros, Resumo)
-WhatsApp: "Acerto das contas:\n• JH Boca → Bruno: R$ 50,00"
-```
-
-O texto do WhatsApp é o que fecha a prova: ele é montado **dentro** do `resumoAcerto()`, e chegou
-com os nomes certos porque o `pessoasParaCalculo()` resolveu antes de o dado entrar. Sem o helper,
-o mesmo módulo devolve:
+O Pages não reconstruía desde o push da refatoração. Diagnóstico:
 
 ```
-Aniversariante 1 | Aniversariante 2 | Aniversariante 3
+raw.githubusercontent .../js/main.js      -> from("party")   ← o código NOVO estava no GitHub
+raw.githubusercontent .../.nojekyll       -> HTTP 200
+carvalhocoutobruno.github.io/.nojekyll    -> HTTP 404        ← o Pages não publicou
+last-modified do main.js publicado        -> anterior ao push
 ```
 
-(medido rodando o `calculo.js` com as linhas cruas, no `jsc`).
+Ou seja: commit no GitHub, build não rodando. Sem `.nojekyll` o Pages roda **Jekyll**, e o repo
+tem HTML com `{{ }}` nos mockups de design que o Liquid tenta interpretar. Adicionei `.nojekyll`
+— o site é estático puro, Jekyll não fazia nada por ele além de acrescentar um modo de falha.
 
-As duas condições do review estão cumpridas: a sincronia criada na Fatia 14 **saiu**, e o cadastro
-de aniversariante **parou de gravar `nome`** — as duas repopulariam a coluna por caminhos
-diferentes. O contrato ficou escrito no cabeçalho do `calculo.js`.
-
-## As 4 fases, com o estado que produziu cada uma
-
-### `pendente` — nada lançado
-```
-selo : ○ "Feche o custo real primeiro: falta lançar o gasto de chopp, refrigerante ou água."
-campos: placeholder "não sei", borda âmbar
-```
-
-### `nao-confere` — o caso órfão
-```
-plantado: chopp 700,00 · refri 100,00 (ÓRFÃO: ninguém bebe refri) · água 50,00 · pizza 30,00
-selo : ! "As contas do rateio não fecham — resolva isso antes de acertar entre vocês."
-Total gasto R$ 880,00  ·  Total rateado R$ 780,00
-```
-Os R$ 100 do refrigerante não têm dono. Segui a nota do review e **não** tentei o caminho do
-`convidado_por` inválido — ele é inalcançável, a constraint impede.
-
-### `falta-pagador`
-```
-plantado: refri 0,00 (ninguém bebe, então 0 é o valor certo) · só o chopp com pagador
-selo : ✓ "Indique quem pagou: água, pizza."
-Total gasto R$ 780,00  ·  Total rateado R$ 780,00     ← já bate
-```
-O selo fica azul (o rateio confere) mas o acerto segue bloqueado — as duas coisas são distintas,
-e a tela mostra isso.
-
-### `completo`
-```
-selo : ✓ "As contas fecham: a soma do que cada um paga bate com o gasto total, até o centavo."
-saldos: Bruno   R$ 50,00 a receber   (deve 650,00 · pagou 700,00)
-        Braz    R$  0,00 quite       (deve  50,00 · pagou  50,00)
-        JH Boca R$ 50,00 a pagar     (deve  80,00 · pagou  30,00)
-transferência: JH Boca → Bruno: R$ 50,00
-```
-
-## O ×6,5 da regra §4.2 — na tela e no módulo
-
-A base: 5 convidados só do Bruno + 1 dividido Bruno/Braz + o próprio Bruno, todos no chopp.
-A Rosaura está na base e bebe **água e pizza, não chopp**, então não perturba o `C_chopp` — mas
-entra no total gasto, como o review lembrou.
+Destravou. Confirmado em produção:
 
 ```
-C_chopp = 70000 centavos / 7 consumidores = 10000 centavos
-unidades do Bruno = 5 + 0,5 + 1 = 6,5
-esperado 6,5 × C_chopp = 65000 centavos
-na conta do Bruno      = 65000 centavos   -> bate
-o Braz leva os 0,5     =  5000 centavos
+FESTA DOS 160 ANOS · 40 BRUNO + 50 BRAZ + 70 JH BOCA = 160
+DIA   Sábado, 31 de outubro de 2026, às 11h
+ONDE  Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS
+85 DIAS 22 HORAS 44 MIN
 ```
 
-E na tela, no mesmo estado: **"Bruno R$ 650,00 — Chopp R$ 650,00"** e **"Braz R$ 50,00"**.
+**Ganho durável:** arquivo novo no repo não pode mais quebrar a publicação do convite.
 
-## Reconciliação — em centavos inteiros
+## Item 1 — a trava estava morta, e as duas metades importavam
 
-```
-custoRealTotal : 78000 centavos
-totalRateado   : 78000 centavos
-Σ das 3 contas : 78000 centavos
-bate ao centavo: true
-```
+`to_regclass('public.config')` e `('public.festa')` devolviam NULL depois do rename, então os dois
+`if` caíam fora. Não eram duas linhas: eram os blocos 46–79 e 83–99 inteiros. Sobrou só o freio de
+`rsvps`, que estava vazia — **um Run no editor do Supabase apagaria preço, taxa, prazo e o
+convite sem uma palavra.**
 
-Comparei em inteiros e não em string formatada. A armadilha era real:
+A segunda metade, que o review sublinhou: as chaves lidas por `to_jsonb` também eram nomes
+antigos, e chave inexistente em `jsonb` devolve NULL, não erro. Corrigir só as tabelas deixaria a
+guarda passando calada e o conserto **parecendo** pronto.
 
-```
-formatarBRL(123456) = "R$ 1.234,56"
-o caractere 3 é código 160 (não-quebrável), não 32 (espaço comum)
-```
-
-## `update` estreito — a prova invertida
-
-Plantei nos campos da **Ajustes** e salvei os **dois** formulários desta aba:
+Provado nas duas direções:
 
 ```
---- plantados na Ajustes, sobreviveram ---
-preco_pizza_adulto      : 20.00
-litros_chopp_por_adulto : 2.500
-prazo                   : 01/10/2026 23:59:59
-preco_litro_chopp/refri : 10.00 / 5.00
---- escritos por esta aba ---
-custo_real chopp/refri/agua      : 700.00 / 0.00 / 50.00
-pago_por chopp/refri/agua/pizza  : 1 / 2 / 2 / 3
-festa                            : não tocada
+contra a base do Bruno:
+  ABORTADO: public.settings tem dado real (prazo de confirmacao definido).
+  party  : ['Salão Grande — …', 'JH Boca']     ← intacta
+  prices : [20.00, 2.500]                       ← intacta
+  people : 3                                    ← intacta
+
+num schema de brinquedo vazio:
+  a trava NÃO disparou — não é falso positivo
 ```
 
-## De onde veio cada número
+## Item 2 — corrigi o prompt, não o banco
 
-Nenhuma cifra foi calculada no `admin.js`. Contas, detalhe por item, totais, o valor ao lado de
-"quem pagou", saldos, transferências e o texto do acerto vêm de
-`Calculo.rateio()` / `acerto()` / `resumoAcerto()` / `formatarBRL()`. O selo escolhe a fase pelos
-gatilhos do módulo, e o texto do impedimento é o `motivo` — não reescrito na tela.
+O Cowork supunha que o recreate tinha deixado "Salão 3", "Bocão", preço zerado e sem prazo. Não
+tinha: eu restaurei logo depois do recreate. Conferi na fonte antes de tocar em qualquer coisa:
 
-## Compartilhar
 ```
-texto : "Festa dos 160 anos 🎉\n\nAcerto das contas:\n• JH Boca → Bruno: R$ 50,00"
-wa.me : mesmo texto, sem número — quem compartilha escolhe o contato
-clipboard negada: "Não consegui copiar sozinho — o texto está aí embaixo, selecionado."
-                  (textarea visível e selecionado)
+venue: Salão Grande — …   celebrant_3_name: JH Boca
+preços: 20 / 10 / 5 / 3   taxa de chopp: 2,500   prazo: 01/10/2026 23:59:59
 ```
 
-## Um bug meu, da fatia passada
+**Não reescrevi valor certo com valor lembrado.** O que valia era a segunda metade: o *seed* do
+`supabase-setup.sql` ainda tinha os valores velhos e o próximo recreate reverteria. Corrigido.
+Preço, taxa e prazo continuam fora do seed — são operacionais, e é o que a trava protege.
 
-A guarda que eu pus no `mostrarPainel()` na Fatia 14 travava o painel **inteiro** — e isso criou
-um caso pior que o bug original: com uma **sessão morta em cache**, o `getSession()` monta o
-painel, a trava fecha, e o login seguinte (com a senha certa) não recarrega nada. O organizador
-fica olhando um painel vazio depois de entrar.
+## Item 3 — `calculo.js` → `calc.js`
 
-Apareceu comigo mesmo, tentando logar nesta fatia com o token do usuário da fatia anterior.
-O que precisava de trava era só o `prepararUpload()`; recarregar dado é idempotente.
+`git mv` nos três arquivos; o git reconheceu como rename (`R099`, `R098`, `R095`), então
+`git log --follow` acompanha. Referências atualizadas no `admin.html`, no `require` e no cabeçalho
+do teste, no `test.html`, no `verify.sh`, no `FLUXO.md` e nos docs vivos.
 
-## Não-regressão
+**Os prompts arquivados em `docs/revisao/prompts/` não foram tocados**: são registro do que foi
+pedido na época, e reescrevê-los para nomear um arquivo que não existia falsificaria o histórico.
+
+De quebra: a ET dizia "41 asserções" desde a Fatia 5.
+
+## Item 4 — policies, e uma pegadinha
+
+14 renomeadas, aplicadas em transação única, **depois** de o site voltar — a ordem que o review
+pediu, e ele estava certo: não se gasta risco de produção com estética no meio de uma queda.
+
+**A pegadinha:** aplicar os blocos do arquivo não renomeia, **duplica**. O `drop policy if exists`
+cita o nome NOVO, que ainda não existia, então as 14 antigas ficaram e o banco foi para 28. Como
+policy é permissiva e as regras eram idênticas, o comportamento não mudou — mas o estado ficou
+sujo. Derrubei as antigas num segundo bloco, também em transação. Final: 14, todas em inglês.
+
+**RLS provada pelo estado do banco, não pelo HTTP:**
+
 ```
-modo escuro (admin) : 6 propriedades, claro × escuro — nenhuma diferença
-convite intacto     : 44 elementos × 14 propriedades — NENHUMA diferença
-<details> no admin  : 0
-classes de CSS órfãs: nenhuma
+RSVP gravado em produção pela RPC   -> banco: rsvps = 1
+anon lendo rsvps                    -> []      ← [] com tabela NÃO vazia = RLS barrando
+anon lendo settings (tem preço)     -> []
+anon lendo party                    -> a linha do convite  ← leitura pública, correta
+POST direto em rsvps/people/settings/party -> 401
 ```
 
-## Estado final do banco
+Isso fecha junto o **RSVP ponta a ponta em produção** com tabela e RPC novas. Apagado pelo próprio
+identificador depois.
+
+## Itens 5, 6 e 7
+
+**70 comentários** passaram a nomear o que existe. O que **não** mudou, de propósito: `pessoas` e
+`festa` como palavra portuguesa em frase corrida — *"4 pessoas perde a conta"*, *"a festa já
+rolou"*, *"Fotos da festa"*. É a diferença entre varrer e rodar um `sed` burro.
+
+O bucket `fotos` fica, com a nota no `config.js` de que é legado proposital — renomear bucket no
+Supabase é criar outro e mover objeto a objeto, com foto real dentro.
+
+`FLUXO.md` registra a regra do último recreate barato e, mais útil, **como a trava morre**:
+`to_regclass` e `to_jsonb` devolvem NULL em silêncio quando o nome muda. Por isso o teste tem duas
+direções.
+
+## A auditoria do `verify.sh` que o review pediu
+
+Plantei violação em cada um dos 5 invariantes. Todos reprovam:
+
 ```
-config: pizza 20.00 · litros chopp 2.500 · prazo 01/10/2026 23:59:59
-fechamento (custo_real_* / pago_por_*): NULL — o fechamento de verdade é depois da festa
-festa  : 'Festa dos 160 anos' · Bruno · Braz · JH Boca
-pessoas de aniversariante: nome NULO de propósito, consumo restaurado
-Rosaura: 51995509956, convidado_por [3], 'Te amooooo' — intacta
-total rsvps: 1 · pessoas órfãs: 0 · admins: 4 · usuários de teste: 0
+credencial vazada           ✗ reprova
+placeholder COLE_A_*        ✗ reprova
+placeholder <UID_DO_ADMIN>  ✗ reprova
+insert direto na tabela     ✗ reprova   (com os nomes NOVOS: from("people"))
+data/hora sem timeZone      ✗ reprova
 ```
 
-Os 6 RSVPs de teste foram apagados **pelo prefixo `zz-teste-`**, nunca em bloco.
+⚠️ O primeiro deu **falso alívio**: plantei a connection string num `.md`, que o invariante exclui
+de propósito, e li isso como "não pega". Replantado em arquivo coberto, reprova. O teste de um
+invariante também pode estar errado — vale conferir o teste antes de acusar a regra.
+
+## Estado final
+
+```
+tabelas : admins · party · people · rsvps · settings
+funções : create_rsvp · is_admin · normalize_contact · rsvp_status · valid_invited_by
+policies: 14, todas em inglês
+party   : 'Festa dos 160 anos' · Salão Grande · Bruno · Braz · JH Boca · 31/10/2026 11:00
+settings: pizza 20,00 · chopp 10,00 · taxa 2,500 · prazo 01/10/2026 23:59:59
+people  : 3 aniversariantes, name NULL de propósito
+rsvps   : 0 · admins: 4 · fotos: 3
+convite : no ar e correto
+```
 
 ## O que sobra no projeto
 
-O painel está migrado por inteiro. Sobra **uma fatia opcional**: lixeira + `cancelar_rsvp` +
-`whatsapp_contato` — as três mexem em schema e no mesmo lugar, e o review da 13 já registrou que
-elas andam juntas. **A festa funciona sem.**
+A fatia **opcional** de sempre: lixeira + `cancelar_rsvp` + `whatsapp_contato`. A festa funciona
+sem.
 
-Pendências suas, de sempre: rotacionar a senha do Postgres, e conferir os preços antes de
-divulgar o link.
+Pendência sua: **rotacionar a senha do Postgres**, que circulou na conversa.
