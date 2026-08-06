@@ -207,133 +207,162 @@
 
       <!-- ---------- Ajustes (provisório até a Fatia 14) ---------- -->
       <section class="ad-aba" id="aba-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" hidden>
-      <!-- Convite: o que o convidado vê -->
-      <details class="admin-secao config-secao" id="conviteSecao">
-        <summary><h2>Convite 💌</h2></summary>
+      <!-- Seis blocos, cinco em acordeão e as fotos sempre abertas.
+           Preços, taxas e prazo, que eram um formulário só, viraram três:
+           cada `update` nasce estreito porque o formulário é pequeno. -->
 
-        <form id="conviteForm" novalidate>
-          <p class="campo-dica">
-            O que aparece na página do convidado. Editar aqui muda o site na hora — sem mexer em
-            código.
-          </p>
+      <div class="aj-bloco" data-aj="convite">
+        <button type="button" class="aj-topo" data-aj-toggle="convite" aria-expanded="false">
+          <span class="aj-quem">
+            <b>O convite</b>
+            <span class="aj-desc">Título, data, local e os nomes dos aniversariantes</span>
+          </span>
+          <span class="aj-sujo" hidden>não salvo</span>
+          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+        </button>
+        <div class="aj-corpo" hidden>
+          <form id="conviteForm" novalidate>
+            <label class="config-campo"><span>Título *</span>
+              <input type="text" id="cv_titulo" maxlength="120" /></label>
+            <label class="config-campo"><span>Subtítulo</span>
+              <input type="text" id="cv_subtitulo" maxlength="200" /></label>
+            <label class="config-campo"><span>Data e hora *</span>
+              <input type="datetime-local" id="cv_data" /></label>
+            <label class="config-campo"><span>Data por extenso <small>(vazio = gerada)</small></span>
+              <input type="text" id="cv_data_texto" maxlength="160" /></label>
+            <label class="config-campo"><span>Local *</span>
+              <input type="text" id="cv_local" maxlength="200" /></label>
+            <label class="config-campo"><span>Link do mapa</span>
+              <input type="url" id="cv_local_mapa" placeholder="https://..." /></label>
 
-          <fieldset class="config-bloco">
-            <legend>A festa</legend>
-            <div class="config-grid">
-              <label class="config-campo"><span>Título *</span>
-                <input type="text" id="cv_titulo" maxlength="120" /></label>
-              <label class="config-campo"><span>Subtítulo</span>
-                <input type="text" id="cv_subtitulo" maxlength="200" /></label>
-              <label class="config-campo"><span>Data e hora *</span>
-                <input type="datetime-local" id="cv_data" /></label>
-              <label class="config-campo"><span>Data por extenso <small>(vazio = gerada)</small></span>
-                <input type="text" id="cv_data_texto" maxlength="160" /></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="config-bloco">
-            <legend>Onde</legend>
-            <div class="config-grid">
-              <label class="config-campo"><span>Local *</span>
-                <input type="text" id="cv_local" maxlength="200" /></label>
-              <label class="config-campo"><span>Link do mapa</span>
-                <input type="url" id="cv_local_mapa" placeholder="https://..." /></label>
-            </div>
-          </fieldset>
-
-          <fieldset class="config-bloco">
-            <legend>Aniversariantes</legend>
-            <p class="campo-dica">
-              A <strong>posição</strong> é o identificador de cada um nas confirmações. Renomear é
-              seguro; trocar de posição reatribui quem convidou quem.
+            <!-- Colado em data e local de propósito: são estes dois que
+                 ficam mentindo no preview do WhatsApp. -->
+            <p class="aj-alerta">
+              <b>O preview do WhatsApp não segue isto.</b>
+              Título, data e local que aparecem quando alguém compartilha o link estão escritos à
+              mão no <code>index.html</code>. Mudou a data ou o local aqui? Peça para alguém
+              atualizar as <code>&lt;meta&gt;</code> do arquivo — até lá o preview continua com o
+              valor antigo.
             </p>
-            <div class="config-grid">
-              <label class="config-campo"><span>1º *</span><input type="text" id="cv_nome_aniv_1" maxlength="60" /></label>
-              <label class="config-campo"><span>2º *</span><input type="text" id="cv_nome_aniv_2" maxlength="60" /></label>
-              <label class="config-campo"><span>3º *</span><input type="text" id="cv_nome_aniv_3" maxlength="60" /></label>
-            </div>
-          </fieldset>
 
-          <div class="config-acoes">
-            <button type="submit" class="btn btn-primary" id="btnSalvarConvite">Salvar convite</button>
+            <p class="campo-dica">
+              A <strong>posição</strong> do aniversariante é o identificador dele nas confirmações.
+              Renomear é seguro; trocar de posição reatribui quem convidou quem.
+            </p>
+            <label class="config-campo"><span>1º aniversariante *</span><input type="text" id="cv_nome_aniv_1" maxlength="60" /></label>
+            <label class="config-campo"><span>2º aniversariante *</span><input type="text" id="cv_nome_aniv_2" maxlength="60" /></label>
+            <label class="config-campo"><span>3º aniversariante *</span><input type="text" id="cv_nome_aniv_3" maxlength="60" /></label>
+
+            <button type="submit" class="aj-salvar" id="btnSalvarConvite">Salvar</button>
             <small class="campo-dica" id="conviteAtualizado"></small>
-          </div>
-          <p class="msg-toast" id="conviteMsg"></p>
-        </form>
-      </details>
-      <!-- Config: preços, taxas e prazo -->
-      <details class="admin-secao config-secao" id="configSecao">
-        <summary><h2>Preços, taxas e prazo ⚙️</h2></summary>
+            <p class="msg-toast" id="conviteMsg"></p>
+          </form>
+        </div>
+      </div>
 
-        <form id="configForm" novalidate>
-          <fieldset class="config-bloco">
-            <legend>Preços de referência (R$)</legend>
-            <p class="campo-dica">
-              Servem para a estimativa de custo. Use vírgula para os centavos: <code>18,00</code>.
-            </p>
-            <div class="config-grid" id="configPrecos"></div>
-          </fieldset>
+      <div class="aj-bloco" data-aj="precos">
+        <button type="button" class="aj-topo" data-aj-toggle="precos" aria-expanded="false">
+          <span class="aj-quem">
+            <b>Preços de referência</b>
+            <span class="aj-desc">Base da estimativa de custo</span>
+          </span>
+          <span class="aj-sujo" hidden>não salvo</span>
+          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+        </button>
+        <div class="aj-corpo" hidden>
+          <form id="precosForm" novalidate>
+            <p class="campo-dica">Use vírgula para os centavos: <code>18,00</code>.</p>
+            <div id="configPrecos"></div>
+            <button type="submit" class="aj-salvar" id="btnSalvarPrecos">Salvar</button>
+            <p class="msg-toast" id="precosMsg"></p>
+          </form>
+        </div>
+      </div>
 
-          <fieldset class="config-bloco">
-            <legend>Consumo estimado por pessoa (litros)</legend>
+      <div class="aj-bloco" data-aj="taxas">
+        <button type="button" class="aj-topo" data-aj-toggle="taxas" aria-expanded="false">
+          <span class="aj-quem">
+            <b>Consumo por pessoa</b>
+            <span class="aj-desc">Litros usados no cálculo da compra</span>
+          </span>
+          <span class="aj-sujo" hidden>não salvo</span>
+          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+        </button>
+        <div class="aj-corpo" hidden>
+          <form id="taxasForm" novalidate>
             <p class="campo-dica">
               Transformam o "quem bebe o quê" em litros a comprar. Taxa zerada faz a estimativa
               daquela bebida dar zero.
             </p>
-            <div class="config-grid" id="configTaxas"></div>
-          </fieldset>
+            <div id="configTaxas"></div>
+            <button type="submit" class="aj-salvar" id="btnSalvarTaxas">Salvar</button>
+            <p class="msg-toast" id="taxasMsg"></p>
+          </form>
+        </div>
+      </div>
 
-          <fieldset class="config-bloco">
-            <legend>Prazo de confirmação</legend>
-            <div class="config-grid">
-              <label class="config-campo">
-                <span>Confirmações até o fim do dia</span>
-                <input type="date" id="cfgPrazo" />
-              </label>
-            </div>
+      <div class="aj-bloco" data-aj="prazo">
+        <button type="button" class="aj-topo" data-aj-toggle="prazo" aria-expanded="false">
+          <span class="aj-quem">
+            <b>Prazo</b>
+            <span class="aj-desc">Quando o formulário do convite fecha</span>
+          </span>
+          <span class="aj-sujo" hidden>não salvo</span>
+          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+        </button>
+        <div class="aj-corpo" hidden>
+          <form id="prazoForm" novalidate>
+            <label class="config-campo">
+              <span>Confirmações até o fim do dia</span>
+              <input type="date" id="cfgPrazo" />
+            </label>
             <p class="campo-dica">
               Vazio = sem limite. Depois dessa data o formulário público fecha e o envio é
               recusado pelo banco.
             </p>
-          </fieldset>
+            <button type="submit" class="aj-salvar" id="btnSalvarPrazo">Salvar</button>
+            <p class="msg-toast" id="prazoMsg"></p>
+          </form>
+        </div>
+      </div>
 
-          <div class="config-acoes">
-            <button type="submit" class="btn btn-primary" id="btnSalvarConfig">Salvar configuração</button>
-            <small class="campo-dica" id="configAtualizado"></small>
-          </div>
-          <p class="msg-toast" id="configMsg"></p>
-        </form>
-      </details>
-      <!-- Aniversariantes como consumidores -->
-      <details class="admin-secao config-secao" id="anivSecao">
-        <summary><h2>Aniversariantes 🎂</h2></summary>
+      <div class="aj-bloco" data-aj="aniversariantes">
+        <button type="button" class="aj-topo" data-aj-toggle="aniversariantes" aria-expanded="false">
+          <span class="aj-quem">
+            <b>Aniversariantes</b>
+            <span class="aj-desc">O que cada um consome na festa</span>
+          </span>
+          <span class="aj-sujo" hidden>não salvo</span>
+          <span class="aj-seta" aria-hidden="true">&#9660;</span>
+        </button>
+        <div class="aj-corpo" hidden>
+          <form id="anivForm" novalidate>
+            <p class="campo-dica">
+              Eles pagam 100% do próprio consumo e entram na estimativa como qualquer pessoa.
+              Para <strong>renomear</strong>, é no bloco "O convite".
+            </p>
+            <div id="anivBlocos"></div>
+            <button type="submit" class="aj-salvar" id="btnSalvarAniv">Salvar</button>
+            <p class="msg-toast" id="anivMsg"></p>
+          </form>
+        </div>
+      </div>
 
-        <form id="anivForm" novalidate>
-          <p class="campo-dica">
-            O que cada aniversariante consome. Eles pagam 100% do próprio consumo e entram na
-            estimativa como qualquer pessoa. Os nomes vêm do <code>config.js</code> — para
-            renomear, é lá.
-          </p>
-
-          <div id="anivBlocos"></div>
-
-          <div class="config-acoes">
-            <button type="submit" class="btn btn-primary" id="btnSalvarAniv">Salvar aniversariantes</button>
-          </div>
-          <p class="msg-toast" id="anivMsg"></p>
-        </form>
-      </details>
-      <!-- Gestão de fotos -->
-      <section class="admin-secao">
-        <h2>Fotos do carrossel 📸</h2>
-        <label class="upload-drop" id="uploadDrop">
-          <input type="file" id="fileInput" accept="image/*" multiple />
-          <b>Clique ou arraste as fotos aqui</b><br />
-          <small>JPG, PNG, WEBP ou GIF</small>
-        </label>
-        <p class="msg-toast" id="fotoMsg"></p>
-        <div class="fotos-grid" id="fotosGrid"></div>
-      </section>
+      <div class="aj-bloco aj-bloco-aberto">
+        <div class="aj-fotos-cab">
+          <b>Fotos do convite</b>
+          <span class="aj-desc">As imagens que passam na seção "Fotos da festa".</span>
+        </div>
+        <div class="aj-corpo">
+          <label class="upload-drop" id="uploadDrop">
+            <input type="file" id="fileInput" accept="image/*" multiple />
+            <b>Toque para enviar</b>
+            <small>JPG, PNG, WEBP ou GIF</small>
+          </label>
+          <p class="msg-toast" id="fotoMsg"></p>
+          <div class="fotos-grid" id="fotosGrid"></div>
+        </div>
+      </div>
       </section>
     </div>
 

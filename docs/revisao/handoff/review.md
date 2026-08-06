@@ -1,76 +1,63 @@
-# Review — Fatia 13 (admin: "Quem vem" + "Compras")
+# Review — Fatia 14 (admin: aba "Ajustes")
 
-**Veredito: aprovado**, com dois acréscimos pequenos e as três perguntas respondidas.
+**Veredito: aprovado.** As três perguntas respondidas abaixo; nada a mudar no plano.
 
-## Os quatro riscos — bem resolvidos
+## O que está certo e vale registrar
 
-**1. Exclusão.** Concordo com a confirmação nomeada e **concordo em não somar fricção**: o
-argumento está certo — fricção alta em ação frequente ensina a passar por ela no automático, e o
-botão já está atrás de dois toques deliberados. O **toast com o conteúdo apagado em texto** é a
-ideia boa da fatia: não é desfazer, mas é o que permite refazer à mão, e custa uma linha.
+**O corte em três `Salvar` deixa o `update` estreito de graça.** A observação é boa: o mockup
+quebrou `configForm` exatamente onde a estrutura do código já estava separada (`CAMPOS_PRECO`,
+`CAMPOS_TAXA`). Em vez de disciplina, vira arquitetura — o `patch` fica pequeno porque o
+formulário é pequeno. E a regra que você manteve é a que importa: **nenhum `patch` montado por
+varredura**, cada um lista as colunas à mão.
 
-Registro a dívida no lugar certo: quando o `cancelar_rsvp` (P6 da Fatia 11) virar fatia, **a
-lixeira anda junto** — "convidado cancela" e "admin apagou sem querer" são a mesma família
-(`apagado_em` + ajuste de RLS), e fazer as duas de uma vez é mais barato que duas mudanças de
-schema no mesmo lugar.
+**"Fui verificar em vez de supor" no bloco do modo escuro.** Os dois `<body>` já carregam classe de
+escopo, então o `@media (prefers-color-scheme: dark)` do `:root` está morto desde a Fatia 12 — e a
+aba Contas ainda ser provisória não muda nada, porque ela também mora dentro de `.pagina-admin`. Com
+medição antes e depois, pode sair.
 
-**2. Recarregar em vez de remendar os arrays.** Certo, e pelo motivo certo: remendar array à mão é
-onde nasce divergência silenciosa, e aqui ela apareceria como número errado de pizza. Uma ida a
-mais ao banco numa festa de 30 grupos não é custo.
-
-**3. WhatsApp.** A tabela está certa, e uma coisa que você acertou sem citar merece ficar
-explícita: **decidir por comprimento antes de olhar o prefixo** é o que salva o caso mais provável
-aqui. `55` é DDI do Brasil **e** é o DDD de Santa Maria/RS — um convidado de lá com 11 dígitos
-(`55987654321`) precisa virar `5555987654321`. Uma regra que checasse "começa com 55 → já tem DDI"
-mandaria a mensagem para o lugar errado, e vocês são de Porto Alegre: DDDs 51/54/55 vão aparecer
-de verdade nessa lista.
-
-**Acréscimo:** ponha esse caso no verify, ao lado do da Rosaura. É o teste que a regra ingênua
-reprova.
-
-E "melhor não ter botão do que ter botão que abre conversa com desconhecido" é a política certa
-para o caso inválido.
-
-**4. Escape.** Certo, incluindo o ponto de que `esc()` não basta no `href` — `encodeURIComponent`
-onde entra em URL.
-
-## Acréscimo 2 — o estado da lista depois da recarga
-Consequência de recarregar tudo no `delete`: a lista re-renderiza, e **busca, filtro ativo e quais
-cards estão expandidos** podem voltar ao zero. Excluir um grupo e ver a busca sumir é irritante
-justamente na hora em que o organizador está limpando várias coisas. Preserve pelo menos **busca e
-filtro** (o card expandido é aceitável perder). Não bloqueia, mas quero na verificação.
+**Fotos:** a confirmação nomeando o arquivo e dizendo *onde ele aparece* ("sai do carrossel do
+convite") é melhor que a genérica, e reconhecer que aqui não dá para ecoar o conteúdo — é imagem —
+com o nome do arquivo servindo de pista para reenviar, resolve bem o que dava para resolver.
 
 ## As três perguntas
 
-**P1 — dois estados vazios: aprovado.** "Nenhuma confirmação ainda" e "nenhum resultado" pedem
-coisas diferentes, e o botão de limpar no segundo é o certo.
+**P1 — três `Salvar`: sim, siga o mockup**, com o marcador de "não salvo" no cabeçalho do acordeão.
+O ganho (cada `update` nasce estreito) vale mais que o risco, e o marcador cobre o risco.
 
-**P2 — formato do texto do fornecedor: aprovado, com uma linha a mais.** Inclua a **data da
-festa** no cabeçalho — quem recebe a lista precisa saber para quando é, e é a primeira pergunta
-que o fornecedor faz:
+Uma tranquilidade a mais sobre o cenário que te preocupou: como as abas são só troca de
+visibilidade, **trocar de aba e voltar não perde edição pendente** — o input continua no DOM com o
+valor digitado. A perda só acontece em recarga ou logout, que é exatamente onde o marcador aparece.
+Detalhe de implementação: o marcador tem de ligar no `input` do usuário e **não** no preenchimento
+programático do `carregarConfig()`, senão nasce sujo; e limpar após salvar.
 
-```
-Festa dos 160 anos — 31/10/2026, sábado, 11h
-Lista de compra
-...
-```
+**P2 — editor de Aniversariantes: sim, mantenha blocos + chips.** O `["Bruno", "chopp · pizza"]` do
+mockup é placeholder, e a regra do chopp para criança vive ali — regra não vem do mockup. Revestir
+com os tokens novos dentro do acordeão é a leitura certa, e concordo que não há outra.
 
-Sem preço está certo (é lista, não orçamento). E confirmando o que a Fatia 5 já tinha decidido:
-**não arredonde para barril** — 92,5 L sai como 92,5 L; quantos barris comprar é decisão do
-organizador com o fornecedor, e embutir isso escondia uma regra de negócio num texto.
+**P3 — sincronizar `pessoas.nome` ao renomear: sim, entra nesta fatia** — e a razão de eu não
+mandar para outra é que aqui é o único lugar onde a informação existe (você está no formulário que
+renomeia). São poucas linhas, mata a divergência prática de hoje e não mexe em `convidado_por`.
 
-**P3 — grupo com mais de um anfitrião aparece nos dois filtros: aprovado.** É a leitura certa —
-"quem o Bruno chamou" inclui quem ele chamou junto com outro. Uma nota para não confundir depois: o
-filtro é **lente**, não contabilidade. Quem paga o quê está em Contas, onde o mesmo convidado vale
-meia unidade para cada um. Então não mostre nessa aba nenhum total por aniversariante que possa ser
-lido como "a conta do Bruno".
+Duas condições: o `update` tem de ser **estreito também aqui** (só a coluna `nome`, só linhas com
+`papel='aniversariante'`, só quando o nome mudou), e **no-op** quando o aniversariante ainda não
+foi cadastrado como consumidor.
 
-## Nit (opcional)
-A busca por "nome ou contato" poderia varrer também o **nome dos acompanhantes** — "o Léo vem?" é
-uma pergunta natural, e o nome já aparece no card expandido. Se for barato, entra; se não, fica.
+**E fica registrado o conserto de verdade, para a Fatia 15:** o certo não é manter duas cópias em
+acordo, é **parar de guardar o nome na linha de aniversariante** — a `festa` é a fonte, e a coluna
+pode ficar nula nessas linhas (a constraint `principal_tem_nome` só exige nome para
+`papel='principal'`). Não faço agora porque exigiria auditar todos os leitores de `pessoas.nome`, e
+os principais — contas, saldos, transferências — **estão prestes a ser reescritos na Fatia 15**.
+Auditar tela que vai ser refeita é trabalho jogado fora. Na 15 sai de graça.
+
+## Nota de copy
+O aviso das `<meta>` `og:` está no lugar certo (dentro do acordeão do Convite, colado em data e
+local). Diga também **o que fazer** — que o preview só muda quando alguém editar o `index.html` —
+senão o organizador lê que está errado e não sabe a quem recorrer.
 
 ## Verificação
-Cobre o que importa. Some os dois casos acima (DDD 55 e a preservação de busca/filtro após excluir)
-e mantenha a prova da **Rosaura intacta** ao fim.
+Cobre o que importa, e **plantar valor em `custo_real_chopp` e `pago_por_chopp` antes da bateria**
+para provar que sobrevivem a todos os salvamentos é a forma certa de testar o invariante: prova, em
+vez de afirmação. Some no item 3 a conferência de que o nome novo aparece **sem** re-salvar o bloco
+de Aniversariantes.
 
 Pode `executa`.

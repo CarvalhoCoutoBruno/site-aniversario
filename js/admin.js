@@ -177,6 +177,11 @@
       return erroConvite("local_mapa", "O link do mapa precisa começar com http:// ou https://.");
     }
 
+    // os nomes de antes, para saber quais mudaram de verdade
+    const anteriores = ultimaFesta
+      ? [ultimaFesta.nome_aniv_1, ultimaFesta.nome_aniv_2, ultimaFesta.nome_aniv_3]
+      : [null, null, null];
+
     const patch = {
       titulo: txt("titulo"),
       subtitulo: txt("subtitulo") || null,
@@ -201,6 +206,9 @@
       console.error(error);
       return toastConvite("Não consegui salvar o convite.", "err");
     }
+    await sincronizarNomeDosAniversariantes(anteriores, patch);
+
+    limparSujo("convite");
     toastConvite("Convite salvo. ✅ O site já está mostrando isso.", "ok");
     // await antes dos dependentes: os rótulos dos blocos e a coluna
     // "convidou" saem dos nomes, e sem esperar pegariam os antigos.
@@ -208,6 +216,29 @@
     carregarAniversariantes();
     carregarRSVPs();
   });
+
+  /* O nome do aniversariante mora em dois lugares: `festa.nome_aniv_*`,
+     que é a fonte da verdade e o que toda a tela lê, e `pessoas.nome`,
+     que é o snapshot de quando ele foi cadastrado como consumidor. A tela
+     já ficava coerente sem isto (nomeDoAniversariante lê da festa), mas o
+     banco ficava divergindo — foi o que tive de acertar à mão quando o
+     "Bocão" virou "JH Boca".
+
+     Três limites, como o review pediu: só a coluna `nome`, só linhas com
+     papel='aniversariante', e só para quem mudou. Quem ainda não foi
+     cadastrado como consumidor não tem linha e o update não faz nada.
+     `convidado_por` não é tocado — ele aponta por id, não por nome. */
+  async function sincronizarNomeDosAniversariantes(anteriores, patch) {
+    const novos = [patch.nome_aniv_1, patch.nome_aniv_2, patch.nome_aniv_3];
+    for (let i = 0; i < 3; i++) {
+      if (novos[i] === anteriores[i]) continue;
+      const { error } = await sb.from("pessoas")
+        .update({ nome: novos[i] })
+        .eq("papel", "aniversariante")
+        .eq("aniversariante_id", i + 1);
+      if (error) console.warn("nome do aniversariante não sincronizou:", error);
+    }
+  }
 
   function erroConvite(col, msg) {
     toastConvite(msg, "err");
@@ -316,7 +347,7 @@
     const { data, error } = await sb.from("config").select("*").eq("id", 1).single();
     if (error) {
       console.error(error);
-      toastConfig("Não consegui carregar a configuração.", "err");
+      toast("#precosMsg", "Não consegui carregar a configuração.", "err");
       return;
     }
     ultimaConfig = data;   // estimativa e rateio usam a config SALVA, não os inputs
@@ -326,66 +357,118 @@
     for (const [col] of CAMPOS_PRECO) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 2, 2);
     for (const [col] of CAMPOS_TAXA) $(`#cfg_${col}`).value = fmtNumeroBR(data[col], 0, 3);
     $("#cfgPrazo").value = dataDoPrazo(data.prazo_confirmacao);
-    $("#configAtualizado").textContent = data.atualizado_em
-      ? `Última alteração: ${fmtData(data.atualizado_em)}`
-      : "";
   }
 
-  function toastConfig(msg, classe) {
-    const el = $("#configMsg");
+  /* ---- salvar ---- */
+  /* Um formulário por grupo de colunas. Não é só layout: o `patch` fica
+     pequeno porque o formulário é pequeno — em vez de disciplina, vira
+     arquitetura. Nenhum patch é montado por varredura de inputs; cada um
+     lista as colunas à mão, e `custo_real_*` / `pago_por_*` não aparecem
+     em nenhum deles. */
+
+  function salvarNumeros(campos, maximo, tipo, botao, toast) {
+    const patch = {};
+    for (const [col, rotulo] of campos) {
+      const r = parseNumeroBR($(`#cfg_${col}`).value);
+      // vazio e inválido são erros diferentes e merecem mensagem diferente:
+      // deixar vazio virar 0 em silêncio seria zerar preço sem avisar.
+      if (r.vazio) return { erro: [col, `Preencha "${rotulo}". Use 0 se for zero mesmo.`] };
+      if (r.invalido) return { erro: [col, `"${rotulo}" não é um número válido.`] };
+      if (r.valor < 0) return { erro: [col, `"${rotulo}" não pode ser negativo.`] };
+      if (r.valor > maximo) {
+        return { erro: [col, `"${rotulo}" passou do máximo aceito para ${tipo} (${fmtNumeroBR(maximo, 2, 3)}).`] };
+      }
+      patch[col] = r.valor;
+    }
+    return { patch };
+  }
+
+  async function gravarConfig(patch, botao, elToast, ondeMarcar) {
+    patch.atualizado_em = new Date().toISOString();
+    botao.disabled = true;
+    const anterior = botao.textContent;
+    botao.textContent = "Salvando...";
+    const { error } = await sb.from("config").update(patch).eq("id", 1);
+    botao.disabled = false;
+    botao.textContent = anterior;
+
+    if (error) {
+      console.error(error);
+      toast(elToast, "Não consegui salvar. Confira os valores e tente de novo.", "err");
+      return false;
+    }
+    toast(elToast, "Salvo. ✅", "ok");
+    limparSujo(ondeMarcar);
+    carregarConfig();
+    return true;
+  }
+
+  /* ================= "não salvo" =================
+     Liga no `input` do usuário, NUNCA no preenchimento programático do
+     carregarConfig()/carregarConvite() — senão o bloco nasce sujo. Por
+     isso a marcação é por evento de digitação e a limpeza é explícita,
+     depois de salvar.
+
+     Trocar de aba não perde edição pendente: as abas são troca de
+     visibilidade e o input segue no DOM com o valor digitado. O marcador
+     existe para a recarga e o logout. */
+  function marcarSujo(bloco) {
+    const el = document.querySelector(`.aj-bloco[data-aj="${bloco}"] .aj-sujo`);
+    if (el) el.hidden = false;
+  }
+
+  function limparSujo(bloco) {
+    const el = document.querySelector(`.aj-bloco[data-aj="${bloco}"] .aj-sujo`);
+    if (el) el.hidden = true;
+  }
+
+  $$(".aj-bloco[data-aj]").forEach((bl) => {
+    const nome = bl.dataset.aj;
+    bl.addEventListener("input", () => marcarSujo(nome));
+  });
+
+  $$("[data-aj-toggle]").forEach((b) => b.addEventListener("click", () => {
+    const bloco = b.closest(".aj-bloco");
+    const corpo = bloco.querySelector(".aj-corpo");
+    const abrindo = corpo.hidden;
+    corpo.hidden = !abrindo;
+    b.setAttribute("aria-expanded", String(abrindo));
+    bloco.querySelector(".aj-seta").innerHTML = abrindo ? "&#9650;" : "&#9660;";
+  }));
+
+  function toast(sel, msg, classe) {
+    const el = $(sel);
+    if (!el) return;
     el.className = "msg-toast" + (classe ? " " + classe : "");
     el.textContent = msg;
   }
 
-  /* ---- salvar ---- */
-  $("#configForm").addEventListener("submit", async (e) => {
+  $("#precosForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = $("#btnSalvarConfig");
-    toastConfig("");
-
-    // Só os campos desta fatia. Nunca um objeto amplo: assim um bug aqui
-    // não tem como zerar custo_real_* nem preco_real_pizza_*, da Fatia 5.
-    const patch = {};
-    const grupos = [
-      [CAMPOS_PRECO, MAX_PRECO, "preço"],
-      [CAMPOS_TAXA, MAX_TAXA, "taxa"],
-    ];
-
-    for (const [campos, maximo, tipo] of grupos) {
-      for (const [col, rotulo] of campos) {
-        const r = parseNumeroBR($(`#cfg_${col}`).value);
-        // vazio e inválido são erros diferentes e merecem mensagem diferente:
-        // deixar vazio virar 0 em silêncio seria zerar preço sem avisar.
-        if (r.vazio) return erroConfig(col, `Preencha "${rotulo}". Use 0 se for zero mesmo.`);
-        if (r.invalido) return erroConfig(col, `"${rotulo}" não é um número válido.`);
-        if (r.valor < 0) return erroConfig(col, `"${rotulo}" não pode ser negativo.`);
-        if (r.valor > maximo) {
-          return erroConfig(col, `"${rotulo}" passou do máximo aceito para ${tipo} (${fmtNumeroBR(maximo, 2, 3)}).`);
-        }
-        patch[col] = r.valor;
-      }
-    }
-
-    patch.prazo_confirmacao = prazoDaData($("#cfgPrazo").value);
-    patch.atualizado_em = new Date().toISOString();
-
-    btn.disabled = true;
-    const anterior = btn.textContent;
-    btn.textContent = "Salvando...";
-    const { error } = await sb.from("config").update(patch).eq("id", 1);
-    btn.disabled = false;
-    btn.textContent = anterior;
-
-    if (error) {
-      console.error(error);
-      return toastConfig("Não consegui salvar. Confira os valores e tente de novo.", "err");
-    }
-    toastConfig("Configuração salva. ✅", "ok");
-    carregarConfig();
+    toast("#precosMsg", "");
+    const r = salvarNumeros(CAMPOS_PRECO, MAX_PRECO, "preço");
+    if (r.erro) return erroCampo("#precosMsg", r.erro[0], r.erro[1]);
+    await gravarConfig(r.patch, $("#btnSalvarPrecos"), "#precosMsg", "precos");
   });
 
-  function erroConfig(col, msg) {
-    toastConfig(msg, "err");
+  $("#taxasForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    toast("#taxasMsg", "");
+    const r = salvarNumeros(CAMPOS_TAXA, MAX_TAXA, "taxa");
+    if (r.erro) return erroCampo("#taxasMsg", r.erro[0], r.erro[1]);
+    await gravarConfig(r.patch, $("#btnSalvarTaxas"), "#taxasMsg", "taxas");
+  });
+
+  $("#prazoForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    toast("#prazoMsg", "");
+    // uma coluna só: o update mais estreito do painel
+    await gravarConfig({ prazo_confirmacao: prazoDaData($("#cfgPrazo").value) },
+                       $("#btnSalvarPrazo"), "#prazoMsg", "prazo");
+  });
+
+  function erroCampo(elToast, col, msg) {
+    toast(elToast, msg, "err");
     const el = $(`#cfg_${col}`);
     if (el) el.focus();
   }
@@ -560,6 +643,7 @@
       return;
     }
 
+    limparSujo("aniversariantes");
     toastAniv("Aniversariantes salvos. ✅", "ok");
     await carregarAniversariantes();
     carregarRSVPs(); // a contagem "cadastrados: N/3" vive nas estatísticas
@@ -1339,9 +1423,18 @@
       return `<div class="foto-item"><img src="${esc(url)}" alt=""><button data-nome="${esc(f.name)}" title="Apagar">✕</button></div>`;
     }).join("");
     $$(".foto-item button", grid).forEach((b) => b.addEventListener("click", async () => {
-      if (!confirm("Apagar esta foto?")) return;
-      const { error } = await sb.storage.from(C.supabase.bucketFotos).remove([b.dataset.nome]);
-      if (error) alert("Erro ao apagar foto."); else carregarFotos();
+      const nome = b.dataset.nome;
+      // Nomeia o arquivo e diz ONDE ele aparece — igual ao combinado para
+      // os RSVPs. Aqui não dá para ecoar o conteúdo apagado (é imagem);
+      // o nome do arquivo é a pista para reenviar o original.
+      if (!confirm(`Apagar a foto ${nome}? Ela sai do carrossel do convite e isso não tem como desfazer.`)) return;
+      const { error } = await sb.storage.from(C.supabase.bucketFotos).remove([nome]);
+      if (error) {
+        console.error(error);
+        return toast("#fotoMsg", "Não consegui apagar a foto.", "err");
+      }
+      toast("#fotoMsg", `Apagada: ${nome}`, "ok");
+      carregarFotos();
     }));
   }
 
