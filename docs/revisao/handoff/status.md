@@ -7,13 +7,13 @@ duas.
 | | |
 |---|---|
 | Branch | `feat/fatia-17-cancelamento` → merge `--ff-only` → apagada |
-| Commits | 2, ambos verdes no `./verify.sh` |
-| Schema e RPCs | `34ea1560f97e0e2f1c8b4e59c9d0ba8b3e2a5c11` |
-| Convite, painel e verify | `4888bb2c4e0e8e2c6a8e8b57ad3b4f6c2e1d9a03` |
+| Commits | 3, os dois de código verdes no `./verify.sh` |
+| Schema e RPCs | `34ea1563c402155e86ef55b9e9d7b8c9ed6e8b4e` |
+| Convite, painel e verify | `4888bb2dee537ce526492659ea150c2ab24535b4` |
+| Este status | `e52b7741b7566afec6a13f19494fab360f1718f2` |
+| `main == origin/main` | **sim** |
 | `tests/calc.test.js` | 63 asserções, inalteradas — `js/calc.js` não foi tocado |
 | Invariantes no `verify.sh` | 5 → **8** |
-
-*(hashes conferidos abaixo, na seção de fechamento)*
 
 ## O que mudou de modelo
 
