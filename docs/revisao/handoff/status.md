@@ -7,6 +7,8 @@ conforme as respostas, e o invariante de fuso achou um bug de verdade no caminho
 |---|---|
 | Branch | `feat/fatia-12-admin-casca` → merge `--ff-only` → apagada |
 | Commits | 5, cada um verde no `./verify.sh` |
+| Commit do código | `395403e` (último da branch) |
+| `origin/main` após o push | `19a6f098085d95f17fac2ba70b7daf446ff2ee58` |
 
 ## O que entrou
 
