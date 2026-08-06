@@ -1,182 +1,148 @@
-# Status — Fatia 13: Admin, abas "Quem vem" e "Compras"
+# Status — Fatia 14: Admin, aba "Ajustes"
 
-**Fatia fechada.** A tabela de 7 colunas morreu, as duas seções provisórias saíram, e a tabela de
-casos do WhatsApp — que o review pediu — achou um bug que a leitura do código não pegou.
+**Fatia fechada.** Os últimos `<details>` provisórios do Convite, Preços/taxas/prazo e
+Aniversariantes saíram; só Contas continua provisória, e ela é a Fatia 15. O bloco escuro do
+`:root` saiu com medição, e o teste do upload achou um bug de mount duplo.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-13-admin-lista-compras` → merge `--ff-only` → apagada |
-| Commits | 4, cada um verde no `./verify.sh` |
+| Branch | `feat/fatia-14-admin-ajustes` → merge `--ff-only` → apagada |
+| Commits | 3, cada um verde no `./verify.sh` |
+| Commit do código | `HASH_CODIGO` |
+| `origin/main` após o push | `HASH_ORIGIN` |
+| `main == origin/main` | **sim** |
 
-## O bug que a tabela de casos achou
+## O bug que o teste do upload achou
 
-A regra do WhatsApp decide por **comprimento antes de prefixo**, e o review estava certo sobre o
-porquê: `55` é DDI do Brasil **e** DDD de Santa Maria. Isso funcionou de primeira.
+Subi um arquivo pelo input e **dois** chegaram no bucket, com nomes diferentes e o toast dizendo
+"1 foto(s) enviada(s)". A causa não estava no upload: **dois caminhos chamam `mostrarPainel()`** —
+o `getSession()` de quem já tinha sessão e o `submit` do formulário — e sem trava o
+`prepararUpload()` registrava os listeners em dobro.
 
-O que **não** funcionou, e só apareceu ao escrever os 12 casos:
+Para um usuário real o caminho é estreito (com sessão, o formulário de login nem aparece), mas é
+duplicação de listener esperando ocasião, e duplicava também todo o carregamento. Guarda de
+idempotência no `mostrarPainel()`.
 
-```
-FALHA  "+34611223344"  ->  5534611223344   DDI estrangeiro: não adivinha
-```
+Apareceu ao testar, não ao ler o código — é a terceira fatia seguida em que isso acontece.
 
-Um número espanhol tem 11 dígitos depois de tirar o `+`, cai na regra do celular brasileiro e
-vira uma conversa com um desconhecido no Brasil. **O `+` é declaração explícita de DDI e tem de
-vencer qualquer heurística de comprimento.** Corrigido, e a tabela fechou 12/12:
+## O bloco `@media (prefers-color-scheme: dark)` — removido com prova
 
-```
-  ok "51995509956"        -> 5551995509956   a Rosaura
-  ok "55987654321"        -> 5555987654321   DDD 55 (Santa Maria)
-  ok "5187654321"         -> 555187654321    fixo, 10 dígitos
-  ok "5551995509956"      -> 5551995509956   já com DDI, 13
-  ok "555187654321"       -> 555187654321    já com DDI, 12
-  ok "(51) 99550-9956"    -> 5551995509956   com máscara
-  ok "+55 51 99550-9956"  -> 5551995509956   + com DDI brasileiro
-  ok "+34611223344"       -> 34611223344     + com DDI estrangeiro: respeita
-  ok "+123"               -> null            + curto demais
-  ok "rosaura@email.com"  -> null            e-mail
-  ok "99550"              -> null            curto
-  ok ""                   -> null            vazio
-```
-
-## Verificação integrada
-
-### O `href` de cada tipo de contato, na tela
-```
-Rosaura      51995509956             -> https://wa.me/5551995509956    "Chamar no WhatsApp"
-e-mail       teste13@exemplo.invalid -> mailto:teste13%40exemplo.invalid  "Enviar e-mail"
-inválido     5199<b>0000</b>1111     -> (sem link)  "Contato: 5199<b>0000</b>1111"
-```
-
-### XSS — nome, contato e recado com carga
-```
-{ "alertasDisparados": 0, "imgsInjetadas": 0, "scriptsInjetados": 0 }
-nome  no card: "<img src=x onerror=alert(1)>Teste XSS"   (texto literal)
-recado no card: "recado com <script>alert('xss')</script> dentro"
-```
-`window.alert` foi substituído por um contador antes do login; ficou em zero.
-
-### Exclusão e o estado compartilhado — o risco 2
-
-Filtro **Bruno** e busca **"teste"** ativos na hora de excluir:
+Não confiei no raciocínio. Medi nove propriedades **com o navegador no escuro**, antes e depois de
+remover:
 
 ```
-              antes            depois
-filtro        Bruno            Bruno       ← sobreviveu
-busca         "teste"          "teste"     ← sobreviveu
-cards         2                1
-Resumo        7 confirmados    6           ← sem recarregar
-Resumo        3 grupos         2
-Compras base  7 confirmados    6
-Compras       Pizza (adulto) 6 → 5 · Água 3,5 L → 3 L
+antes : body rgb(236,234,229) · coluna rgb(247,246,243) · bloco rgb(255,255,255)
+        input rgb(255,255,255) · salvar rgb(29,78,216) · alerta rgb(253,246,236)
+depois: idênticos, nas nove
+mediaQueryEscuraViva: []      ← nenhuma regra escura restou na folha
 ```
 
-Frase do confirm:
+E o convite, comparado site contra site com o navegador no escuro: **44 elementos, zero
+diferenças**.
+
+Atualizei também os comentários que descreviam o bloco: eles explicavam *por que* o remapeamento
+de variáveis existe, e a razão mudou — continuar dizendo "para vencer o `@media`" seria descrever
+um arquivo que não existe mais.
+
+## `update` estreito — provado, não afirmado
+
+Plantei valor nos campos da Fatia 15 antes da bateria e salvei cada formulário isolado:
+
 ```
-Apagar a confirmação de Teste Fatia 13 e a 1 pessoa do grupo? Isso não tem como desfazer.
+plantado:  custo_real_chopp = 1234.56 | pago_por_chopp = 2
+
+depois de salvar SÓ Preços:
+  preco_pizza_adulto      21.50    <- mudou
+  litros_chopp_por_adulto 2.500    <- outro formulário: intacto
+  prazo                   01/10/2026  <- outro formulário: intacto
+  custo_real_chopp        1234.56  <- INTACTO
+  pago_por_chopp          2        <- INTACTO
+  festa                   não tocada
+
+depois de salvar Prazo (uma coluna só) e o Convite:
+  prazo                   05/10/2026 23:59:59  <- mudou
+  preco_pizza_adulto      21.50    <- intacto
+  custo_real_chopp        1234.56  <- INTACTO
+  pago_por_chopp          2        <- INTACTO
 ```
 
-Toast depois de apagar:
+O corte em três formulários é o que torna isso barato: o `patch` é pequeno porque o formulário é
+pequeno. O de Prazo tem **uma coluna**.
+
+## Renomear aniversariante — as duas moradas em acordo
+
+Renomeei "JH Boca" → "JH Bocão" pelo bloco do Convite e **não** salvei Aniversariantes:
+
 ```
-Apagado. O que sumiu:
-Teste Fatia 13 · teste13@exemplo.invalid
-convidado por: Bruno
-- Solo (adulto): Água, Pizza
+filtros de "Quem vem": Todos · Com crianças · Bruno · Braz · JH Bocão
+blocos de Aniversariantes: Bruno (id 1) · Braz (id 2) · JH Bocão (id 3)
+
+festa  : ['Bruno', 'Braz', 'JH Bocão']
+pessoas: [[1,'Bruno'], [2,'Braz'], [3,'JH Bocão']]     ← o snapshot acompanhou sozinho
+Rosaura: convidado_por [3]                             ← amarrada pelo ID, não pelo nome
 ```
 
-E o cascade, conferido no banco:
+O `update` da sincronia é estreito como o review pediu: só a coluna `nome`, só
+`papel='aniversariante'`, só para quem mudou.
+
+## "não salvo"
+
 ```
-'Teste Fatia 13' ainda existe? 0
-pessoas com nome 'Solo': 0
-pessoas órfãs: 0
-aniversariantes intactos: ['Bruno', 'Braz', 'JH Boca']
+ao abrir                    []
+depois de digitar em Preços ["precos"]
+depois de salvar Preços     []
+depois de recarregar        []      ← não nasce sujo
 ```
 
-### Busca e filtros
-```
-busca "rosaura"                       -> [Rosaura]
-busca "solo" (nome de ACOMPANHANTE)   -> [Teste Fatia 13]     ← o nit do review, entrou
-filtro Com crianças                   -> [<img src=x onerror…]
-filtro JH Boca                        -> [Rosaura]
-filtro Braz (ninguém)                 -> semResultado: true, vazioBanco: false
-limpar busca e filtros                -> os 3 de volta
-```
+Liga no `input` do usuário, não no preenchimento programático.
 
-Os dois vazios são distintos: `#listaVazia` só aparece com o banco vazio, `#listaSemResultado`
-só quando há filtro ativo e nada casa.
+## Prazo: ida e volta
 
-### Compras
+Pela tela: salvei 05/10 → recarreguei → voltou `2026-10-05`.
+
+E a ida e volta das duas funções sob seis fusos:
 ```
-Calculada sobre 6 confirmados, aniversariantes incluídos.
-Chopp 5 L · Refrigerante 0 L · Água 3 L · Pizza (adulto) 5 · Pizza (criança) 1
-Custo estimado: R$ 179,00
+America/Sao_Paulo  2026-10-01 -> 2026-10-01T23:59:59-03:00 -> 2026-10-01  ok
+UTC                                                            2026-10-01  ok
+Europe/Lisbon                                                  2026-10-01  ok
+Asia/Tokyo                                                     2026-10-01  ok
+Pacific/Kiritimati                                             2026-10-01  ok
+Pacific/Midway                                                 2026-10-01  ok
 ```
 
-Texto do fornecedor (bate com a tela, sem preço, litro sem arredondar para barril):
+## Fotos
+
 ```
-Festa dos 160 anos — 31/10/2026, sábado, 11h
-Lista de compra
-
-Chopp: 5 L
-Refrigerante: 0 L
-Água: 3 L
-Pizza (adulto): 5
-Pizza (criança): 1
-
-Base: 6 confirmados
+confirm: "Apagar a foto 1785982574657_zz-teste-fatia14.png? Ela sai do carrossel do
+          convite e isso não tem como desfazer."
+toast:   "Apagada: 1785982574658_zz-teste-fatia14.png"
 ```
 
-Clipboard negada (forcei a rejeição):
-```
-{ "msg": "Não consegui copiar sozinho — o texto está aí embaixo, selecionado.",
-  "textareaVisivel": true, "selecionado": true }
-```
+As três fotos reais do bucket seguem lá, com os nomes originais. E o banco recusou apagar
+`storage.objects` direto (`Direct deletion from storage tables is not allowed`) — a limpeza teve
+de passar pela API, o que é o comportamento certo.
 
-### Modo escuro — idêntico
-```
-claro : body rgb(236,234,229) · card rgb(255,255,255) · busca rgb(255,255,255) · filtro rgb(20,17,13)
-escuro: body rgb(236,234,229) · card rgb(255,255,255) · busca rgb(255,255,255) · filtro rgb(20,17,13)
-diferenças: nenhuma
-```
+## Dado do Bruno, ao fim
 
-### Convite intacto
 ```
-elementosComparados: 44 · diferenças: NENHUMA
-```
-Comparação site contra site (`/antes/` × atual), 44 elementos × 14 propriedades. Deixei os dots do
-carrossel de fora desta vez: eles alternam sozinhos a cada 5s e foram o único falso positivo da
-Fatia 12.
-
-### A Rosaura, ao fim
-```
-rsvp:   'Rosaura', 51995509956, contato_norm 51995509956, convidado_por [3], 'Te amooooo',
-        criado_em 2026-08-06 00:47:54 UTC
-pessoa: 'Rosaura', adulto, principal, ordem 0, água + pizza
-total rsvps: 1 · pessoas órfãs: 0
-config: pizza 20.00 · prazo 01/10/2026 23:59:59 (São Paulo)
-admins: 4 (o temporário foi removido)
+preços : pizza 20.00 / pizza-criança 20.00 / chopp 10.00 / refri 5.00 / água 3.00
+taxas  : chopp 2.500 / refri 0.600 / água 0.500
+prazo  : 01/10/2026 23:59:59 (São Paulo)
+fatia 15 (custo_real_chopp / pago_por_chopp): None / None — o plantio foi limpo
+festa  : 'Festa dos 160 anos' · 'Salão Grande — …' · Bruno · Braz · JH Boca
+pessoas: [[1,'Bruno'], [2,'Braz'], [3,'JH Boca']]
+Rosaura: 51995509956, convidado_por [3], 'Te amooooo' — intacta
+total rsvps: 1 · pessoas órfãs: 0 · admins: 4 · usuário de teste: 0
+fotos: as 3 originais
 ```
 
-Os RSVPs de teste foram apagados **por nome**, nunca em bloco.
+## O que fica para a Fatia 15
 
-## Decisões que ficam registradas
-
-| O quê | Por quê |
-|---|---|
-| O `+` vence a heurística de comprimento | é declaração explícita de DDI; sem isso, número estrangeiro vira conversa com desconhecido |
-| Comprimento desconhecido não vira link | melhor não ter botão do que ter botão errado |
-| Recarrega em vez de remendar array | remendar é onde nasce divergência silenciosa, e aqui apareceria como número errado de pizza |
-| Busca e filtro em variáveis, não no HTML | é o que os faz sobreviver à recarga que o excluir dispara |
-| Litro não vira barril | quantos barris comprar é decisão do organizador com o fornecedor |
-| Filtro é lente, não contabilidade | grupo com dois anfitriões aparece nos dois; nenhum total por aniversariante nesta aba |
-
-## O que fica para as próximas
-
-- **Fatia 14** (Ajustes): os `<details>` de Convite, Preços e Aniversariantes saem; `date` e `url`
-  ganham o seletor; e o aviso de que as `<meta>` `og:` do convite não seguem o painel.
-- **Fatia 15** (Contas): as 4 fases.
-- **Dívida registrada pelo review:** quando o `cancelar_rsvp` (P6 da Fatia 11) virar fatia, **a
-  lixeira anda junto** — "convidado cancela" e "admin apagou sem querer" são a mesma família
-  (`apagado_em` + RLS), e fazer as duas de uma vez é mais barato que duas mudanças de schema no
-  mesmo lugar.
-- Quando a Fatia 14 fechar, nenhuma página lerá o `:root` no escuro e o bloco
-  `@media (prefers-color-scheme: dark)` pode sair inteiro.
+- **Contas** é a última aba provisória, com as 4 fases.
+- **O conserto de verdade do nome**, que o review registrou: parar de guardar o nome na linha de
+  aniversariante. A `festa` é a fonte e a coluna pode ficar nula nessas linhas — a constraint
+  `principal_tem_nome` só exige nome para `papel='principal'`. Não foi feito agora porque exigiria
+  auditar todos os leitores de `pessoas.nome`, e os principais (contas, saldos, transferências)
+  **serão reescritos na 15**. Lá sai de graça.
+- **A lixeira + `cancelar_rsvp`** seguem como fatia própria, juntas.
+- `.btn-lg` foi a última classe de CSS sem consumidor; a folha está limpa.
