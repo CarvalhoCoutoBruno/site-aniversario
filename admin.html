@@ -52,8 +52,45 @@
 
       <!-- ---------- Resumo ---------- -->
       <section class="ad-aba" id="aba-resumo" role="tabpanel" aria-labelledby="tab-resumo">
-      <!-- Estatísticas -->
-      <div class="stats" id="stats"></div>
+      <!-- Tudo aqui sai do render(), que já calculava: nenhum dado
+           novo, nenhuma consulta nova. -->
+      <div class="res-cartoes">
+        <div class="res-cartao res-cartao-forte">
+          <span class="mono res-rot">Confirmados</span>
+          <b id="resConfirmados">0</b>
+          <span class="res-sub" id="resComposicao">&mdash;</span>
+        </div>
+        <div class="res-cartao">
+          <span class="mono res-rot">Respostas</span>
+          <b id="resGrupos">0</b>
+          <span class="res-sub">grupos confirmados</span>
+        </div>
+      </div>
+
+      <div class="res-bloco" id="resPrazoBloco" hidden>
+        <div class="res-bloco-topo">
+          <b>Prazo de confirmação</b>
+          <span class="mono" id="resPrazoData">&mdash;</span>
+        </div>
+        <div class="res-barra" id="resPrazoBarraWrap" hidden>
+          <div class="res-barra-fill" id="resPrazoBarra"></div>
+        </div>
+        <p class="res-nota" id="resPrazoNota"></p>
+      </div>
+
+      <div class="res-bloco res-bloco-liso">
+        <div class="res-bloco-cab">
+          <b>Quem consome o quê</b>
+          <p>Base da estimativa de compra.</p>
+        </div>
+        <div id="resConsumo"></div>
+      </div>
+
+      <div class="res-bloco">
+        <b class="res-titulo">Recados e restrições</b>
+        <p class="res-nota" id="resRecadosNota">Ninguém escreveu nada ainda.</p>
+        <div class="res-recados" id="resRecados"></div>
+      </div>
       </section>
 
       <!-- ---------- Quem vem ----------

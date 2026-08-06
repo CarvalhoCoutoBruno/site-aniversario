@@ -581,6 +581,7 @@
   let ultimaConfig = null;
   let ultimasPessoas = null;
   let ultimosGrupos = null;
+  let ultimoResumo = null;
 
   const fmtLitros = (n) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 
@@ -597,6 +598,9 @@
     if (!ultimaConfig || !ultimasPessoas || !ultimosGrupos || !ultimaFesta) return;
     atualizarEstimativa();
     atualizarRateio();
+    // o Resumo é remontado aqui porque a barra do prazo só existe com a
+    // config na mão, e o render() pode ter rodado antes dela chegar
+    if (ultimoResumo) montarResumo(ultimoResumo.grupos, ultimoResumo.todas, ultimoResumo.cont);
   }
 
   function atualizarEstimativa() {
@@ -965,6 +969,98 @@
     render(g.data || [], porGrupo, aniversariantes);
   }
 
+  /* ================= ABA RESUMO =================
+     Só leitura, e tudo sai do que o render() já calculou — nenhuma
+     consulta nova. */
+
+  const CONSUMO_CORES = {
+    "Água": "var(--ad-azul)", "Refri": "#7c5a1e", "Chopp": "#14110d", "Pizza": "var(--ad-vermelho)",
+  };
+
+  function montarResumo(grupos, todas, cont) {
+    $("#resConfirmados").textContent = todas.length;
+    $("#resComposicao").textContent =
+      `${cont.adultos} ${cont.adultos === 1 ? "adulto" : "adultos"} · ` +
+      `${cont.criancas} ${cont.criancas === 1 ? "criança" : "crianças"}`;
+    $("#resGrupos").textContent = grupos.length;
+
+    montarPrazoResumo(grupos);
+
+    // barra proporcional ao total de pessoas; 0 pessoas não divide por zero
+    const base = todas.length || 1;
+    const itens = [["Água", cont.agua], ["Refri", cont.refri], ["Chopp", cont.chopp], ["Pizza", cont.pizza]];
+    $("#resConsumo").innerHTML = itens.map(([nome, n]) => `
+      <div class="res-linha">
+        <span class="res-linha-nome">${esc(nome)}</span>
+        <div class="res-barra">
+          <div class="res-barra-fill" style="width:${Math.round((n / base) * 100)}%;background:${CONSUMO_CORES[nome]}"></div>
+        </div>
+        <span class="mono res-linha-n">${n}</span>
+      </div>`).join("");
+
+    montarRecados(grupos);
+  }
+
+  /* A régua da barra: da PRIMEIRA confirmação recebida até o prazo. Não
+     existe "data de abertura" no schema, e essa é a origem que responde
+     "quanto do período já passou" com dado real. Sem confirmação ainda,
+     a barra não aparece — só a data e o "faltam N dias". */
+  function montarPrazoResumo(grupos) {
+    const bloco = $("#resPrazoBloco");
+    const prazo = ultimaConfig && ultimaConfig.prazo_confirmacao
+      ? new Date(ultimaConfig.prazo_confirmacao) : null;
+    if (!prazo || isNaN(prazo)) { bloco.hidden = true; return; }
+    bloco.hidden = false;
+
+    $("#resPrazoData").textContent = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    }).format(prazo);
+
+    const agora = Date.now();
+    const restaMs = prazo.getTime() - agora;
+    const dias = Math.ceil(restaMs / 864e5);
+    const vencido = restaMs <= 0;
+
+    const primeira = grupos.reduce((min, g) => {
+      const t = new Date(g.criado_em).getTime();
+      return isNaN(t) ? min : Math.min(min, t);
+    }, Infinity);
+
+    const wrap = $("#resPrazoBarraWrap");
+    if (primeira === Infinity) {
+      wrap.hidden = true;                       // ninguém confirmou: não há régua
+    } else {
+      wrap.hidden = false;
+      const total = prazo.getTime() - primeira;
+      // vencido trava em 100%: a barra não passa do fim
+      const pct = vencido || total <= 0 ? 100
+        : Math.max(0, Math.min(100, ((agora - primeira) / total) * 100));
+      $("#resPrazoBarra").style.width = pct.toFixed(1) + "%";
+      $("#resPrazoBarra").classList.toggle("cheia", vencido);
+    }
+
+    // e nada de "faltam -3 dias"
+    $("#resPrazoNota").innerHTML = vencido
+      ? "As confirmações estão <b>encerradas</b>."
+      : `Faltam <b>${dias} ${dias === 1 ? "dia" : "dias"}</b> para fechar as confirmações.`;
+  }
+
+  // O que separa restrição de recado é o que muda a compra.
+  const RESTRICAO = /alergi|intoler|restri|cel[ií]ac|vegetarian|vegan|di?abet|lactose|gl[úu]ten/i;
+
+  function montarRecados(grupos) {
+    const comRecado = grupos.filter((g) => g.observacoes && g.observacoes.trim());
+    $("#resRecadosNota").textContent = comRecado.length
+      ? `${comRecado.length} ${comRecado.length === 1 ? "pessoa escreveu" : "pessoas escreveram"} algo.`
+      : "Ninguém escreveu nada ainda.";
+    // esc() em tudo: é texto que o convidado escreveu
+    $("#resRecados").innerHTML = comRecado.map((g) => `
+      <div class="res-recado${RESTRICAO.test(g.observacoes) ? " restricao" : ""}">
+        <span class="res-recado-quem">${esc(g.nome_principal)}</span>
+        <span class="res-recado-txt">${esc(g.observacoes)}</span>
+      </div>`).join("");
+  }
+
   const NOMES_BEBIDA = { bebe_agua: "Água", bebe_refri: "Refri", bebe_chopp: "Chopp" };
 
   function preferencias(pessoa) {
@@ -987,20 +1083,12 @@
       if (p.come_pizza) cont.pizza++;
     }
 
-    const stats = [
-      { n: grupos.length, l: "Confirmações" },
-      { n: todas.length, l: "Total de pessoas" },
-      { n: cont.adultos, l: "Adultos" },
-      { n: cont.criancas, l: "Crianças" },
-      { n: cont.chopp, l: "Chopp" },
-      { n: cont.refri, l: "Refrigerante" },
-      { n: cont.agua, l: "Água" },
-      { n: cont.pizza, l: "Pizza" },
-      { n: aniversariantes.length + "/3", l: "Aniversariantes cadastrados" },
-    ];
-    $("#stats").innerHTML = stats
-      .map((s) => `<div class="stat"><b>${s.n}</b><span>${esc(s.l)}</span></div>`)
-      .join("");
+    // guardado para o recomputar(): a barra do prazo depende de
+    // `ultimaConfig`, que pode chegar DEPOIS de render() — é a guarda de
+    // completude em miniatura, e a solução é a mesma, não calcular com
+    // metade do estado.
+    ultimoResumo = { grupos, todas, cont };
+    montarResumo(grupos, todas, cont);
 
     const body = $("#tabelaBody");
     $("#tabelaVazia").hidden = grupos.length > 0;
