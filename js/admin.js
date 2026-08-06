@@ -31,7 +31,58 @@
   $("#btnAtualizar").addEventListener("click", async () => {
     await carregarConvite();
     carregarConfig(); carregarAniversariantes(); carregarRSVPs(); carregarFotos();
+    carimbarAtualizacao();
   });
+
+  /* ================= ABAS =================
+     As abas trocam VISIBILIDADE e nada mais: não disparam carregamento.
+     Carregar sob demanda derrubaria a guarda de completude do
+     recomputar() — a aba Contas renderizaria antes de `pessoas` chegar,
+     que é a corrida que a Fatia 4 matou. E não há o que otimizar: são
+     ~30 grupos e ~60 pessoas.
+
+     O estado vive no hash: sobrevive ao reload e ao botão voltar, é
+     compartilhável, e não guarda nada no aparelho de ninguém. */
+  const ABAS = ["resumo", "quem-vem", "compras", "contas", "ajustes"];
+  const ABA_PADRAO = "resumo";
+
+  function abaDoHash() {
+    const h = (location.hash || "").replace(/^#/, "");
+    return ABAS.includes(h) ? h : ABA_PADRAO;   // hash ausente ou desconhecido cai no padrão
+  }
+
+  function mostrarAba(id) {
+    for (const a of ABAS) {
+      $(`#aba-${a}`).hidden = a !== id;
+      const botao = $(`#tab-${a}`);
+      botao.classList.toggle("ativa", a === id);
+      botao.setAttribute("aria-selected", String(a === id));
+    }
+    // o conteúdo da aba anterior pode ter deixado a página rolada
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  $$(".ad-aba-btn").forEach((b) => {
+    b.addEventListener("click", () => {
+      const id = b.dataset.aba;
+      // replaceState e não hash direto: um toque em aba não merece uma
+      // entrada no histórico, mas a URL precisa refletir onde você está
+      history.replaceState(null, "", `#${id}`);
+      mostrarAba(id);
+    });
+  });
+  // o voltar/avançar do navegador mexe no hash sem passar pelo clique
+  window.addEventListener("hashchange", () => mostrarAba(abaDoHash()));
+
+  /* "atualizado às HH:MM" — a hora do último carregamento nesta sessão,
+     que é o que responde "esse número na minha tela está velho?".
+     No fuso da festa: o organizador pode estar viajando. */
+  function carimbarAtualizacao() {
+    $("#adAtualizado").textContent = "atualizado às " +
+      new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false,
+      }).format(new Date());
+  }
 
   // já logado?
   sb.auth.getSession().then(({ data }) => { if (data.session) mostrarPainel(); });
@@ -39,6 +90,7 @@
   async function mostrarPainel() {
     $("#loginBox").hidden = true;
     $("#painel").hidden = false;
+    mostrarAba(abaDoHash());
     prepararUpload();
     // A festa vem PRIMEIRO e sozinha: os nomes dos aniversariantes saem
     // dela, e quem renderiza rótulo (cadastro, seletor de pagador,
@@ -48,6 +100,7 @@
     carregarAniversariantes();
     carregarRSVPs();
     carregarFotos();
+    carimbarAtualizacao();
   }
 
   /* ================= CONVITE: o que o convidado vê =================

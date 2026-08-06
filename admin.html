@@ -36,255 +36,302 @@
 
   <!-- ===================== PAINEL ===================== -->
   <main class="admin-wrap" id="painel" hidden>
-    <div class="admin-topo">
-      <h1>Confirmações 🎉</h1>
-      <div style="display:flex;gap:.6rem">
-        <button class="btn btn-ghost" id="btnAtualizar">↻ Atualizar</button>
-        <button class="btn btn-ghost" id="btnSair">Sair</button>
+    <header class="ad-topo">
+      <div>
+        <h1>Organizador</h1>
+        <p class="mono ad-carimbo" id="adAtualizado"></p>
       </div>
-    </div>
+      <div class="ad-topo-acoes">
+        <button type="button" class="ad-icone" id="btnAtualizar" aria-label="Atualizar">&#8635;</button>
+        <button type="button" class="ad-btn" id="btnSair">Sair</button>
+      </div>
+    </header>
 
-    <!-- Convite: o que o convidado vê -->
-    <details class="admin-secao config-secao" id="conviteSecao">
-      <summary><h2>Convite 💌</h2></summary>
+    <div class="ad-conteudo">
 
-      <form id="conviteForm" novalidate>
+      <!-- ---------- Resumo ---------- -->
+      <section class="ad-aba" id="aba-resumo" role="tabpanel" aria-labelledby="tab-resumo">
+      <!-- Estatísticas -->
+      <div class="stats" id="stats"></div>
+      </section>
+
+      <!-- ---------- Quem vem ----------
+           A tabela de 7 colunas sai na Fatia 13. Até lá mora aqui,
+           inteira e funcionando: feio é aceitável, quebrado não é. -->
+      <section class="ad-aba" id="aba-quem-vem" role="tabpanel" aria-labelledby="tab-quem-vem" hidden>
+      <!-- Tabela de confirmações -->
+      <div class="tabela-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Responsável</th>
+              <th>Convidou</th>
+              <th>Pessoas</th>
+              <th>Preferências</th>
+              <th>Recado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabelaBody"></tbody>
+        </table>
+      </div>
+      <p class="vazio" id="tabelaVazia" hidden>Nenhuma confirmação ainda.</p>
+      </section>
+
+      <!-- ---------- Compras (provisório até a Fatia 13) ---------- -->
+      <section class="ad-aba" id="aba-compras" role="tabpanel" aria-labelledby="tab-compras" hidden>
+      <!-- Estimativa de compra -->
+      <details class="admin-secao config-secao" id="estSecao">
+        <summary><h2>Estimativa de compra 🛒</h2></summary>
+
         <p class="campo-dica">
-          O que aparece na página do convidado. Editar aqui muda o site na hora — sem mexer em
-          código.
+          O que comprar, a partir de quem já confirmou — aniversariantes inclusive. Números para
+          passar ao fornecedor. <strong>Não é a conta final</strong>: o custo abaixo usa os preços
+          de referência da config, não o que foi gasto de verdade.
         </p>
 
-        <fieldset class="config-bloco">
-          <legend>A festa</legend>
-          <div class="config-grid">
-            <label class="config-campo"><span>Título *</span>
-              <input type="text" id="cv_titulo" maxlength="120" /></label>
-            <label class="config-campo"><span>Subtítulo</span>
-              <input type="text" id="cv_subtitulo" maxlength="200" /></label>
-            <label class="config-campo"><span>Data e hora *</span>
-              <input type="datetime-local" id="cv_data" /></label>
-            <label class="config-campo"><span>Data por extenso <small>(vazio = gerada)</small></span>
-              <input type="text" id="cv_data_texto" maxlength="160" /></label>
+        <p class="msg-toast err" id="estAvisoAniv" hidden></p>
+
+        <h3 class="est-titulo">Bebidas (litros)</h3>
+        <div class="stats" id="estVolumes"></div>
+
+        <h3 class="est-titulo">Pizzas (por pessoa)</h3>
+        <div class="stats" id="estPizzas"></div>
+
+        <h3 class="est-titulo">Custo aproximado</h3>
+        <div class="stats" id="estCusto"></div>
+        <p class="campo-dica" id="estAvisoPrecos" hidden></p>
+
+        <h3 class="est-titulo">Quem consome o quê</h3>
+        <div class="stats" id="estContagens"></div>
+      </details>
+      </section>
+
+      <!-- ---------- Contas (provisório até a Fatia 15) ---------- -->
+      <section class="ad-aba" id="aba-contas" role="tabpanel" aria-labelledby="tab-contas" hidden>
+      <!-- Fechamento e rateio -->
+      <details class="admin-secao config-secao" id="fecSecao">
+        <summary><h2>Fechamento e rateio 🧾</h2></summary>
+
+        <form id="fecForm" novalidate>
+          <fieldset class="config-bloco">
+            <legend>Custo real gasto (R$)</legend>
+            <p class="campo-dica">
+              O que foi pago de verdade, depois da compra. Deixe em branco o que ainda não fechou —
+              vazio significa "ainda não sei", não zero.
+            </p>
+            <div class="config-grid" id="fecCustos"></div>
+          </fieldset>
+
+          <fieldset class="config-bloco">
+            <legend>Preço real da pizza (R$) — opcional</legend>
+            <p class="campo-dica">
+              Se em branco, o rateio usa o preço de referência da configuração.
+            </p>
+            <div class="config-grid" id="fecPizzas"></div>
+          </fieldset>
+
+          <div class="config-acoes">
+            <button type="submit" class="btn btn-primary" id="btnSalvarFec">Salvar fechamento</button>
           </div>
-        </fieldset>
+          <p class="msg-toast" id="fecMsg"></p>
+        </form>
 
-        <fieldset class="config-bloco">
-          <legend>Onde</legend>
-          <div class="config-grid">
-            <label class="config-campo"><span>Local *</span>
-              <input type="text" id="cv_local" maxlength="200" /></label>
-            <label class="config-campo"><span>Link do mapa</span>
-              <input type="url" id="cv_local_mapa" placeholder="https://..." /></label>
-          </div>
-        </fieldset>
-
-        <fieldset class="config-bloco">
-          <legend>Aniversariantes</legend>
-          <p class="campo-dica">
-            A <strong>posição</strong> é o identificador de cada um nas confirmações. Renomear é
-            seguro; trocar de posição reatribui quem convidou quem.
-          </p>
-          <div class="config-grid">
-            <label class="config-campo"><span>1º *</span><input type="text" id="cv_nome_aniv_1" maxlength="60" /></label>
-            <label class="config-campo"><span>2º *</span><input type="text" id="cv_nome_aniv_2" maxlength="60" /></label>
-            <label class="config-campo"><span>3º *</span><input type="text" id="cv_nome_aniv_3" maxlength="60" /></label>
-          </div>
-        </fieldset>
-
-        <div class="config-acoes">
-          <button type="submit" class="btn btn-primary" id="btnSalvarConvite">Salvar convite</button>
-          <small class="campo-dica" id="conviteAtualizado"></small>
-        </div>
-        <p class="msg-toast" id="conviteMsg"></p>
-      </form>
-    </details>
-
-    <!-- Config: preços, taxas e prazo -->
-    <details class="admin-secao config-secao" id="configSecao">
-      <summary><h2>Preços, taxas e prazo ⚙️</h2></summary>
-
-      <form id="configForm" novalidate>
-        <fieldset class="config-bloco">
-          <legend>Preços de referência (R$)</legend>
-          <p class="campo-dica">
-            Servem para a estimativa de custo. Use vírgula para os centavos: <code>18,00</code>.
-          </p>
-          <div class="config-grid" id="configPrecos"></div>
-        </fieldset>
-
-        <fieldset class="config-bloco">
-          <legend>Consumo estimado por pessoa (litros)</legend>
-          <p class="campo-dica">
-            Transformam o "quem bebe o quê" em litros a comprar. Taxa zerada faz a estimativa
-            daquela bebida dar zero.
-          </p>
-          <div class="config-grid" id="configTaxas"></div>
-        </fieldset>
-
-        <fieldset class="config-bloco">
-          <legend>Prazo de confirmação</legend>
-          <div class="config-grid">
-            <label class="config-campo">
-              <span>Confirmações até o fim do dia</span>
-              <input type="date" id="cfgPrazo" />
-            </label>
-          </div>
-          <p class="campo-dica">
-            Vazio = sem limite. Depois dessa data o formulário público fecha e o envio é
-            recusado pelo banco.
-          </p>
-        </fieldset>
-
-        <div class="config-acoes">
-          <button type="submit" class="btn btn-primary" id="btnSalvarConfig">Salvar configuração</button>
-          <small class="campo-dica" id="configAtualizado"></small>
-        </div>
-        <p class="msg-toast" id="configMsg"></p>
-      </form>
-    </details>
-
-    <!-- Aniversariantes como consumidores -->
-    <details class="admin-secao config-secao" id="anivSecao">
-      <summary><h2>Aniversariantes 🎂</h2></summary>
-
-      <form id="anivForm" novalidate>
+        <h3 class="est-titulo">Quanto cada aniversariante paga</h3>
         <p class="campo-dica">
-          O que cada aniversariante consome. Eles pagam 100% do próprio consumo e entram na
-          estimativa como qualquer pessoa. Os nomes vêm do <code>config.js</code> — para
-          renomear, é lá.
+          Convidado não paga: o consumo dele é bancado por quem o convidou, dividido igualmente
+          quando foi mais de um.
+        </p>
+        <div id="fecContas"></div>
+
+        <div class="selo" id="fecSelo"></div>
+        <div class="stats" id="fecTotais"></div>
+
+        <h3 class="est-titulo">Acerto entre vocês</h3>
+        <p class="campo-dica">
+          Marque quem bancou cada item. O valor vem do fechamento acima — não precisa digitar.
         </p>
 
-        <div id="anivBlocos"></div>
+        <form id="acertoForm" novalidate>
+          <div class="config-grid" id="acertoPagadores"></div>
+          <div class="config-acoes">
+            <button type="submit" class="btn btn-primary" id="btnSalvarAcerto">Salvar quem pagou</button>
+          </div>
+          <p class="msg-toast" id="acertoMsg"></p>
+        </form>
 
-        <div class="config-acoes">
-          <button type="submit" class="btn btn-primary" id="btnSalvarAniv">Salvar aniversariantes</button>
+        <div id="acertoSaldos"></div>
+        <div class="selo" id="acertoSelo"></div>
+        <div id="acertoTransferencias"></div>
+
+        <div class="config-acoes" id="acertoCompartilhar" hidden>
+          <button type="button" class="btn btn-ghost" id="btnCopiarAcerto">📋 Copiar resumo</button>
+          <a class="btn btn-ghost" id="btnWhatsAcerto" target="_blank" rel="noopener">💬 Mandar no WhatsApp</a>
+          <small class="campo-dica" id="acertoCopiaMsg"></small>
         </div>
-        <p class="msg-toast" id="anivMsg"></p>
-      </form>
-    </details>
+        <textarea id="acertoTexto" class="acerto-texto" rows="4" readonly hidden></textarea>
+      </details>
+      </section>
 
-    <!-- Estimativa de compra -->
-    <details class="admin-secao config-secao" id="estSecao">
-      <summary><h2>Estimativa de compra 🛒</h2></summary>
+      <!-- ---------- Ajustes (provisório até a Fatia 14) ---------- -->
+      <section class="ad-aba" id="aba-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" hidden>
+      <!-- Convite: o que o convidado vê -->
+      <details class="admin-secao config-secao" id="conviteSecao">
+        <summary><h2>Convite 💌</h2></summary>
 
-      <p class="campo-dica">
-        O que comprar, a partir de quem já confirmou — aniversariantes inclusive. Números para
-        passar ao fornecedor. <strong>Não é a conta final</strong>: o custo abaixo usa os preços
-        de referência da config, não o que foi gasto de verdade.
-      </p>
-
-      <p class="msg-toast err" id="estAvisoAniv" hidden></p>
-
-      <h3 class="est-titulo">Bebidas (litros)</h3>
-      <div class="stats" id="estVolumes"></div>
-
-      <h3 class="est-titulo">Pizzas (por pessoa)</h3>
-      <div class="stats" id="estPizzas"></div>
-
-      <h3 class="est-titulo">Custo aproximado</h3>
-      <div class="stats" id="estCusto"></div>
-      <p class="campo-dica" id="estAvisoPrecos" hidden></p>
-
-      <h3 class="est-titulo">Quem consome o quê</h3>
-      <div class="stats" id="estContagens"></div>
-    </details>
-
-    <!-- Fechamento e rateio -->
-    <details class="admin-secao config-secao" id="fecSecao">
-      <summary><h2>Fechamento e rateio 🧾</h2></summary>
-
-      <form id="fecForm" novalidate>
-        <fieldset class="config-bloco">
-          <legend>Custo real gasto (R$)</legend>
+        <form id="conviteForm" novalidate>
           <p class="campo-dica">
-            O que foi pago de verdade, depois da compra. Deixe em branco o que ainda não fechou —
-            vazio significa "ainda não sei", não zero.
+            O que aparece na página do convidado. Editar aqui muda o site na hora — sem mexer em
+            código.
           </p>
-          <div class="config-grid" id="fecCustos"></div>
-        </fieldset>
 
-        <fieldset class="config-bloco">
-          <legend>Preço real da pizza (R$) — opcional</legend>
+          <fieldset class="config-bloco">
+            <legend>A festa</legend>
+            <div class="config-grid">
+              <label class="config-campo"><span>Título *</span>
+                <input type="text" id="cv_titulo" maxlength="120" /></label>
+              <label class="config-campo"><span>Subtítulo</span>
+                <input type="text" id="cv_subtitulo" maxlength="200" /></label>
+              <label class="config-campo"><span>Data e hora *</span>
+                <input type="datetime-local" id="cv_data" /></label>
+              <label class="config-campo"><span>Data por extenso <small>(vazio = gerada)</small></span>
+                <input type="text" id="cv_data_texto" maxlength="160" /></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="config-bloco">
+            <legend>Onde</legend>
+            <div class="config-grid">
+              <label class="config-campo"><span>Local *</span>
+                <input type="text" id="cv_local" maxlength="200" /></label>
+              <label class="config-campo"><span>Link do mapa</span>
+                <input type="url" id="cv_local_mapa" placeholder="https://..." /></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="config-bloco">
+            <legend>Aniversariantes</legend>
+            <p class="campo-dica">
+              A <strong>posição</strong> é o identificador de cada um nas confirmações. Renomear é
+              seguro; trocar de posição reatribui quem convidou quem.
+            </p>
+            <div class="config-grid">
+              <label class="config-campo"><span>1º *</span><input type="text" id="cv_nome_aniv_1" maxlength="60" /></label>
+              <label class="config-campo"><span>2º *</span><input type="text" id="cv_nome_aniv_2" maxlength="60" /></label>
+              <label class="config-campo"><span>3º *</span><input type="text" id="cv_nome_aniv_3" maxlength="60" /></label>
+            </div>
+          </fieldset>
+
+          <div class="config-acoes">
+            <button type="submit" class="btn btn-primary" id="btnSalvarConvite">Salvar convite</button>
+            <small class="campo-dica" id="conviteAtualizado"></small>
+          </div>
+          <p class="msg-toast" id="conviteMsg"></p>
+        </form>
+      </details>
+      <!-- Config: preços, taxas e prazo -->
+      <details class="admin-secao config-secao" id="configSecao">
+        <summary><h2>Preços, taxas e prazo ⚙️</h2></summary>
+
+        <form id="configForm" novalidate>
+          <fieldset class="config-bloco">
+            <legend>Preços de referência (R$)</legend>
+            <p class="campo-dica">
+              Servem para a estimativa de custo. Use vírgula para os centavos: <code>18,00</code>.
+            </p>
+            <div class="config-grid" id="configPrecos"></div>
+          </fieldset>
+
+          <fieldset class="config-bloco">
+            <legend>Consumo estimado por pessoa (litros)</legend>
+            <p class="campo-dica">
+              Transformam o "quem bebe o quê" em litros a comprar. Taxa zerada faz a estimativa
+              daquela bebida dar zero.
+            </p>
+            <div class="config-grid" id="configTaxas"></div>
+          </fieldset>
+
+          <fieldset class="config-bloco">
+            <legend>Prazo de confirmação</legend>
+            <div class="config-grid">
+              <label class="config-campo">
+                <span>Confirmações até o fim do dia</span>
+                <input type="date" id="cfgPrazo" />
+              </label>
+            </div>
+            <p class="campo-dica">
+              Vazio = sem limite. Depois dessa data o formulário público fecha e o envio é
+              recusado pelo banco.
+            </p>
+          </fieldset>
+
+          <div class="config-acoes">
+            <button type="submit" class="btn btn-primary" id="btnSalvarConfig">Salvar configuração</button>
+            <small class="campo-dica" id="configAtualizado"></small>
+          </div>
+          <p class="msg-toast" id="configMsg"></p>
+        </form>
+      </details>
+      <!-- Aniversariantes como consumidores -->
+      <details class="admin-secao config-secao" id="anivSecao">
+        <summary><h2>Aniversariantes 🎂</h2></summary>
+
+        <form id="anivForm" novalidate>
           <p class="campo-dica">
-            Se em branco, o rateio usa o preço de referência da configuração.
+            O que cada aniversariante consome. Eles pagam 100% do próprio consumo e entram na
+            estimativa como qualquer pessoa. Os nomes vêm do <code>config.js</code> — para
+            renomear, é lá.
           </p>
-          <div class="config-grid" id="fecPizzas"></div>
-        </fieldset>
 
-        <div class="config-acoes">
-          <button type="submit" class="btn btn-primary" id="btnSalvarFec">Salvar fechamento</button>
-        </div>
-        <p class="msg-toast" id="fecMsg"></p>
-      </form>
+          <div id="anivBlocos"></div>
 
-      <h3 class="est-titulo">Quanto cada aniversariante paga</h3>
-      <p class="campo-dica">
-        Convidado não paga: o consumo dele é bancado por quem o convidou, dividido igualmente
-        quando foi mais de um.
-      </p>
-      <div id="fecContas"></div>
-
-      <div class="selo" id="fecSelo"></div>
-      <div class="stats" id="fecTotais"></div>
-
-      <h3 class="est-titulo">Acerto entre vocês</h3>
-      <p class="campo-dica">
-        Marque quem bancou cada item. O valor vem do fechamento acima — não precisa digitar.
-      </p>
-
-      <form id="acertoForm" novalidate>
-        <div class="config-grid" id="acertoPagadores"></div>
-        <div class="config-acoes">
-          <button type="submit" class="btn btn-primary" id="btnSalvarAcerto">Salvar quem pagou</button>
-        </div>
-        <p class="msg-toast" id="acertoMsg"></p>
-      </form>
-
-      <div id="acertoSaldos"></div>
-      <div class="selo" id="acertoSelo"></div>
-      <div id="acertoTransferencias"></div>
-
-      <div class="config-acoes" id="acertoCompartilhar" hidden>
-        <button type="button" class="btn btn-ghost" id="btnCopiarAcerto">📋 Copiar resumo</button>
-        <a class="btn btn-ghost" id="btnWhatsAcerto" target="_blank" rel="noopener">💬 Mandar no WhatsApp</a>
-        <small class="campo-dica" id="acertoCopiaMsg"></small>
-      </div>
-      <textarea id="acertoTexto" class="acerto-texto" rows="4" readonly hidden></textarea>
-    </details>
-
-    <!-- Estatísticas -->
-    <div class="stats" id="stats"></div>
-
-    <!-- Tabela de confirmações -->
-    <div class="tabela-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Quando</th>
-            <th>Responsável</th>
-            <th>Convidou</th>
-            <th>Pessoas</th>
-            <th>Preferências</th>
-            <th>Recado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tabelaBody"></tbody>
-      </table>
+          <div class="config-acoes">
+            <button type="submit" class="btn btn-primary" id="btnSalvarAniv">Salvar aniversariantes</button>
+          </div>
+          <p class="msg-toast" id="anivMsg"></p>
+        </form>
+      </details>
+      <!-- Gestão de fotos -->
+      <section class="admin-secao">
+        <h2>Fotos do carrossel 📸</h2>
+        <label class="upload-drop" id="uploadDrop">
+          <input type="file" id="fileInput" accept="image/*" multiple />
+          <b>Clique ou arraste as fotos aqui</b><br />
+          <small>JPG, PNG, WEBP ou GIF</small>
+        </label>
+        <p class="msg-toast" id="fotoMsg"></p>
+        <div class="fotos-grid" id="fotosGrid"></div>
+      </section>
+      </section>
     </div>
-    <p class="vazio" id="tabelaVazia" hidden>Nenhuma confirmação ainda.</p>
 
-    <!-- Gestão de fotos -->
-    <section class="admin-secao">
-      <h2>Fotos do carrossel 📸</h2>
-      <label class="upload-drop" id="uploadDrop">
-        <input type="file" id="fileInput" accept="image/*" multiple />
-        <b>Clique ou arraste as fotos aqui</b><br />
-        <small>JPG, PNG, WEBP ou GIF</small>
-      </label>
-      <p class="msg-toast" id="fotoMsg"></p>
-      <div class="fotos-grid" id="fotosGrid"></div>
-    </section>
+    <!-- Barra de abas. Rótulo de texto, sem ícone: glifo ambíguo foi
+         testado e descartado pelo design. -->
+    <nav class="ad-abas" role="tablist" aria-label="Seções do painel">
+      <button type="button" class="ad-aba-btn" role="tab" id="tab-resumo" data-aba="resumo" aria-controls="aba-resumo">Resumo</button>
+      <button type="button" class="ad-aba-btn" role="tab" id="tab-quem-vem" data-aba="quem-vem" aria-controls="aba-quem-vem">Quem vem</button>
+      <button type="button" class="ad-aba-btn" role="tab" id="tab-compras" data-aba="compras" aria-controls="aba-compras">Compras</button>
+      <button type="button" class="ad-aba-btn" role="tab" id="tab-contas" data-aba="contas" aria-controls="aba-contas">Contas</button>
+      <button type="button" class="ad-aba-btn" role="tab" id="tab-ajustes" data-aba="ajustes" aria-controls="aba-ajustes">Ajustes</button>
+    </nav>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
