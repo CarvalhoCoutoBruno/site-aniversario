@@ -87,7 +87,16 @@
   // já logado?
   sb.auth.getSession().then(({ data }) => { if (data.session) mostrarPainel(); });
 
+  /* Guarda contra montar o painel duas vezes. Dois caminhos chamam esta
+     função — o getSession() de quem já estava logado e o submit do
+     formulário — e sem a trava os listeners de upload eram registrados
+     em dobro: um arquivo escolhido subia duas vezes, com dois nomes.
+     Apareceu ao testar o upload, não ao ler o código. */
+  let painelMontado = false;
+
   async function mostrarPainel() {
+    if (painelMontado) return;
+    painelMontado = true;
     $("#loginBox").hidden = true;
     $("#painel").hidden = false;
     mostrarAba(abaDoHash());

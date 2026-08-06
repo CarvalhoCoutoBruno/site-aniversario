@@ -13,16 +13,11 @@
   --shadow: 0 18px 50px -20px rgba(139, 63, 251, .35);
   --radius: 18px;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14101c;
-    --bg-soft: #1e1830;
-    --ink: #f3ecff;
-    --ink-soft: #b9a9d0;
-    --line: #322944;
-    --shadow: 0 18px 50px -20px rgba(0,0,0,.6);
-  }
-}
+/* O bloco @media (prefers-color-scheme: dark) que ficava aqui saiu na
+   Fatia 14. Ele já não tinha leitor: os dois <body> carregam classe de
+   escopo (.pagina-convite / .pagina-admin) e ambas redeclaram --bg,
+   --ink, --line e --brand, que vencem o :root em toda a subárvore.
+   Verificado por medição antes e depois da remoção — idêntico. */
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -650,12 +645,16 @@ textarea { resize: vertical; }
      Por isso existem DOIS vermelhos: abaixo de 24px usa-se o
      --cv-vermelho-txt (5.51:1). Medido, não estimado. */
 
-  /* Remapeia as variáveis GLOBAIS dentro do convite. Sem isto, os
-     componentes compartilhados (input, textarea, .chip, .pessoa-card)
-     continuam lendo o :root — que o @media prefers-color-scheme deixa
-     escuro, e o formulário renderiza preto dentro de card branco. Foi
-     o bug da Fatia 9; a paleta boteco é clara em qualquer esquema, e
-     este bloco é o que garante isso. */
+  /* Remapeia as variáveis GLOBAIS dentro do convite: os componentes
+     compartilhados (input, textarea, .chip, .pessoa-card) leem --bg,
+     --ink e --line, e é aqui que eles ganham a paleta boteco em vez da
+     do :root.
+
+     Nasceu na Fatia 9 para vencer o @media (prefers-color-scheme: dark),
+     que pintava o formulário de preto dentro de card branco. Esse bloco
+     saiu na Fatia 14 — justamente porque, com as duas páginas escopadas,
+     ele já não tinha leitor. O remapeamento continua sendo o que define
+     a paleta da subárvore. */
   --bg: var(--cv-papel);
   --bg-soft: var(--cv-papel-2);
   --ink: var(--cv-tinta);
