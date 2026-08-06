@@ -64,7 +64,8 @@ form { display: flex; flex-direction: column; gap: 1.3rem; }
 .campo { display: flex; flex-direction: column; gap: .45rem; border: none; padding: 0; margin: 0; }
 .campo label, .campo legend { font-weight: 600; font-size: .95rem; }
 .campo legend small { font-weight: 400; color: var(--ink-soft); }
-input[type=text], input[type=tel], textarea, select {
+input[type=text], input[type=tel], input[type=email], input[type=password],
+textarea, select {
   width: 100%; font: inherit; color: var(--ink);
   background: var(--bg-soft); border: 1.5px solid var(--line);
   border-radius: 12px; padding: .75rem .9rem; transition: border-color .2s, box-shadow .2s;
@@ -107,132 +108,10 @@ textarea { resize: vertical; }
   to { transform: translateY(115vh) rotate(720deg); opacity: 1; }
 }
 
-/* =====================================================================
-   ADMIN — pele própria (Fatia 12)
-   =====================================================================
-   Tudo escopado em .pagina-admin, inclusive as regras herdadas das
-   fatias anteriores: a pele antiga do CONVITE ficou fora de escopo na
-   Fatia 9 e, quando a nova entrou na 11, venceu por especificidade. Aqui
-   os dois lados nascem escopados, então quem decide é a ordem da
-   cascata, não acidente de seletor.
-
-   O painel é CLARO em qualquer esquema. O :root tem um bloco
-   @media (prefers-color-scheme: dark) e o admin era o último a usá-lo;
-   o pacote de design não traz tokens escuros e meio-a-meio seria pior
-   que qualquer das duas pontas. Quando a Fatia 14 fechar, ninguém mais
-   lê o :root escuro e aquele bloco pode sair.
-   ===================================================================== */
-.pagina-admin {
-  --ad-fundo:    #eceae5;   /* fora da coluna */
-  --ad-painel:   #f7f6f3;   /* fundo do app */
-  --ad-card:     #ffffff;
-  --ad-borda:    #dedbd4;
-  --ad-borda-2:  #cfcbc2;   /* inputs */
-  --ad-tinta:    #14110d;
-  --ad-mudo:     #6b665d;   /* secundário — o #8a857c reprova AA */
-  --ad-mudo-2:   #a8a29a;   /* rótulo sobre bloco escuro */
-  --ad-claro-2:  #c9c3b8;
-  --ad-azul:     #1d4ed8;   /* aba ativa, salvar, acento */
-  --ad-vermelho: #d8352a;   /* excluir, alerta */
-  --ad-linha-2:  #f2f0eb;
-  --ad-corpo:    #4a4640;
-  --ad-ambar-bg: #fdf6ec;  --ad-ambar-borda: #e8d5b5;  --ad-ambar-txt: #7c5a1e;
-  --ad-erro-bg:  #fdefee;  --ad-erro-borda:  #f0c9c6;  --ad-erro-txt:  #9b2c22;
-  --ad-ok-bg:    #eef2fd;  --ad-ok-borda:    #c9d6f7;  --ad-ok-txt:    #1e3a8a;
-
-  /* Remapeia as GLOBAIS dentro do painel. É o que impede o
-     @media prefers-color-scheme do :root de pintar os componentes
-     compartilhados de escuro dentro de card branco. */
-  --bg: var(--ad-painel);
-  --bg-soft: var(--ad-card);
-  --ink: var(--ad-tinta);
-  --ink-soft: var(--ad-mudo);
-  --line: var(--ad-borda);
-  --brand: var(--ad-azul);
-  --brand-2: var(--ad-vermelho);
-  --err: var(--ad-vermelho);
-  --shadow: none;
-  --radius: 14px;
-
-  background: var(--ad-fundo);
-  color: var(--ad-tinta);
-  font-family: "Space Grotesk", system-ui, sans-serif;
-}
-
-.pagina-admin h1, .pagina-admin h2, .pagina-admin h3 {
-  font-family: "Space Grotesk", system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -.02em;
-}
-.pagina-admin .mono {
-  font-family: "DM Mono", ui-monospace, monospace;
-}
-/* [hidden] contra display de autor — mesma armadilha do convite */
-.pagina-admin [hidden] { display: none !important; }
-
-/* ---------------------------------------------------------------------
-   CASCA — coluna, cabeçalho fixo e barra de abas
-   --------------------------------------------------------------------- */
-.pagina-admin .admin-wrap {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 0 0 82px;              /* espaço para a barra fixa não cobrir conteúdo */
-  min-height: 100vh;
-  background: var(--ad-painel);
-  box-shadow: 0 0 0 1px var(--ad-borda);
-}
-
-.pagina-admin .ad-topo {
-  position: sticky; top: 0; z-index: 5;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 14px 16px 10px;
-  background: var(--ad-painel);
-  border-bottom: 1px solid var(--ad-borda);
-}
-.pagina-admin .ad-topo h1 { margin: 0; font-size: 19px; }
-.pagina-admin .ad-carimbo { margin: 2px 0 0; font-size: 11px; color: var(--ad-mudo); }
-.pagina-admin .ad-topo-acoes { display: flex; gap: 8px; flex: 0 0 auto; }
-
-.pagina-admin .ad-icone,
-.pagina-admin .ad-btn {
-  height: 44px; border: 1px solid var(--ad-borda-2); border-radius: 10px;
-  background: var(--ad-card); color: var(--ad-tinta);
-  font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-}
-.pagina-admin .ad-icone { width: 44px; font-size: 16px; }
-.pagina-admin .ad-btn { padding: 0 14px; }
-.pagina-admin .ad-icone:hover,
-.pagina-admin .ad-btn:hover { border-color: var(--ad-tinta); }
-
-.pagina-admin .ad-conteudo { padding: 16px 16px 24px; }
-.pagina-admin .ad-aba { display: flex; flex-direction: column; gap: 16px; }
-
-/* Barra de abas: fixa no rodapé, alvo de 58px, rótulo de texto.
-   Sem ícone — glifo ambíguo foi testado e descartado pelo design. */
-.pagina-admin .ad-abas {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-  display: grid; grid-template-columns: repeat(5, 1fr);
-  width: 100%; max-width: 560px; margin: 0 auto;
-  background: var(--ad-card);
-  border-top: 1px solid var(--ad-borda);
-}
-.pagina-admin .ad-aba-btn {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 58px;
-  padding: 10px 2px calc(10px + env(safe-area-inset-bottom));
-  border: none; border-top: 3px solid transparent;
-  background: transparent; color: var(--ad-mudo);
-  font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: -.01em;
-  cursor: pointer;
-}
-.pagina-admin .ad-aba-btn.ativa { color: var(--ad-azul); border-top-color: var(--ad-azul); }
-
 /* ===================== ADMIN ===================== */
 .pagina-admin .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
 .pagina-admin .admin-topo { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
 .pagina-admin .admin-topo h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0; }
-.pagina-admin .login-box { max-width: 380px; margin: 4rem auto; background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow); }
-.pagina-admin .login-box h1 { margin-top: 0; text-align: center; }
 
 .pagina-admin .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .9rem; margin-bottom: 1.8rem; }
 .pagina-admin .stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
@@ -348,6 +227,158 @@ textarea { resize: vertical; }
 .pagina-admin .acerto-texto { width: 100%; margin-top: .8rem; font-family: inherit;
                 font-size: .9rem; padding: .7rem; border-radius: 12px;
                 border: 1.5px solid var(--line); background: var(--bg-soft); color: var(--ink); }
+
+/* =====================================================================
+   ADMIN — pele própria (Fatia 12)
+   =====================================================================
+   Tudo escopado em .pagina-admin, inclusive as regras herdadas das
+   fatias anteriores: a pele antiga do CONVITE ficou fora de escopo na
+   Fatia 9 e, quando a nova entrou na 11, venceu por especificidade. Aqui
+   os dois lados nascem escopados, então quem decide é a ordem da
+   cascata, não acidente de seletor.
+
+   O painel é CLARO em qualquer esquema. O :root tem um bloco
+   @media (prefers-color-scheme: dark) e o admin era o último a usá-lo;
+   o pacote de design não traz tokens escuros e meio-a-meio seria pior
+   que qualquer das duas pontas. Quando a Fatia 14 fechar, ninguém mais
+   lê o :root escuro e aquele bloco pode sair.
+   ===================================================================== */
+.pagina-admin {
+  --ad-fundo:    #eceae5;   /* fora da coluna */
+  --ad-painel:   #f7f6f3;   /* fundo do app */
+  --ad-card:     #ffffff;
+  --ad-borda:    #dedbd4;
+  --ad-borda-2:  #cfcbc2;   /* inputs */
+  --ad-tinta:    #14110d;
+  --ad-mudo:     #6b665d;   /* secundário — o #8a857c reprova AA */
+  --ad-mudo-2:   #a8a29a;   /* rótulo sobre bloco escuro */
+  --ad-claro-2:  #c9c3b8;
+  --ad-azul:     #1d4ed8;   /* aba ativa, salvar, acento */
+  --ad-vermelho: #d8352a;   /* excluir, alerta */
+  --ad-linha-2:  #f2f0eb;
+  --ad-corpo:    #4a4640;
+  --ad-ambar-bg: #fdf6ec;  --ad-ambar-borda: #e8d5b5;  --ad-ambar-txt: #7c5a1e;
+  --ad-erro-bg:  #fdefee;  --ad-erro-borda:  #f0c9c6;  --ad-erro-txt:  #9b2c22;
+  --ad-ok-bg:    #eef2fd;  --ad-ok-borda:    #c9d6f7;  --ad-ok-txt:    #1e3a8a;
+
+  /* Remapeia as GLOBAIS dentro do painel. É o que impede o
+     @media prefers-color-scheme do :root de pintar os componentes
+     compartilhados de escuro dentro de card branco. */
+  --bg: var(--ad-painel);
+  --bg-soft: var(--ad-card);
+  --ink: var(--ad-tinta);
+  --ink-soft: var(--ad-mudo);
+  --line: var(--ad-borda);
+  --brand: var(--ad-azul);
+  --brand-2: var(--ad-vermelho);
+  --err: var(--ad-vermelho);
+  --shadow: none;
+  --radius: 14px;
+
+  background: var(--ad-fundo);
+  color: var(--ad-tinta);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+.pagina-admin h1, .pagina-admin h2, .pagina-admin h3 {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.pagina-admin .mono {
+  font-family: "DM Mono", ui-monospace, monospace;
+}
+/* [hidden] contra display de autor — mesma armadilha do convite */
+.pagina-admin [hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------------
+   LOGIN
+   --------------------------------------------------------------------- */
+.pagina-admin .login-box {
+  max-width: 560px; margin: 0 auto; min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 28px 20px;
+  background: var(--ad-painel);
+  box-shadow: 0 0 0 1px var(--ad-borda);
+}
+.pagina-admin .login-cartao {
+  background: var(--ad-card); border: 1px solid var(--ad-borda);
+  border-radius: 14px; padding: 26px 20px;
+}
+.pagina-admin .login-cartao h1 { margin: 0 0 4px; font-size: 22px; }
+.pagina-admin .login-sub { margin: 0 0 22px; font-size: 14px; color: var(--ad-mudo); }
+.pagina-admin #loginForm { display: flex; flex-direction: column; gap: 14px; }
+.pagina-admin .login-cartao .campo > span { font-size: 13px; font-weight: 600; }
+.pagina-admin .login-cartao input {
+  border: 1px solid var(--ad-borda-2); border-radius: 10px;
+  padding: 13px 12px; font-size: 16px;      /* 16px: abaixo disso o iOS dá zoom */
+  background: var(--ad-card); color: var(--ad-tinta);
+}
+.pagina-admin .login-btn {
+  margin-top: 4px; width: 100%;
+  font-family: inherit; font-size: 16px; font-weight: 700; padding: 15px;
+  border: none; border-radius: 10px; cursor: pointer;
+  background: var(--ad-tinta); color: var(--ad-painel);
+}
+.pagina-admin .login-volta { margin: 18px 0 0; text-align: center; font-size: 13px; }
+.pagina-admin .login-volta a { text-decoration: none; }
+
+/* ---------------------------------------------------------------------
+   CASCA — coluna, cabeçalho fixo e barra de abas
+   --------------------------------------------------------------------- */
+.pagina-admin .admin-wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 0 82px;              /* espaço para a barra fixa não cobrir conteúdo */
+  min-height: 100vh;
+  background: var(--ad-painel);
+  box-shadow: 0 0 0 1px var(--ad-borda);
+}
+
+.pagina-admin .ad-topo {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px 10px;
+  background: var(--ad-painel);
+  border-bottom: 1px solid var(--ad-borda);
+}
+.pagina-admin .ad-topo h1 { margin: 0; font-size: 19px; }
+.pagina-admin .ad-carimbo { margin: 2px 0 0; font-size: 11px; color: var(--ad-mudo); }
+.pagina-admin .ad-topo-acoes { display: flex; gap: 8px; flex: 0 0 auto; }
+
+.pagina-admin .ad-icone,
+.pagina-admin .ad-btn {
+  height: 44px; border: 1px solid var(--ad-borda-2); border-radius: 10px;
+  background: var(--ad-card); color: var(--ad-tinta);
+  font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.pagina-admin .ad-icone { width: 44px; font-size: 16px; }
+.pagina-admin .ad-btn { padding: 0 14px; }
+.pagina-admin .ad-icone:hover,
+.pagina-admin .ad-btn:hover { border-color: var(--ad-tinta); }
+
+.pagina-admin .ad-conteudo { padding: 16px 16px 24px; }
+.pagina-admin .ad-aba { display: flex; flex-direction: column; gap: 16px; }
+
+/* Barra de abas: fixa no rodapé, alvo de 58px, rótulo de texto.
+   Sem ícone — glifo ambíguo foi testado e descartado pelo design. */
+.pagina-admin .ad-abas {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  width: 100%; max-width: 560px; margin: 0 auto;
+  background: var(--ad-card);
+  border-top: 1px solid var(--ad-borda);
+}
+.pagina-admin .ad-aba-btn {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 58px;
+  padding: 10px 2px calc(10px + env(safe-area-inset-bottom));
+  border: none; border-top: 3px solid transparent;
+  background: transparent; color: var(--ad-mudo);
+  font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: -.01em;
+  cursor: pointer;
+}
+.pagina-admin .ad-aba-btn.ativa { color: var(--ad-azul); border-top-color: var(--ad-azul); }
 
 /* =====================================================================
    CONVITE — pele "cartaz de boteco" (Fatia 11)

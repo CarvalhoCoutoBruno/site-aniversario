@@ -16,22 +16,23 @@
 <body class="pagina-admin">
   <!-- ===================== LOGIN ===================== -->
   <div class="login-box" id="loginBox">
-    <h1>Área do organizador 🔐</h1>
-    <form id="loginForm">
-      <div class="campo">
-        <label for="email">E-mail</label>
-        <input type="email" id="email" required autocomplete="username" />
-      </div>
-      <div class="campo" style="margin-top:1rem">
-        <label for="senha">Senha</label>
-        <input type="password" id="senha" required autocomplete="current-password" />
-      </div>
-      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:1.2rem">Entrar</button>
-      <p class="msg-toast" id="loginMsg"></p>
-    </form>
-    <p style="text-align:center;font-size:.85rem;color:var(--ink-soft);margin-top:1rem">
-      <a href="index.html">← Voltar ao convite</a>
-    </p>
+    <div class="login-cartao">
+      <h1>Área do organizador</h1>
+      <p class="login-sub">Entre para ver as confirmações e fechar as contas.</p>
+      <form id="loginForm">
+        <label class="campo" for="email">
+          <span>E-mail</span>
+          <input type="email" id="email" required autocomplete="username" placeholder="voce@email.com" />
+        </label>
+        <label class="campo" for="senha">
+          <span>Senha</span>
+          <input type="password" id="senha" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
+        </label>
+        <button type="submit" class="login-btn">Entrar</button>
+        <p class="msg-toast" id="loginMsg"></p>
+      </form>
+    </div>
+    <p class="login-volta"><a href="index.html">&larr; Voltar ao convite</a></p>
   </div>
 
   <!-- ===================== PAINEL ===================== -->
