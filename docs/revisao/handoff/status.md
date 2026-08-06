@@ -6,9 +6,9 @@ consumidor. O backlog do admin zerou.
 | | |
 |---|---|
 | Branch | `feat/fatia-15-admin-contas` → merge `--ff-only` → apagada |
-| Commits | 2, cada um verde no `./verify.sh` |
-| Commit do código | `HASH_CODIGO` |
-| `origin/main` após o push | `HASH_ORIGIN` |
+| Commits | 3, cada um verde no `./verify.sh` |
+| Commit do código | `d11fd5e3604b9bcbf2c90e1887a2c443e54f3764` |
+| `origin/main` após o push | `3b395c49a2dbd9a005e92e39559d6612f97a548b` |
 | `main == origin/main` | **sim** |
 | `tests/calculo.test.js` | **63 asserções, inalteradas** — `calculo.js` só ganhou comentário |
 
