@@ -90,6 +90,42 @@ else
   ok "js/main.js escreve só pelo RPC"
 fi
 
+# Formatação de data/hora presa ao fuso da festa.
+#
+# Dois bugs desta família já passaram: o prazo avançando um dia (Fatia 7) e
+# o convite mostrando "confirme até 02/10" para quem abre a leste de São
+# Paulo (Fatia 11). Os dois foram achados por inspeção, não por teste.
+#
+# A regra NÃO inclui `toLocaleString` genérico de propósito: `fmtNumeroBR` e
+# `fmtLitros` o usam para formatar NÚMERO, que não tem fuso. Inclui, sim,
+# `Intl.DateTimeFormat` — é a API que passamos a usar nas correções, e sem
+# `timeZone` ela tem exatamente o mesmo defeito.
+#
+# A janela de 6 linhas existe porque o objeto de opções quase sempre quebra
+# em várias linhas; um grep de linha única acusaria o código certo.
+sem_fuso=""
+for arq in js/*.js; do
+  achado=$(awk -v arq="$arq" '
+    { l[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (l[i] ~ /toLocaleDateString|toLocaleTimeString|new Intl\.DateTimeFormat/) {
+          ok = 0
+          for (j = i; j <= i + 6 && j <= NR; j++) if (l[j] ~ /timeZone/) { ok = 1; break }
+          if (!ok) printf "%s:%d:%s\n", arq, i, l[i]
+        }
+      }
+    }' "$arq")
+  [ -n "$achado" ] && sem_fuso="$sem_fuso$achado
+"
+done
+if [ -n "$(printf '%s' "$sem_fuso" | tr -d '[:space:]')" ]; then
+  erro "formatação de data/hora sem timeZone (usa o fuso de quem abre a página):"
+  printf '%s' "$sem_fuso" | sed '/^$/d;s/^/      /'
+else
+  ok "toda formatação de data/hora fixa o timeZone"
+fi
+
 # ---------- resultado ----------
 if [ "$falhas" -eq 0 ]; then
   printf '\n\033[32mVERDE\033[0m — verificação estática ok. Falta a integrada (navegador + banco).\n'

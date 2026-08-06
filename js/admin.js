@@ -1191,11 +1191,15 @@
   function limparNome(n) {
     return n.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
   }
+  // "quando chegou" no fuso da FESTA, não no de quem abre o painel: são 5
+  // organizadores e a resposta tem que ser a mesma para todos.
   function fmtData(iso) {
     try {
       const d = new Date(iso);
-      return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " " +
-             d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      return new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+      }).format(d).replace(",", "");
     } catch { return iso; }
   }
   function esc(s) {
