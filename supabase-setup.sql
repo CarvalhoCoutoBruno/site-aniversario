@@ -129,8 +129,8 @@ grant execute on function public.is_admin() to authenticated;
 alter table public.admins enable row level security;
 
 -- admin enxerga a lista; ninguém escreve pela API (só por SQL)
-drop policy if exists "admin le admins" on public.admins;
-create policy "admin le admins" on public.admins
+drop policy if exists "admin reads admins" on public.admins;
+create policy "admin reads admins" on public.admins
   for select to authenticated
   using (public.is_admin());
 
@@ -491,59 +491,59 @@ alter table public.people enable row level security;
 alter table public.settings  enable row level security;
 
 -- ---- festa: leitura PÚBLICA (é o convite), escrita só admin ----
-drop policy if exists "party leitura publica" on public.party;
-create policy "party leitura publica" on public.party
+drop policy if exists "party public read" on public.party;
+create policy "party public read" on public.party
   for select to anon, authenticated
   using (true);
 
-drop policy if exists "admin edita party" on public.party;
-create policy "admin edita party" on public.party
+drop policy if exists "admin edits party" on public.party;
+create policy "admin edits party" on public.party
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
 -- ---- rsvps ----
-drop policy if exists "admin le rsvps" on public.rsvps;
-create policy "admin le rsvps" on public.rsvps
+drop policy if exists "admin reads rsvps" on public.rsvps;
+create policy "admin reads rsvps" on public.rsvps
   for select to authenticated
   using (public.is_admin());
 
-drop policy if exists "admin apaga rsvps" on public.rsvps;
-create policy "admin apaga rsvps" on public.rsvps
+drop policy if exists "admin deletes rsvps" on public.rsvps;
+create policy "admin deletes rsvps" on public.rsvps
   for delete to authenticated
   using (public.is_admin());
 
 -- ---- pessoas ----
-drop policy if exists "admin le people" on public.people;
-create policy "admin le people" on public.people
+drop policy if exists "admin reads people" on public.people;
+create policy "admin reads people" on public.people
   for select to authenticated
   using (public.is_admin());
 
 -- insert direto serve para cadastrar os 3 aniversariantes pelo painel
-drop policy if exists "admin cadastra people" on public.people;
-create policy "admin cadastra people" on public.people
+drop policy if exists "admin creates people" on public.people;
+create policy "admin creates people" on public.people
   for insert to authenticated
   with check (public.is_admin());
 
-drop policy if exists "admin edita people" on public.people;
-create policy "admin edita people" on public.people
+drop policy if exists "admin edits people" on public.people;
+create policy "admin edits people" on public.people
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
-drop policy if exists "admin apaga people" on public.people;
-create policy "admin apaga people" on public.people
+drop policy if exists "admin deletes people" on public.people;
+create policy "admin deletes people" on public.people
   for delete to authenticated
   using (public.is_admin());
 
 -- ---- config ----
-drop policy if exists "admin le settings" on public.settings;
-create policy "admin le settings" on public.settings
+drop policy if exists "admin reads settings" on public.settings;
+create policy "admin reads settings" on public.settings
   for select to authenticated
   using (public.is_admin());
 
-drop policy if exists "admin edita settings" on public.settings;
-create policy "admin edita settings" on public.settings
+drop policy if exists "admin edits settings" on public.settings;
+create policy "admin edits settings" on public.settings
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());
@@ -555,17 +555,17 @@ insert into storage.buckets (id, name, public)
 values ('fotos', 'fotos', true)
 on conflict (id) do nothing;
 
-drop policy if exists "fotos leitura publica" on storage.objects;
-create policy "fotos leitura publica" on storage.objects
+drop policy if exists "photos public read" on storage.objects;
+create policy "photos public read" on storage.objects
   for select to anon, authenticated
   using (bucket_id = 'fotos');
 
-drop policy if exists "admin sobe fotos" on storage.objects;
-create policy "admin sobe fotos" on storage.objects
+drop policy if exists "admin uploads photos" on storage.objects;
+create policy "admin uploads photos" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'fotos' and public.is_admin());
 
-drop policy if exists "admin apaga fotos" on storage.objects;
-create policy "admin apaga fotos" on storage.objects
+drop policy if exists "admin deletes photos" on storage.objects;
+create policy "admin deletes photos" on storage.objects
   for delete to authenticated
   using (bucket_id = 'fotos' and public.is_admin());
