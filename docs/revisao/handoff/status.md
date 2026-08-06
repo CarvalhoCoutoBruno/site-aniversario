@@ -8,8 +8,8 @@ Aniversariantes saíram; só Contas continua provisória, e ela é a Fatia 15. O
 |---|---|
 | Branch | `feat/fatia-14-admin-ajustes` → merge `--ff-only` → apagada |
 | Commits | 3, cada um verde no `./verify.sh` |
-| Commit do código | `HASH_CODIGO` |
-| `origin/main` após o push | `HASH_ORIGIN` |
+| Commit do código | `a53e598abc964644c78e27ae4af0d3173e75f139` |
+| `origin/main` após o push | `cdf4eb645dfb9668b174f2a8f85281020b5af32a` |
 | `main == origin/main` | **sim** |
 
 ## O bug que o teste do upload achou
