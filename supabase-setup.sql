@@ -43,48 +43,48 @@ begin
   -- Leitura via to_jsonb + EXECUTE de propósito: colunas novas (pago_por_*)
   -- podem ainda não existir na primeira execução, e referenciá-las direto
   -- quebraria o script no parse.
-  if to_regclass('public.config') is not null then
-    execute 'select to_jsonb(c) from public.config c where id = 1' into v_cfg;
+  if to_regclass('public.settings') is not null then
+    execute 'select to_jsonb(c) from public.settings c where id = 1' into v_cfg;
     if v_cfg is not null then
-      if  (v_cfg->>'custo_real_chopp')        is not null
-       or (v_cfg->>'custo_real_refri')        is not null
-       or (v_cfg->>'custo_real_agua')         is not null
-       or (v_cfg->>'preco_real_pizza_adulto') is not null
-       or (v_cfg->>'preco_real_pizza_crianca')is not null then
+      if  (v_cfg->>'actual_beer_cost')        is not null
+       or (v_cfg->>'actual_soda_cost')        is not null
+       or (v_cfg->>'actual_water_cost')         is not null
+       or (v_cfg->>'actual_adult_pizza_price') is not null
+       or (v_cfg->>'actual_child_pizza_price')is not null then
         v_reason := 'custo real de fechamento lancado';
-      elsif (v_cfg->>'pago_por_chopp') is not null
-         or (v_cfg->>'pago_por_refri') is not null
-         or (v_cfg->>'pago_por_agua')  is not null
-         or (v_cfg->>'pago_por_pizza') is not null then
+      elsif (v_cfg->>'beer_paid_by') is not null
+         or (v_cfg->>'soda_paid_by') is not null
+         or (v_cfg->>'water_paid_by')  is not null
+         or (v_cfg->>'pizza_paid_by') is not null then
         v_reason := 'pagadores do acerto marcados';
-      elsif (v_cfg->>'prazo_confirmacao') is not null then
+      elsif (v_cfg->>'rsvp_deadline') is not null then
         v_reason := 'prazo de confirmacao definido';
-      elsif coalesce((v_cfg->>'preco_litro_chopp')::numeric, 0)   > 0
-         or coalesce((v_cfg->>'preco_litro_refri')::numeric, 0)   > 0
-         or coalesce((v_cfg->>'preco_litro_agua')::numeric, 0)    > 0
-         or coalesce((v_cfg->>'preco_pizza_adulto')::numeric, 0)  > 0
-         or coalesce((v_cfg->>'preco_pizza_crianca')::numeric, 0) > 0 then
+      elsif coalesce((v_cfg->>'beer_price_per_liter')::numeric, 0)   > 0
+         or coalesce((v_cfg->>'soda_price_per_liter')::numeric, 0)   > 0
+         or coalesce((v_cfg->>'water_price_per_liter')::numeric, 0)    > 0
+         or coalesce((v_cfg->>'adult_pizza_price')::numeric, 0)  > 0
+         or coalesce((v_cfg->>'child_pizza_price')::numeric, 0) > 0 then
         v_reason := 'precos de referencia preenchidos';
       end if;
 
       if v_reason is not null then
         raise exception
-          'ABORTADO: public.config tem dado real (%). Recriar o schema apagaria preco, prazo e fechamento. Limpe a config manualmente antes se o descarte for intencional.',
+          'ABORTADO: public.settings tem dado real (%). Recriar o schema apagaria preco, prazo e fechamento. Limpe a settings manualmente antes se o descarte for intencional.',
           v_reason;
       end if;
     end if;
   end if;
 
   -- (3) convite editado pelo organizador.
-  -- Aqui "tem linha" NÃO serve de sinal: a festa é semeada por este
+  -- Aqui "tem linha" NÃO serve de sinal: a party é semeada por este
   -- próprio script, então existiria desde o primeiro Run e a trava
-  -- dispararia para sempre. O sinal é atualizado_em: NULL no seed,
+  -- dispararia para sempre. O sinal é updated_at: NULL no seed,
   -- preenchido quando alguém salva pelo painel.
-  if to_regclass('public.festa') is not null then
-    execute 'select to_jsonb(f) from public.festa f where id = 1' into v_cfg;
-    if v_cfg is not null and (v_cfg->>'atualizado_em') is not null then
+  if to_regclass('public.party') is not null then
+    execute 'select to_jsonb(f) from public.party f where id = 1' into v_cfg;
+    if v_cfg is not null and (v_cfg->>'updated_at') is not null then
       raise exception
-        'ABORTADO: public.festa foi editada pelo painel (titulo, data, local ou nomes). Recriar o schema voltaria o convite para os valores do seed.';
+        'ABORTADO: public.party foi editada pelo painel (titulo, data, local ou nomes). Recriar o schema voltaria o convite para os valores do seed.';
     end if;
   end if;
 end $$;
