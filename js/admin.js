@@ -117,7 +117,7 @@
   }
 
   /* ================= CONVITE: o que o convidado vê =================
-     Tabela `festa` — a única que o anon lê direto. Aqui só entra o que
+     Tabela `party` — a única que o anon lê direto. Aqui só entra o que
      já aparece impresso no convite; preço e custo real seguem na
      `config`, fechada.
 
@@ -229,7 +229,7 @@
     if (el) el.focus();
   }
 
-  /* O rateio rotula as contas com `pessoas.nome`, que é o snapshot de
+  /* O rateio rotula as contas com `people.name`, que é o snapshot de
      quando o aniversariante foi cadastrado. Renomeando no Convite, a
      conta continuaria com o nome velho até alguém re-salvar o cadastro.
      A festa é a fonte única do nome — o snapshot serve só de reserva. */
@@ -346,7 +346,7 @@
   /* Um formulário por grupo de colunas. Não é só layout: o `patch` fica
      pequeno porque o formulário é pequeno — em vez de disciplina, vira
      arquitetura. Nenhum patch é montado por varredura de inputs; cada um
-     lista as colunas à mão, e `custo_real_*` / `pago_por_*` não aparecem
+     lista as colunas à mão, e `actual_*_cost` / `*_paid_by` não aparecem
      em nenhum deles. */
 
   function readNumbers(fields, maximo, kind, botao, toast) {
@@ -592,7 +592,7 @@
       const ageGroup = block.querySelector('.a-kind input[value="child"]').checked ? "child" : "adult";
       const registro = {
         // `nome` fica de fora de propósito: a linha de aniversariante NÃO
-        // guarda nome. A `festa` é a fonte única, e quem alimenta o
+        // guarda nome. A `party` é a fonte única, e quem alimenta o
         // calc.js resolve pelo pessoasParaCalculo(). Gravar aqui
         // repopularia a coluna e a divergência voltaria pelo outro lado.
         age_group: ageGroup,
@@ -638,7 +638,7 @@
      Só leitura: nenhuma escrita no banco nesta seção.
 
      ⚠️ Coordenação. Os carregadores rodam em PARALELO no mostrarPainel,
-     e a estimativa precisa de config + pessoas juntas. Calcular dentro
+     e a estimativa precisa de settings + people juntas. Calcular dentro
      de um deles rodaria com metade do estado, de forma intermitente
      conforme a ordem em que as promessas resolvem. Por isso cada um
      guarda a sua parte e chama atualizarEstimativa(), que não faz nada
@@ -863,7 +863,7 @@
      já resolvido.
 
      Por isso a linha de aniversariante em `people` tem `nome` NULO: a
-     `festa` é a fonte única. Este helper resolve o nome antes de o dado
+     `party` é a fonte única. Este helper resolve o nome antes de o dado
      entrar na conta, e TODO ponto que alimenta o módulo passa por aqui —
      não há `.map()` inline espalhado.
 
@@ -1099,7 +1099,7 @@
   });
 
   /* ================= CONFIRMAÇÕES =================
-     Lê o schema novo: rsvps + pessoas por FK. As telas de config,
+     Lê o schema novo: rsvps + people por FK. As telas de config,
      aniversariantes, estimativa e fechamento são as Fatias 2 a 5 —
      aqui só a lista e as contagens.                                */
   async function loadRSVPs() {

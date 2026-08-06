@@ -655,7 +655,7 @@
       "VERSION:2.0",
       "PRODID:-//site-aniversario//PT-BR",
       "BEGIN:VEVENT",
-      `UID:festa-${ini.getTime()}@site-aniversario`,
+      `UID:party-${ini.getTime()}@site-aniversario`,
       `DTSTAMP:${carimbo(new Date())}`,
       `DTSTART:${carimbo(ini)}`,
       `DTEND:${carimbo(end)}`,

@@ -24,10 +24,10 @@
    "Aniversariante 1" — e estará certo, porque não entregou o nome.
 
    Entradas:
-     pessoas[] — { id, rsvp_id, nome, tipo, wants_water, wants_soda,
+     people[] — { id, rsvp_id, name, age_group, wants_water, wants_soda,
                    wants_beer, wants_pizza, papel, celebrant_id }
-     grupos[]  — { id, invited_by: [1..3], lead_name, contato }
-     config    — mesma forma da tabela `settings` (reais, não centavos)
+     groups[]  — { id, invited_by: [1..3], lead_name, contact }
+     settings  — mesma forma da tabela `settings` (reais, não centavos)
    ============================================================= */
 (function (root) {
   "use strict";

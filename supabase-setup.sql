@@ -170,7 +170,7 @@ $$;
 -- =============================================================
 --  VALIDAÇÃO DE invited_by
 --  Guarda IDs estáveis (1, 2, 3) apontando para as posições de
---  festa.aniversariantes no config.js — não o nome. É a CHAVE do
+--  party.celebrant_N_name — não o nome. É a CHAVE do
 --  rateio: define qual aniversariante banca o consumo do grupo.
 --  Regras: 1 a 3 itens, todos em {1,2,3}, sem repetição.
 --  (função auxiliar porque CHECK não aceita subconsulta direto)
@@ -204,7 +204,7 @@ create index rsvps_created_at_idx    on public.rsvps (created_at desc);
 create index rsvps_contact_norm_idx on public.rsvps (contact_norm);
 
 -- =============================================================
---  TABELA: pessoas — unidade de consumo
+--  TABELA: people — unidade de consumo
 --  Principal, acompanhante e aniversariante são todos linhas aqui.
 -- =============================================================
 create table public.people (
@@ -264,7 +264,7 @@ create unique index people_celebrant_id_unique
   on public.people (celebrant_id) where role = 'celebrant';
 
 -- =============================================================
---  TABELA: festa — os dados do convite, editáveis pelo painel
+--  TABELA: party — os dados do convite, editáveis pelo painel
 --
 --  É a ÚNICA tabela que o visitante anônimo lê direto. Por isso só
 --  entra aqui o que já aparece impresso no convite: título, data,
@@ -351,7 +351,7 @@ create table public.settings (
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 
 -- =============================================================
---  RPC: create_rsvp — insert atômico (grupo + pessoas numa transação)
+--  RPC: create_rsvp — insert atômico (grupo + people numa transação)
 --
 --  SECURITY DEFINER: roda com o privilégio do dono, então a RLS das
 --  tabelas não se aplica. Por isso NÃO existe política de insert para
@@ -415,7 +415,7 @@ begin
   end if;
 
   -- dedupe: reenvio com o mesmo contato substitui o anterior
-  -- (pessoas somem junto pelo ON DELETE CASCADE)
+  -- (as linhas de people somem junto pelo ON DELETE CASCADE)
   delete from public.rsvps
    where contact_norm = public.normalize_contact(p_contact);
 
@@ -490,7 +490,7 @@ alter table public.rsvps   enable row level security;
 alter table public.people enable row level security;
 alter table public.settings  enable row level security;
 
--- ---- festa: leitura PÚBLICA (é o convite), escrita só admin ----
+-- ---- party: leitura PÚBLICA (é o convite), escrita só admin ----
 drop policy if exists "party public read" on public.party;
 create policy "party public read" on public.party
   for select to anon, authenticated
@@ -513,7 +513,7 @@ create policy "admin deletes rsvps" on public.rsvps
   for delete to authenticated
   using (public.is_admin());
 
--- ---- pessoas ----
+-- ---- people ----
 drop policy if exists "admin reads people" on public.people;
 create policy "admin reads people" on public.people
   for select to authenticated
