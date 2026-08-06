@@ -47,7 +47,6 @@ a { color: var(--brand); }
 }
 .btn-primary:hover { transform: translateY(-2px); }
 .btn-primary:disabled { opacity: .6; cursor: progress; transform: none; }
-.btn-lg { padding: 1rem 2rem; font-size: 1.1rem; }
 .btn-ghost {
   background: transparent; color: var(--brand);
   border: 1.5px dashed var(--brand); padding: .7rem 1.2rem;
