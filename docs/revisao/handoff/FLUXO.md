@@ -15,7 +15,7 @@ O protocolo pede que cada commit passe "na verificação do projeto". Aqui isso 
 ./verify.sh
 ```
 
-Cobre sintaxe dos 4 arquivos JS, as 41 asserções de `tests/calculo.test.js`, credencial vazada, e dois invariantes de coerência: placeholder por preencher (`COLE_A_*`, `<UID_DO_ADMIN>`) e `main.js` voltar a inserir direto na tabela em vez de usar o RPC.
+Cobre sintaxe dos 4 arquivos JS, as 63 asserções de `tests/calculo.test.js`, credencial vazada, e dois invariantes de coerência: placeholder por preencher (`COLE_A_*`, `<UID_DO_ADMIN>`) e `main.js` voltar a inserir direto na tabela em vez de usar o RPC.
 
 ### O que ele NÃO prova
 
