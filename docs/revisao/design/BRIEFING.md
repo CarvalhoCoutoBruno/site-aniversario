@@ -35,7 +35,7 @@ Se uma proposta exigir build, ela está fora do projeto.
 | `css/style.css` | **todo o estilo**, do convite e do painel (ver o aviso abaixo) |
 | `js/main.js` | lógica do convite: carrega os dados, monta a equação, countdown, RSVP |
 | `admin.html` / `js/admin.js` | painel do organizador — **fora do escopo de design** |
-| `js/calculo.js` | cálculo puro (rateio/acerto). Não tem nada visual |
+| `js/calc.js` | cálculo puro (rateio/acerto). Não tem nada visual |
 | `docs/revisao/design/mockup-convite.html` | o mockup roxo que originou o redesign (histórico) |
 
 ## ⚠️ O `style.css` é compartilhado com o painel

@@ -22,7 +22,7 @@ site-aniversario/
 ├── css/style.css       → visual (tema claro/escuro)
 ├── js/
 │   ├── config.js       → ⚙️ dados da festa + chaves do Supabase
-│   ├── calculo.js      → cálculos puros: estimativa, rateio e acerto
+│   ├── calc.js      → cálculos puros: estimativa, rateio e acerto
 │   ├── main.js         → lógica do convite
 │   └── admin.js        → lógica do painel
 ├── tests/              → testes do cálculo (sem framework)

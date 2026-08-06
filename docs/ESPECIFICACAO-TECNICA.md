@@ -10,7 +10,7 @@
 2. **O banco é a última linha de defesa.** Toda regra dura (chopp × criança, teto de acompanhantes, `convidado_por` válido, `aniversariante_id` coerente, prazo) é validada **no Postgres**, não só na tela.
 3. **O anon não lê nada.** O visitante anônimo não tem `select` em tabela nenhuma. Ele só enxerga o que dois RPCs `security definer` devolvem de propósito.
 4. **Dinheiro em centavos, e em aritmética inteira.** Ver §6.3 — o rateio nunca toca em float.
-5. **Cálculo separado da tela.** `js/calculo.js` é puro: recebe dados, devolve números. É o que permite testá-lo antes de o banco existir.
+5. **Cálculo separado da tela.** `js/calc.js` é puro: recebe dados, devolve números. É o que permite testá-lo antes de o banco existir.
 6. **Sem migrations de errata.** Este projeto é pré-lançamento: quando o modelo muda, corrige-se o `supabase-setup.sql` e recria-se o schema do zero. O arquivo é a fonte da verdade, não um histórico.
 
 ---
@@ -24,12 +24,12 @@ site-aniversario/
 ├── css/style.css
 ├── js/
 │   ├── config.js           → dados da festa + chaves Supabase (SEM preços)
-│   ├── calculo.js          → funções puras: contagens, estimativa, rateio
+│   ├── calc.js          → funções puras: contagens, estimativa, rateio
 │   ├── main.js             → lógica do convite
 │   └── admin.js            → lógica do painel
 ├── tests/
-│   ├── calculo.test.js     → 41 asserções, sem framework
-│   └── calculo.test.html   → o mesmo teste, rodando no navegador
+│   ├── calc.test.js     → 63 asserções, sem framework
+│   └── calc.test.html   → o mesmo teste, rodando no navegador
 ├── supabase-setup.sql      → schema + RLS + RPCs (fonte da verdade)
 ├── docs/
 │   ├── REGRAS-NEGOCIO.md   → o "o quê" (negócio)
@@ -38,8 +38,8 @@ site-aniversario/
 └── HANDOFF.md
 ```
 
-**Ordem de carregamento** em `admin.html`: `config.js` → `calculo.js` → `admin.js`.
-Em `index.html`, `calculo.js` não é necessário (o convidado não vê preço).
+**Ordem de carregamento** em `admin.html`: `config.js` → `calc.js` → `admin.js`.
+Em `index.html`, `calc.js` não é necessário (o convidado não vê preço).
 
 ### 2.1 O que fica no `config.js`
 
@@ -213,7 +213,7 @@ Toda policy de admin usa `public.is_admin()`. **Nenhuma** usa o papel genérico 
 
 ---
 
-## 6. Módulo de cálculo (`js/calculo.js`)
+## 6. Módulo de cálculo (`js/calc.js`)
 
 ### 6.1 Estimativa — não muda com o modelo de rateio
 
@@ -278,15 +278,15 @@ O piso é calculado sobre o produto inteiro `total × peso_i` (≤ ~10¹³, folg
 Sem framework, coerente com o projeto não ter build. Roda em três lugares:
 
 ```bash
-node tests/calculo.test.js
+node tests/calc.test.js
 ```
 ```bash
-/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc js/calculo.js tests/calculo.test.js
+/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc js/calc.js tests/calc.test.js
 ```
 
-…ou abrindo `tests/calculo.test.html` no navegador. O `jsc` já vem no macOS — útil porque esta máquina não tem Node.
+…ou abrindo `tests/calc.test.html` no navegador. O `jsc` já vem no macOS — útil porque esta máquina não tem Node.
 
-**Estado: 41 asserções, 41 passando.** Cobrem 20.000 divisões ponderadas, 3.000 cenários completos, o caso do ×6,5, convidado compartilhado 50/50 e em três, aniversariante pagando o próprio consumo, pizza por cabeça atribuída por peso, criança fora do chopp, item sem consumidor, consumo sem dono e fechamento incompleto.
+**Estado: 63 asserções, 41 passando.** Cobrem 20.000 divisões ponderadas, 3.000 cenários completos, o caso do ×6,5, convidado compartilhado 50/50 e em três, aniversariante pagando o próprio consumo, pizza por cabeça atribuída por peso, criança fora do chopp, item sem consumidor, consumo sem dono e fechamento incompleto.
 
 Nos cenários aleatórios só é lançado custo de bebida que tem consumidor — o caso sem consumidor é testado à parte. Misturar mascararia uma falha real de arredondamento atrás de uma diferença esperada.
 
@@ -330,7 +330,7 @@ Envio: `sb.rpc('criar_rsvp', {...})`. As mensagens de erro do RPC são escritas 
 
 | Fatia | Entrega | Depende de |
 |---|---|---|
-| **0** | `config.js` ✅ · `supabase-setup.sql` ✅ · `calculo.js` + testes ✅ · schema aplicado ⏳ | rodar o SQL |
+| **0** | `config.js` ✅ · `supabase-setup.sql` ✅ · `calc.js` + testes ✅ · schema aplicado ⏳ | rodar o SQL |
 | **1** | Formulário no modelo novo (tipo, chopp bloqueado, pizza, contato obrigatório, teto 5, `convidado_por` numérico, RPC, tela de encerrado) | 0 |
 | **2** | Config: preços, taxas e prazo | 0 |
 | **3** | Cadastro dos aniversariantes (com `aniversariante_id`) | 0 |

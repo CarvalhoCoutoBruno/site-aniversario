@@ -15,7 +15,7 @@ O protocolo pede que cada commit passe "na verificação do projeto". Aqui isso 
 ./verify.sh
 ```
 
-Cobre sintaxe dos 4 arquivos JS, as 63 asserções de `tests/calculo.test.js`, credencial vazada, e dois invariantes de coerência: placeholder por preencher (`COLE_A_*`, `<UID_DO_ADMIN>`) e `main.js` voltar a inserir direto na tabela em vez de usar o RPC.
+Cobre sintaxe dos 4 arquivos JS, as 63 asserções de `tests/calc.test.js`, credencial vazada, e dois invariantes de coerência: placeholder por preencher (`COLE_A_*`, `<UID_DO_ADMIN>`) e `main.js` voltar a inserir direto na tabela em vez de usar o RPC.
 
 ### O que ele NÃO prova
 
@@ -38,7 +38,7 @@ Acesso ao banco: `pg8000` num venv descartável no scratchpad (não há `psql` n
 ### Gotchas do ambiente (cada um já custou uma tentativa falha)
 
 - **Sem Node e sem `psql`; daemon do Docker parado.** Testes rodam no `jsc`, que já vem no macOS:
-  `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc js/calculo.js tests/calculo.test.js`
+  `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc js/calc.js tests/calc.test.js`
 - **O sandbox impede servir de `~/Documents`** — daí a cópia no scratchpad descrita acima.
 - **Injeção de script no site publicado é bloqueada** pelo classificador. Verificação em produção é read-only (`get_page_text`); o teste que dirige a página roda contra a cópia local.
 - **Screenshot sai preto** com o painel do navegador oculto — inspecionar o DOM em vez de tirar print.

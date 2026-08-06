@@ -48,7 +48,7 @@ done
 
 # ---------- 2. testes de cálculo ----------
 secao "Testes de cálculo"
-if saida=$("$JSC" js/calculo.js tests/calculo.test.js 2>&1); then
+if saida=$("$JSC" js/calc.js tests/calc.test.js 2>&1); then
   ok "$(printf '%s' "$saida" | tail -1)"
 else
   printf '%s\n' "$saida" | sed 's/^/  /'

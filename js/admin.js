@@ -267,7 +267,7 @@
   ];
 
   /* ---- parsing pt-BR ----
-     NÃO reusa o paraCentavos do calculo.js: aquele só troca a primeira
+     NÃO reusa o paraCentavos do calc.js: aquele só troca a primeira
      vírgula e serve para valores vindos do banco ("18.00"). Em entrada
      digitada, "1.234,56" viraria 0 silenciosamente.
      Regra: se há vírgula, ela é o decimal e os pontos são milhar;
@@ -593,7 +593,7 @@
       const registro = {
         // `nome` fica de fora de propósito: a linha de aniversariante NÃO
         // guarda nome. A `festa` é a fonte única, e quem alimenta o
-        // calculo.js resolve pelo pessoasParaCalculo(). Gravar aqui
+        // calc.js resolve pelo pessoasParaCalculo(). Gravar aqui
         // repopularia a coluna e a divergência voltaria pelo outro lado.
         age_group: ageGroup,
         role: "celebrant",
@@ -857,7 +857,7 @@
   /* ---- o rateio (só leitura) ---- */
   const ACCOUNT_ITEMS = [["beer", "Chopp"], ["soda", "Refri"], ["water", "Água"], ["pizza", "Pizza"]];
 
-  /* ================= O CONTRATO COM O calculo.js =================
+  /* ================= O CONTRATO COM O calc.js =================
      O módulo é PURO: dado entra, número sai. Não é papel dele saber onde
      o nome do aniversariante mora — é papel de quem chama entregar o dado
      já resolvido.

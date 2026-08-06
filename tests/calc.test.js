@@ -4,9 +4,9 @@
    Sem framework e sem dependência — o projeto não tem build, então o
    teste também não tem. Roda em qualquer um dos três:
 
-       node tests/calculo.test.js
-       jsc  js/calculo.js tests/calculo.test.js     (macOS, sem Node)
-       abrir tests/calculo.test.html no navegador
+       node tests/calc.test.js
+       jsc  js/calc.js tests/calc.test.js     (macOS, sem Node)
+       abrir tests/calc.test.html no navegador
 
    (jsc fica em /System/Library/Frameworks/JavaScriptCore.framework/
     Versions/A/Helpers/jsc — já vem no macOS.)
@@ -19,7 +19,7 @@
 
 // ---- adaptação de runtime (node / jsc / navegador) ----
 const C = typeof require === "function"
-  ? require("../js/calculo.js")
+  ? require("../js/calc.js")
   : globalThis.Calc;
 
 const write = typeof console !== "undefined" && console.log
@@ -27,7 +27,7 @@ const write = typeof console !== "undefined" && console.log
   : function (m) { print(m); }; // jsc não tem console
 
 if (!C) {
-  write("Calculo não encontrado — carregue js/calculo.js antes do teste.");
+  write("Calc não encontrado — carregue js/calc.js antes do teste.");
   throw new Error("dependência ausente");
 }
 

@@ -102,7 +102,7 @@ tem a receita, incluindo as limitações do ambiente que já custaram tentativa 
 ```
 index.html / admin.html   as duas telas
 js/config.js              dados da festa e chaves (editar aqui)
-js/calculo.js             estimativa, rateio e acerto — puro e testado
+js/calc.js             estimativa, rateio e acerto — puro e testado
 js/main.js / js/admin.js  lógica de cada tela
 supabase-setup.sql        o schema inteiro
 tests/                    os testes do cálculo

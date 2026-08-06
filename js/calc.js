@@ -3,7 +3,7 @@
    =============================================================
    Módulo PURO: não toca no DOM, não fala com o Supabase, não lê
    window.CONFIG. Recebe dados, devolve números. É o que permite
-   testá-lo sem navegador e sem banco (ver tests/calculo.test.js).
+   testá-lo sem navegador e sem banco (ver tests/calc.test.js).
 
    QUEM PAGA: só os 3 aniversariantes. Convidado não paga nada — o
    consumo dele é bancado por quem o convidou (convidado_por do grupo),

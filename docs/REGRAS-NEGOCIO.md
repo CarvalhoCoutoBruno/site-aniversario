@@ -68,7 +68,7 @@ Todo dado coletado existe para alimentar **dois cálculos**:
 
 ---
 
-## 4. Cálculos  (isolar em `js/calculo.js` puro — estimativa e rateio compartilham as contagens)
+## 4. Cálculos  (isolar em `js/calc.js` puro — estimativa e rateio compartilham as contagens)
 
 ### 4.1 Estimativa (pré-festa) — para comprar
 Contagens sobre **todas** as pessoas confirmadas (convidados + acompanhantes + aniversariantes):
