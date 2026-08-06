@@ -107,125 +107,188 @@ textarea { resize: vertical; }
   to { transform: translateY(115vh) rotate(720deg); opacity: 1; }
 }
 
+/* =====================================================================
+   ADMIN — pele própria (Fatia 12)
+   =====================================================================
+   Tudo escopado em .pagina-admin, inclusive as regras herdadas das
+   fatias anteriores: a pele antiga do CONVITE ficou fora de escopo na
+   Fatia 9 e, quando a nova entrou na 11, venceu por especificidade. Aqui
+   os dois lados nascem escopados, então quem decide é a ordem da
+   cascata, não acidente de seletor.
+
+   O painel é CLARO em qualquer esquema. O :root tem um bloco
+   @media (prefers-color-scheme: dark) e o admin era o último a usá-lo;
+   o pacote de design não traz tokens escuros e meio-a-meio seria pior
+   que qualquer das duas pontas. Quando a Fatia 14 fechar, ninguém mais
+   lê o :root escuro e aquele bloco pode sair.
+   ===================================================================== */
+.pagina-admin {
+  --ad-fundo:    #eceae5;   /* fora da coluna */
+  --ad-painel:   #f7f6f3;   /* fundo do app */
+  --ad-card:     #ffffff;
+  --ad-borda:    #dedbd4;
+  --ad-borda-2:  #cfcbc2;   /* inputs */
+  --ad-tinta:    #14110d;
+  --ad-mudo:     #6b665d;   /* secundário — o #8a857c reprova AA */
+  --ad-mudo-2:   #a8a29a;   /* rótulo sobre bloco escuro */
+  --ad-claro-2:  #c9c3b8;
+  --ad-azul:     #1d4ed8;   /* aba ativa, salvar, acento */
+  --ad-vermelho: #d8352a;   /* excluir, alerta */
+  --ad-linha-2:  #f2f0eb;
+  --ad-corpo:    #4a4640;
+  --ad-ambar-bg: #fdf6ec;  --ad-ambar-borda: #e8d5b5;  --ad-ambar-txt: #7c5a1e;
+  --ad-erro-bg:  #fdefee;  --ad-erro-borda:  #f0c9c6;  --ad-erro-txt:  #9b2c22;
+  --ad-ok-bg:    #eef2fd;  --ad-ok-borda:    #c9d6f7;  --ad-ok-txt:    #1e3a8a;
+
+  /* Remapeia as GLOBAIS dentro do painel. É o que impede o
+     @media prefers-color-scheme do :root de pintar os componentes
+     compartilhados de escuro dentro de card branco. */
+  --bg: var(--ad-painel);
+  --bg-soft: var(--ad-card);
+  --ink: var(--ad-tinta);
+  --ink-soft: var(--ad-mudo);
+  --line: var(--ad-borda);
+  --brand: var(--ad-azul);
+  --brand-2: var(--ad-vermelho);
+  --err: var(--ad-vermelho);
+  --shadow: none;
+  --radius: 14px;
+
+  background: var(--ad-fundo);
+  color: var(--ad-tinta);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+.pagina-admin h1, .pagina-admin h2, .pagina-admin h3 {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.pagina-admin .mono {
+  font-family: "DM Mono", ui-monospace, monospace;
+}
+/* [hidden] contra display de autor — mesma armadilha do convite */
+.pagina-admin [hidden] { display: none !important; }
+
 /* ===================== ADMIN ===================== */
-.admin-wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
-.admin-topo { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-.admin-topo h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0; }
-.login-box { max-width: 380px; margin: 4rem auto; background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow); }
-.login-box h1 { margin-top: 0; text-align: center; }
+.pagina-admin .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+.pagina-admin .admin-topo { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.pagina-admin .admin-topo h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0; }
+.pagina-admin .login-box { max-width: 380px; margin: 4rem auto; background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow); }
+.pagina-admin .login-box h1 { margin-top: 0; text-align: center; }
 
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .9rem; margin-bottom: 1.8rem; }
-.stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
-.stat b { display: block; font-size: 1.9rem; font-family: "Fraunces", serif; color: var(--brand); }
-.stat span { font-size: .82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
+.pagina-admin .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .9rem; margin-bottom: 1.8rem; }
+.pagina-admin .stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
+.pagina-admin .stat b { display: block; font-size: 1.9rem; font-family: "Fraunces", serif; color: var(--brand); }
+.pagina-admin .stat span { font-size: .82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 
-.tabela-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--bg-soft); }
-th, td { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; font-size: .9rem; }
-th { background: color-mix(in srgb, var(--brand) 8%, var(--bg-soft)); font-weight: 600; position: sticky; top: 0; }
-tr:last-child td { border-bottom: none; }
-.pill { display: inline-block; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); border-radius: 999px; padding: .1rem .55rem; font-size: .78rem; margin: .1rem .15rem 0 0; }
+.pagina-admin .tabela-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.pagina-admin table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--bg-soft); }
+.pagina-admin th, .pagina-admin td { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; font-size: .9rem; }
+.pagina-admin th { background: color-mix(in srgb, var(--brand) 8%, var(--bg-soft)); font-weight: 600; position: sticky; top: 0; }
+.pagina-admin tr:last-child td { border-bottom: none; }
+.pagina-admin .pill { display: inline-block; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); border-radius: 999px; padding: .1rem .55rem; font-size: .78rem; margin: .1rem .15rem 0 0; }
 
-.admin-secao { margin-top: 2.5rem; }
-.admin-secao h2 { font-size: 1.4rem; }
-.fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .8rem; margin-top: 1rem; }
-.foto-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
-.foto-item img { width: 100%; height: 100%; object-fit: cover; }
-.foto-item button {
+.pagina-admin .admin-secao { margin-top: 2.5rem; }
+.pagina-admin .admin-secao h2 { font-size: 1.4rem; }
+.pagina-admin .fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .8rem; margin-top: 1rem; }
+.pagina-admin .foto-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.pagina-admin .foto-item img { width: 100%; height: 100%; object-fit: cover; }
+.pagina-admin .foto-item button {
   position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 8px;
   border: none; cursor: pointer; background: rgba(0,0,0,.55); color: #fff; font-size: .9rem;
 }
-.upload-drop {
+.pagina-admin .upload-drop {
   border: 2px dashed var(--brand); border-radius: var(--radius); padding: 2rem 1rem; text-align: center;
   color: var(--ink-soft); cursor: pointer; transition: background .2s;
 }
-.upload-drop:hover, .upload-drop.drag { background: color-mix(in srgb, var(--brand) 8%, transparent); }
-.upload-drop input { display: none; }
+.pagina-admin .upload-drop:hover, .pagina-admin .upload-drop.drag { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.pagina-admin .upload-drop input { display: none; }
 
-.msg-toast { text-align: center; font-weight: 600; min-height: 1.2rem; margin: 1rem 0 0; }
-.msg-toast.ok { color: var(--ok); }
-.msg-toast.err { color: var(--err); }
-.vazio { text-align: center; color: var(--ink-soft); padding: 2rem; }
+.pagina-admin .msg-toast { text-align: center; font-weight: 600; min-height: 1.2rem; margin: 1rem 0 0; }
+.pagina-admin .msg-toast.ok { color: var(--ok); }
+.pagina-admin .msg-toast.err { color: var(--err); }
+.pagina-admin .vazio { text-align: center; color: var(--ink-soft); padding: 2rem; }
 
 /* ---- Fatia 1: tipo de pessoa, chopp bloqueado, prazo encerrado ---- */
-.campo-dica { color: var(--ink-soft); font-size: .85rem; line-height: 1.45; }
+.pagina-admin .campo-dica { color: var(--ink-soft); font-size: .85rem; line-height: 1.45; }
 
-.chip.desabilitado {
+.pagina-admin .chip.desabilitado {
   opacity: .45;
   cursor: not-allowed;
   text-decoration: line-through;
 }
-.chip.desabilitado:hover { border-color: var(--line); }
+.pagina-admin .chip.desabilitado:hover { border-color: var(--line); }
 
-.pref-grupo .p-aviso-chopp { display: block; margin-top: .35rem; }
+.pagina-admin .pref-grupo .p-aviso-chopp { display: block; margin-top: .35rem; }
 
 
 /* ---- Ajustes da revisão da Fatia 1 ---- */
 
-.contador { align-self: flex-end; font-variant-numeric: tabular-nums; }
-.contador.no-limite { color: var(--err); font-weight: 600; }
+.pagina-admin .contador { align-self: flex-end; font-variant-numeric: tabular-nums; }
+.pagina-admin .contador.no-limite { color: var(--err); font-weight: 600; }
 
-.prazo-aberto {
+.pagina-admin .prazo-aberto {
   text-align: center; font-weight: 600; color: var(--ink-soft); margin: 0 0 .25rem;
 }
 
 /* ---- Fatia 2: tela de config ---- */
-.config-secao > summary { cursor: pointer; list-style: none; }
-.config-secao > summary::-webkit-details-marker { display: none; }
-.config-secao > summary h2 { display: inline; }
-.config-secao > summary::before { content: "▸ "; color: var(--brand); font-weight: 700; }
-.config-secao[open] > summary::before { content: "▾ "; }
+.pagina-admin .config-secao > summary { cursor: pointer; list-style: none; }
+.pagina-admin .config-secao > summary::-webkit-details-marker { display: none; }
+.pagina-admin .config-secao > summary h2 { display: inline; }
+.pagina-admin .config-secao > summary::before { content: "▸ "; color: var(--brand); font-weight: 700; }
+.pagina-admin .config-secao[open] > summary::before { content: "▾ "; }
 
-.config-bloco { border: 1.5px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; margin: 1rem 0 0; }
-.config-bloco legend { font-weight: 700; padding: 0 .4rem; }
+.pagina-admin .config-bloco { border: 1.5px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; margin: 1rem 0 0; }
+.pagina-admin .config-bloco legend { font-weight: 700; padding: 0 .4rem; }
 
-.config-grid {
+.pagina-admin .config-grid {
   display: grid; gap: .8rem; margin-top: .6rem;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
-.config-campo { display: flex; flex-direction: column; gap: .3rem; }
-.config-campo span { font-size: .85rem; font-weight: 600; }
+.pagina-admin .config-campo { display: flex; flex-direction: column; gap: .3rem; }
+.pagina-admin .config-campo span { font-size: .85rem; font-weight: 600; }
 
-.config-acoes { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1.2rem; }
+.pagina-admin .config-acoes { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1.2rem; }
 
 /* ---- Fatia 3: aniversariantes ---- */
-.aniv-bloco legend small { font-weight: 400; color: var(--ink-soft); }
-.aniv-bloco .pessoa-prefs { margin-top: .4rem; }
+.pagina-admin .aniv-bloco legend small { font-weight: 400; color: var(--ink-soft); }
+.pagina-admin .aniv-bloco .pessoa-prefs { margin-top: .4rem; }
 
 /* ---- Fatia 4: estimativa ---- */
-.est-titulo { font-size: 1rem; margin: 1.4rem 0 .1rem; color: var(--ink-soft);
+.pagina-admin .est-titulo { font-size: 1rem; margin: 1.4rem 0 .1rem; color: var(--ink-soft);
               text-transform: uppercase; letter-spacing: .05em; }
-.est-titulo:first-of-type { margin-top: .8rem; }
+.pagina-admin .est-titulo:first-of-type { margin-top: .8rem; }
 
 /* ---- Fatia 5: fechamento e rateio ---- */
-.conta-aniv { border: 1.5px solid var(--line); border-radius: 14px;
+.pagina-admin .conta-aniv { border: 1.5px solid var(--line); border-radius: 14px;
               padding: .8rem 1rem; margin-top: .6rem; background: var(--bg); }
-.conta-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
-.conta-topo b { font-size: 1.05rem; }
-.conta-total { font-family: "Fraunces", serif; font-size: 1.3rem; color: var(--brand); }
-.conta-itens { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.pagina-admin .conta-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.pagina-admin .conta-topo b { font-size: 1.05rem; }
+.pagina-admin .conta-total { font-family: "Fraunces", serif; font-size: 1.3rem; color: var(--brand); }
+.pagina-admin .conta-itens { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
 
-.selo { margin-top: 1.2rem; padding: .8rem 1rem; border-radius: 12px;
+.pagina-admin .selo { margin-top: 1.2rem; padding: .8rem 1rem; border-radius: 12px;
         font-weight: 600; line-height: 1.45; border: 1.5px solid; }
-.selo.verde    { color: var(--ok);  border-color: var(--ok);
+.pagina-admin .selo.verde    { color: var(--ok);  border-color: var(--ok);
                  background: color-mix(in srgb, var(--ok) 10%, transparent); }
-.selo.vermelho { color: var(--err); border-color: var(--err);
+.pagina-admin .selo.vermelho { color: var(--err); border-color: var(--err);
                  background: color-mix(in srgb, var(--err) 10%, transparent); }
-.selo.cinza    { color: var(--ink-soft); border-color: var(--line); background: var(--bg-soft); }
+.pagina-admin .selo.cinza    { color: var(--ink-soft); border-color: var(--line); background: var(--bg-soft); }
 
 /* ---- Fatia 6: acerto ---- */
-.saldo-pagar   { color: var(--err); }
-.saldo-receber { color: var(--ok); }
-.conta-total small { font-size: .7rem; font-family: "Inter", sans-serif;
+.pagina-admin .saldo-pagar   { color: var(--err); }
+.pagina-admin .saldo-receber { color: var(--ok); }
+.pagina-admin .conta-total small { font-size: .7rem; font-family: "Inter", sans-serif;
                      text-transform: uppercase; letter-spacing: .05em; }
-.transferencias { list-style: none; padding: 0; margin: 1rem 0 0; display: flex;
+.pagina-admin .transferencias { list-style: none; padding: 0; margin: 1rem 0 0; display: flex;
                   flex-direction: column; gap: .5rem; }
-.transferencias li { background: var(--bg-soft); border: 1.5px solid var(--line);
+.pagina-admin .transferencias li { background: var(--bg-soft); border: 1.5px solid var(--line);
                      border-radius: 12px; padding: .7rem 1rem; font-size: 1.05rem; }
-.config-campo span small { font-weight: 400; color: var(--ink-soft); }
+.pagina-admin .config-campo span small { font-weight: 400; color: var(--ink-soft); }
 
 /* ---- Fatia 7: compartilhar o acerto ---- */
-.acerto-texto { width: 100%; margin-top: .8rem; font-family: inherit;
+.pagina-admin .acerto-texto { width: 100%; margin-top: .8rem; font-family: inherit;
                 font-size: .9rem; padding: .7rem; border-radius: 12px;
                 border: 1.5px solid var(--line); background: var(--bg-soft); color: var(--ink); }
 

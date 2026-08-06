@@ -5,10 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin — Convite de Aniversário</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Space Grotesk (interface) + DM Mono (todo número, valor, telefone).
+       Nada de Anton: a tipografia gritada é do convite. -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<!-- A classe escopa paleta e fontes do painel. O index.html usa o mesmo
+     style.css e não pode herdar nada disto — nem o contrário. -->
+<body class="pagina-admin">
   <!-- ===================== LOGIN ===================== -->
   <div class="login-box" id="loginBox">
     <h1>Área do organizador 🔐</h1>
