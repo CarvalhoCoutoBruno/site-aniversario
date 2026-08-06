@@ -1,229 +1,225 @@
-# Status — Fatia 17: exclusão reversível e cancelamento pelo convidado
+# Status — Fatia 18: a lixeira, e a porta do apagar fechada
 
-**Fatia fechada.** Apagar confirmação deixou de existir no projeto: as duas portas — o convidado
-pelo link, o organizador pelo painel — agora **marcam**. E lançar custo real fecha a lista para as
-duas.
+**Fatia fechada.** Nada evapora mais, e agora dá para ver e trazer de volta o que saiu. A última
+porta por onde ainda se apagava de verdade está trancada — não encostada.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-17-cancelamento` → merge `--ff-only` → apagada |
+| Branch | `feat/fatia-18-lixeira` → merge `--ff-only` → apagada |
 | Commits | 3, os dois de código verdes no `./verify.sh` |
-| Schema e RPCs | `34ea1563c402155e86ef55b9e9d7b8c9ed6e8b4e` |
-| Convite, painel e verify | `4888bb2dee537ce526492659ea150c2ab24535b4` |
-| Este status | `e52b7741b7566afec6a13f19494fab360f1718f2` |
-| `main == origin/main` | **sim** |
+| Schema, RPCs e a porta | *(hash abaixo)* |
+| Lixeira no painel | *(hash abaixo)* |
 | `tests/calc.test.js` | 63 asserções, inalteradas — `js/calc.js` não foi tocado |
-| Invariantes no `verify.sh` | 5 → **8** |
+| Invariantes no `verify.sh` | 8 → **9** |
 
-## O que mudou de modelo
+## ⚠️ LEIA ISTO PRIMEIRO — o botão de excluir do painel no ar vai dar erro
 
-`rsvps.deleted_at`. Aditivo — `alter table add column if not exists` —, como manda a regra que
-ficou valendo depois da Fatia 16: `party` e `settings` têm dado real e a trava do reset abortaria
-um recreate, corretamente.
+Produção serve a **Fatia 16**. Aquele painel apaga com `.from("rsvps").delete()` direto; a RPC só
+chegou na 17, que **não publicou** (ver o fim deste documento).
 
-A trava, aliás, **conta cancelado de propósito**. Confirmação cancelada é dado de convidado, é o
-conteúdo da futura lixeira; se ela não contasse, um recreate apagaria a lixeira em silêncio.
+Como a porta foi fechada agora no banco, no intervalo até o deploy sair:
 
-## O gate duplo, e por que a segunda condição não é redundante
+> **O botão "Excluir" do painel que está no ar vai falhar, com erro.** Isso é o desejado.
 
-Cancelar exige **prazo aberto E nenhum `actual_*_cost` lançado**.
+E é melhor assim do que a alternativa. Até hoje, aquele botão fazia exclusão **dura**, por cima da
+trava do custo lançado, com o dado evaporando. Fechar já e deixar o botão errar é preferível a
+esperar o Pages voltar com a porta aberta.
 
-O meu plano tinha uma premissa errada, e o review a derrubou: eu escrevi que cancelar e fechamento
-"nunca se encontram", porque o prazo é 01/10 e a festa é 31/10. Só que **a compra pode acontecer
-antes do prazo** — fornecedor pede antecedência. Se o Braz paga a pizza no dia 15/09 e alguém
-cancela no dia 20/09, ainda dentro do prazo, o dinheiro já saiu e passa a ser dividido entre menos
-gente.
+Graças ao `revoke` (§ abaixo), o erro é **alto** — `42501`, com toast na tela. Se só tivéssemos
+derrubado a política, o botão diria "apagado" e não apagaria nada, que é bem pior.
 
-Daí a regra, que é fácil de explicar ao grupo: **comprou, lança na hora** — lançar o custo é o que
-protege quem pagou.
+## O achado do review: são TRÊS portas, não duas
 
-Cada recusa tem mensagem própria, provada com saída crua:
+Nem o prompt nem o meu plano olharam para a terceira coisa que grava `deleted_at` — o dedupe do
+`create_rsvp`:
 
-```
-prazo vencido, sem custo → O prazo para mudar a confirmação terminou em 05/08/2026.
-custo lançado, prazo ok  → As compras já começaram e a lista está fechada.
-                           Fale com quem te convidou.
+```sql
+update public.rsvps set deleted_at = now()
+ where contact_norm = public.normalize_contact(p_contact) and deleted_at is null;
 ```
 
-## As duas portas, e a assimetria proposital
+Toda vez que alguém reenvia o formulário — troca de ideia sobre refrigerante, corrige o nome do
+filho, acrescenta um acompanhante — a confirmação anterior vira cancelada. Sem tratar isso, a
+lixeira **mentiria**: empilharia fantasmas dos próprios convidados ao lado de quem de fato
+desistiu, cada um com um botão de restaurar que só poderia dar errado, porque a linha nova já ocupa
+o contato.
 
-| | prazo | custo lançado |
-|---|---|---|
-| convidado (`cancel_rsvp`) | trava | trava |
-| organizador (`admin_remove_rsvp`) | **não trava** | trava |
-
-O organizador precisa poder corrigir engano depois do prazo — grupo duplicado, teste esquecido,
-alguém que confirmou duas vezes por caminhos diferentes. Entre o prazo e a compra ainda não há
-dinheiro comprometido; travá-lo ali tiraria a correção sem proteger nada.
-
-Provado com o JWT de um admin de verdade, nos dois sentidos:
+Conserto: um terceiro valor, `'resend'`, que na tela aparece **sem** botão.
 
 ```
-=== COM custo lançado ===
-  organizador: RECUSOU — As compras já começaram: excluir agora mudaria o rateio
-               de quem já pagou. Para corrigir mesmo assim, limpe o custo lançado
-               na aba Contas, exclua, e lance o custo de novo.
-  linha segue ativa? True
-
-=== campo LIMPO (a saída de emergência) ===
-  organizador: PASSOU, como deve
-  linha agora cancelada? True
+guest   cancelou pelo link           + Trazer de volta
+admin   você tirou da lista          + Trazer de volta
+resend  substituída por um reenvio   sem botão
 ```
 
-### Saída de emergência — a resposta para "e se eu precisar mesmo?"
+Ganho colateral, e ele importa: o `23505` volta a ser a rede para a corrida rara em vez do caminho
+comum. Defesa exercitada toda semana vira ruído, e alguém acaba "simplificando" ela fora.
 
-Não precisa de código e não precisa de mim: **limpe o campo de custo na aba Contas, exclua, e
-lance o valor de novo.** Está escrito na própria mensagem de erro, que é onde a pessoa vai ler.
+## A correção de fato: o `check` não fazia o que eu disse que fazia
 
-E a aba Contas passou a avisar **antes**, onde o organizador digita, que lançar o gasto fecha a
-lista — senão ele congelaria os cancelamentos sem saber que fez isso.
+Escrevi no plano que `check (deleted_by in ('guest','admin'))` protegeria contra um caminho novo
+esquecer a procedência. **Não protege** — `CHECK` sobre `NULL` avalia `NULL`, e `NULL` não é falso:
+a restrição passa. Quem faz esse trabalho é a restrição de par.
 
-## Três decisões de onde a regra mora
-
-**RPC e não trigger na tabela.** O trigger pegaria também o `update ... set deleted_at` que o
-`create_rsvp` usa no dedupe, e o reenvio de um convidado morreria com uma mensagem sobre compras.
-A regra é das duas portas, não da tabela.
-
-**RPC e não checagem no JS.** O painel roda no navegador de quem pode abrir o console. Trava em
-JavaScript seria decoração.
-
-**Filtro no cliente e não `!inner` na consulta.** O `people` tem as 3 linhas de aniversariante, que
-não têm `rsvp_id` nenhum — um join interno derrubaria justamente elas.
-
-## O índice: o review me corrigiu, e a ação melhorou
-
-Eu tinha escrito que `rsvps_contact_norm_idx` "garante um contato por linha" e que o segundo envio
-esbarraria nele. **Não esbarrava** — era índice comum, só de busca, e o dedupe sempre dependeu só
-do `delete` dentro do `create_rsvp`.
-
-Mas trocá-lo por **único parcial** (`where deleted_at is null`) vale por um motivo melhor do que o
-que eu tinha dado: dois envios simultâneos com o mesmo contato podiam gerar **duas linhas ativas**
-sem ninguém descobrir — corrida silenciosa que existe desde a Fatia 0. Agora é erro alto.
-
-Criado sem falha, o que também prova que a corrida ainda não tinha acontecido. E o reenvio segue
-passando, porque dentro da transação o `update` tira a linha antiga do predicado antes do `insert`
-entrar:
+Provei que cada uma pega uma classe diferente, e nenhuma cobre a outra:
 
 ```
-envio 1 -> HTTP 200      zz-teste-dedupe-1  cancelada
-envio 2 -> HTTP 200      zz-teste-dedupe-2  cancelada
-envio 3 -> HTTP 200      zz-teste-dedupe-3  ATIVA
-ativas com esse contato: 1
+cancelar SEM procedência       RECUSOU — rsvps_deleted_pair
+deleted_by = 'organizer'       RECUSOU — rsvps_deleted_by_check
+deleted_at + deleted_by admin  PASSOU
+restaurar (limpa os dois)      PASSOU
 ```
 
-Nada ressuscitado, nada duplicado.
+## A porta, e por que o `revoke` não era luxo
 
-## O pulo do gato — o modo de falha que quase passou
+As duas políticas de `delete` eram capacidade morta — nenhum código as usava desde a 17 — mas a API
+seguia expondo: um admin logado montando a chamada REST na mão apagava a linha por cima da trava do
+custo, sem deixar nada na lixeira.
 
-`deleted_at` mora em `rsvps`, **não** em `people`. Filtrar só os grupos deixaria as *pessoas* do
-grupo cancelado dentro de `lastPeople` — e elas seguiriam contando em estimativa, rateio e acerto.
-O grupo sumiria da lista e a gente continuaria comprando chopp para ele.
-
-Provado executando **o bloco que está no `js/admin.js`**, extraído por marcador, contra as linhas
-reais do banco:
-
-```
-  grupos    : 6 lidos -> 2 ativos
-  pessoas   : 10 lidas  -> 5 ativas
-  VAZAMENTO : 0 pessoa(s) de grupo cancelado em lastPeople
-  aniversariantes sobreviveram: 3/3
-```
-
-## Ponta a ponta, dirigindo a página
-
-Confirmação real pelo formulário (2 pessoas, uma criança, chopp bloqueado nela pela regra da tela),
-recarga, e cancelamento pelo botão:
+Derrubá-las sozinhas deixaria a porta **encostada**. O grant de tabela continuava, herdado do
+default do Supabase, e com grant presente e política ausente o `DELETE` não dá erro: apaga zero
+linhas e devolve **sucesso**. Com o `revoke` autorizado:
 
 ```
-restore   tarja "Você já confirmou 2 lugares em 06/08/2026"
-          lead, contato, recado, chip do aniversariante 2 pintado,
-          card da criança com refri+pizza, chopp desabilitado
-cancelar  tarja sumiu · storage limpo · formulário SEGUE na tela, preenchido
-          "Cancelado — você saiu da lista. Mudou de ideia? É só confirmar de novo."
+=== rsvps ===
+  DELETE como authenticated  -> 42501 permission denied for table rsvps
+  DELETE como anon           -> 42501 permission denied for table rsvps
+  select antes: 1  ·  select depois: 1  INTACTA
+
+=== people ===
+  DELETE como authenticated  -> 42501 permission denied for table people
+  DELETE como anon           -> 42501 permission denied for table people
+  select antes: 1  ·  select depois: 1  INTACTA
 ```
 
-E o que interessa, no banco:
+A prova é o `select` antes e depois, não o código de erro — foi o review que insistiu nisso, e com
+razão: "não deu erro" nunca prova que fechou.
+
+O `revoke` está **no arquivo**, não só no banco. Sem a linha, uma instalação do zero nasceria com o
+grant de volta pelo default do Supabase, e o banco novo divergiria de produção em silêncio.
+
+A política de fotos fica: apagar foto é apagar mesmo.
+
+## A cerca da lixeira — topologia, não disciplina
+
+A lixeira sai do **complemento** da leitura que já existia. As canceladas já vinham e eram
+descartadas; agora são guardadas. Nenhuma consulta nova — um `.not("deleted_at","is",null)` teria
+quebrado a invariante de leitura única que a 17 deixou, e a invariante está certa.
+
+`lastGroups`/`lastPeople` continuam recebendo **só o ativo**, e são eles que alimentam estimativa,
+rateio e acerto. O cancelado mora em `lastDeleted`/`lastDeletedPeople`, lidos só pelo
+`renderTrash()`. Dois mapas, duas telas, sem interseção.
+
+Executando o bloco que está no `js/admin.js` contra as linhas reais:
 
 ```
-rsvps  : ['zz-teste-fluxo', '51933332222', 'teste da fatia 17', '06/08 13:53:07']
-people : ['zz-teste-fluxo', 'adult', True, False, True]
-people : ['zz-filho', 'child', False, True, True]
+na lixeira: 3 · grupos ativos: 3 · VAZAMENTO: 0
+portas: cancelou pelo link · você tirou da lista · substituída por um reenvio
+botões "Trazer de volta": 2   (o reenvio não tem, de propósito)
 ```
 
-A linha continua lá, com `deleted_at` preenchido, e as pessoas dela junto. Nada evaporou.
+## A colisão, nos dois níveis — e os dois são necessários
 
-Sem oráculo: uuid aleatório, uuid já cancelado e uuid válido devolvem os três **204**, sem mexer em
-nada. E o `anon` chamando a porta do organizador leva `42501 — permission denied for function
-admin_remove_rsvp`, com a linha intacta.
+Cenário provável, não exótico: cancelou, mudou de ideia, confirmou de novo. Restaurar a antiga
+esbarra no índice único parcial.
 
-## Três invariantes novas no verify.sh, cada uma provada nos dois sentidos
-
-O modo de falha desta fatia não é o filtro estar errado. É ele estar **certo** e alguém, daqui a
-uns meses, acrescentar uma segunda consulta sem ele — uma cancelada que volta a contar não quebra
-tela nenhuma, ela compra chopp a mais e some no meio de um número plausível.
+**No cliente, antes da RPC**, para a frase sair com nome e data — e não custa consulta nenhuma,
+porque `contact_norm` é coluna gerada que já vem no `select("*")` e a linha ativa já está em
+`lastGroups`:
 
 ```
-segunda leitura plantada → js/ tem 2 leituras de rsvps — o filtro do cancelado
-                           só cobre a única leitura do loadRSVPs()
-filtro removido          → a leitura de rsvps perdeu o filtro deleted_at
-delete direto de volta   → js/admin.js apaga direto — o excluir passa por
-                           admin_remove_rsvp, que é onde a trava vive
-código restaurado        → VERDE
+tentando zz18-colisao   (guest)  -> BLOQUEADO: zz18-colisao-nova já confirmou de novo em 06/08, 16:00
+tentando zz18-admin     (admin)  -> segue para a RPC
 ```
 
-A primeira versão delas **acusava o próprio comentário** que cita a chamada. O padrão passou a
-exigir o receptor (`sb.from`, não `` `.from ``) — a mesma classe de erro que a checagem de
-credencial já tinha resolvido se excluindo.
+**E a captura do `23505`**, porque o estado do cliente pode estar velho — outra aba, outro
+organizador, ou o convidado reconfirmando entre o carregar e o clicar. Saída crua da tentativa:
 
-## O que fica limitado, de propósito, e está escrito na tela
+```
+código : 23505
+msg    : duplicate key value violates unique constraint "rsvps_contact_norm_active_idx"
+detalhe: Key (contact_norm)=(51911110009) already exists.
 
-**Trocou de aparelho, limpou o navegador ou abriu anônimo: não há como cancelar sozinho.** O uuid é
-a única chave, e ele mora no navegador de quem confirmou.
+zz18-colisao         guest    fora da lista     ← continua fora
+zz18-colisao-nova    -        ATIVA             ← continua ativa
+```
 
-Consertar isso pediria uma leitura de `rsvps` para o anônimo — que é exatamente o oráculo que a
-fatia inteira evita. Com ela, qualquer pessoa lista quem vai à festa digitando telefones. O preço é
-o convidado falar com quem o convidou; a alternativa é vazar a lista.
+## O gate do restaurar
 
-Está dito no convite, ao lado do campo de contato, e não escondido numa ajuda.
+Uma regra só, agora para as **três** portas: lançar custo congela a lista. Restaurar mexe no
+dinheiro tanto quanto excluir, só que pelo outro lado — devolve um consumidor à conta.
 
-## O que NÃO fiz, e por quê
+```
+=== restaurar COM custo lançado ===
+  antes : fora
+  P0001 As compras já começaram: trazer alguém de volta agora mudaria o rateio de quem já
+        pagou. Para corrigir mesmo assim, limpe o custo lançado na aba Contas, traga de
+        volta, e lance o valor de novo.
+  depois: fora
 
-**Não dirigi o painel logado.** Ele exige a senha do Bruno, e digitar senha não é coisa que eu
-faça. O que dava para provar sem ela, provei: o filtro com as linhas reais do banco, a trava do
-excluir com o JWT de um admin via SQL, e as três invariantes estáticas. O que falta é o olho no
-painel renderizado — vale o Bruno abrir e confirmar que a lista e os números batem.
+=== limpo o campo (a saída de emergência) ===
+  PASSOU, como deve
+  depois: ATIVA
+```
 
-**A lixeira é a Fatia 18.** Até lá o cancelado fica invisível no painel e só volta por SQL. Ainda
-assim é melhor que antes: o dado deixou de evaporar. O painel também não deixou de dar a cópia em
-texto do que saiu — ela não é mais a única cópia, mas segue servindo para refazer na hora.
+`anon` chamando `restore_rsvp` → `42501 permission denied for function restore_rsvp`.
 
-## Nota sobre o rateio — para ninguém inventar conserto
+## A nona invariante, provada nas quatro direções
 
-Cancelamento **não** deixa ninguém no prejuízo. O rateio divide o custo **real** entre quem
-consome, então `Σ das 3 contas = custo real` continua valendo. Quem pagou é ressarcido
-integralmente; o que muda é quanto cada um que ficou paga. A lista de Compras recalcula, porque é
-lista de compra; o rateio não, porque parte do gasto e não da estimativa.
+Ela vigia as **duas** metades da mesma propriedade, porque uma invariante que cobre metade dá falsa
+sensação:
 
-A única borda em que a soma não fecha é o caso órfão — todo mundo que consome um item cancelar. Já
-é tratado: o selo fica vermelho com a diferença em reais. Não precisa de nada novo.
+```
+política replantada em rsvps   → VERMELHO
+política replantada em people  → VERMELHO
+revoke sumindo do arquivo      → VERMELHO
+política de FOTOS presente     → VERDE   (é outro assunto, tem de continuar passando)
+```
+
+## O que NÃO fiz
+
+**Não dirigi o painel logado** — ele pede a senha do Bruno, e digitar senha não é coisa que eu faça.
+Provei o que dava sem ela: a lixeira renderizada executando as funções que estão no arquivo com as
+linhas reais do banco, as travas por SQL com o JWT de um admin de verdade, e as invariantes
+estáticas. Falta o olho dele na tela logada.
+
+**Não construí apagar definitivo nem "esvaziar lixeira"**, como o prompt determinou. Se um dia
+alguém pedir para sumir de verdade com o próprio dado, é SQL, na mão, com intenção.
 
 ## Higiene
 
-As 6 linhas de teste que criei foram apagadas **cada uma pelo nome que eu dei** (`zz-teste-%`),
-nunca por data ou por intervalo. O prazo e o campo de custo, que plantei para testar os gates,
-voltaram ao valor original. Estado final do banco:
+As 6 linhas de teste foram apagadas **cada uma pelo nome que eu dei** (`zz18-%`), nunca por data ou
+intervalo — e como `postgres`, dono da tabela, porque `anon` e `authenticated` não conseguem mais,
+que é justamente o ponto desta fatia. O campo de custo, plantado para testar o gate, voltou ao
+original.
 
 ```
 grupos ativos     : 0
-grupos cancelados : 0
+fora da lista     : 0
 aniversariantes   : 3
 custo lançado?    : False
 prazo             : 01/10/2026 23:59:59
+fotos             : 3
 ```
 
-A `party`, a `settings` e as fotos não foram tocadas.
+## O deploy — **parado**, e não é nosso
 
-## Pendência que não é minha
+Reconferi agora, antes de fechar:
 
-**A senha do Postgres circulou no chat e segue por rotacionar.** É ação do Bruno, no painel do
-Supabase, e não depende de nenhuma fatia.
+```
+GitHub Actions  major_outage
+GitHub Pages    major_outage
+incidente aberto desde 06/08 15:22 UTC
+  "Workflow runs are failing or delayed in starting"
+
+Pages serve: 28.755 bytes   (Fatia 16)
+local:       36.482 bytes   (Fatias 17 + 18)
+```
+
+Não digo "publicado" porque não publicou. O `git` está operacional e os commits chegaram; quem caiu
+foi quem publica. Quando o incidente fechar, um push reenfileira — e aí as Fatias 17 e 18 sobem
+juntas, e o aviso do topo deste documento deixa de valer.
+
+## Pendência do Bruno, que não é fatia
+
+Rotacionar a senha do Postgres. Ela circulou no chat.
