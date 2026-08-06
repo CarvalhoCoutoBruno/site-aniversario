@@ -653,21 +653,29 @@
      fornecedor pergunta. */
   function textoDoFornecedor(itens, total) {
     const f = ultimaFesta;
-    const quando = f && f.data
-      ? new Intl.DateTimeFormat("pt-BR", {
-          timeZone: "America/Sao_Paulo", weekday: "long",
-          day: "2-digit", month: "2-digit", year: "numeric",
-          hour: "2-digit", minute: "2-digit", hour12: false,
-        }).format(new Date(f.data)).replace(",", " —")
-      : "";
     return [
-      `${(f && f.titulo) || "Festa"}${quando ? " — " + quando : ""}`,
+      `${(f && f.titulo) || "Festa"}${quandoDaFesta(f) ? " — " + quandoDaFesta(f) : ""}`,
       "Lista de compra",
       "",
       ...itens.map(([nome, valor]) => `${nome}: ${valor}`),
       "",
       `Base: ${total} ${total === 1 ? "confirmado" : "confirmados"}`,
     ].join("\n");
+  }
+
+  // "31/10/2026, sábado, 11h" — no fuso da festa, não no de quem clica
+  function quandoDaFesta(f) {
+    if (!f || !f.data) return "";
+    const d = new Date(f.data);
+    if (isNaN(d)) return "";
+    const partes = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo", hour12: false,
+      weekday: "long", day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    }).formatToParts(d);
+    const g = (t) => (partes.find((x) => x.type === t) || {}).value || "";
+    const hora = g("minute") === "00" ? `${g("hour")}h` : `${g("hour")}h${g("minute")}`;
+    return `${g("day")}/${g("month")}/${g("year")}, ${g("weekday")}, ${hora}`;
   }
 
   $("#btnCopiarCompras").addEventListener("click", async () => {
@@ -1280,8 +1288,9 @@
 
     // Nomear quem vai sumir, e a consequência. "Tem certeza?" genérico
     // não diz o que se perde.
-    const frase = `Apagar a confirmação de ${g.nome_principal} e as ${pessoas.length} ` +
-      `${pessoas.length === 1 ? "pessoa" : "pessoas"} do grupo? Isso não tem como desfazer.`;
+    const quantas = pessoas.length === 1 ? "a 1 pessoa" : `as ${pessoas.length} pessoas`;
+    const frase = `Apagar a confirmação de ${g.nome_principal} e ${quantas} do grupo? ` +
+      "Isso não tem como desfazer.";
     if (!confirm(frase)) return;
 
     // O conteúdo apagado, em texto, montado ANTES de sumir: não é
