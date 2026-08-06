@@ -93,6 +93,7 @@ drop function if exists public.create_rsvp(text, text, smallint[], text, jsonb);
 drop function if exists public.rsvp_status();
 drop function if exists public.cancel_rsvp(uuid);
 drop function if exists public.admin_remove_rsvp(uuid);
+drop function if exists public.restore_rsvp(uuid);
 drop table if exists public.people;
 drop table if exists public.rsvps;
 drop table if exists public.settings;
@@ -205,7 +206,30 @@ create table public.rsvps (
   -- e excluir pelo painel marcam esta coluna; nada apaga linha de RSVP.
   -- A trava do reset conta cancelados de propósito: cancelada é dado real
   -- de convidado, e é o conteúdo da lixeira do painel.
-  deleted_at timestamptz
+  deleted_at timestamptz,
+
+  -- POR QUAL PORTA saiu (Fatia 18). São TRÊS, não duas — a terceira é a
+  -- que quase passou batido:
+  --
+  --   guest   o convidado cancelou pelo link
+  --   admin   o organizador tirou da lista pelo painel
+  --   resend  o dedupe do create_rsvp substituiu por um reenvio
+  --
+  -- 'resend' existe porque sem ele a lixeira MENTE: todo reenvio (trocar
+  -- de ideia sobre refrigerante, corrigir o nome do filho) empilharia um
+  -- fantasma do próprio convidado ao lado de quem de fato desistiu — com
+  -- botão de restaurar que só pode dar errado, porque a linha nova já
+  -- ocupa o contato. Na tela, 'resend' aparece sem esse botão.
+  deleted_by text check (deleted_by in ('guest', 'admin', 'resend')),
+
+  -- "Cancelada implica procedência registrada."
+  --
+  -- O `in (...)` acima NÃO faz este trabalho, e é fácil achar que faz: um
+  -- CHECK sobre NULL avalia NULL, e NULL não é falso — a restrição passa.
+  -- Ou seja, um caminho novo que esqueça de gravar a procedência gravaria
+  -- `null` em silêncio, que é justamente o que se quer impedir. O `in`
+  -- pega typo ('Guest', 'organizer'); é esta linha que pega omissão.
+  constraint rsvps_deleted_pair check (deleted_at is null or deleted_by is not null)
 );
 
 create index rsvps_created_at_idx    on public.rsvps (created_at desc);
@@ -437,7 +461,8 @@ begin
   -- Dentro da transação o update tira a linha antiga do predicado do índice
   -- parcial antes de o insert entrar.
   update public.rsvps
-     set deleted_at = now()
+     set deleted_at = now(),
+         deleted_by = 'resend'    -- não foi desistência: foi substituição
    where contact_norm = public.normalize_contact(p_contact)
      and deleted_at is null;
 
@@ -523,7 +548,8 @@ begin
 
   -- Sem retorno e sem contagem: zero linhas afetadas é sucesso silencioso.
   update public.rsvps
-     set deleted_at = now()
+     set deleted_at = now(),
+         deleted_by = 'guest'
    where id = p_id
      and deleted_at is null;
 end;
@@ -580,7 +606,8 @@ begin
   end if;
 
   update public.rsvps
-     set deleted_at = now()
+     set deleted_at = now(),
+         deleted_by = 'admin'
    where id = p_id
      and deleted_at is null;
 end;
@@ -588,6 +615,60 @@ $$;
 
 revoke all on function public.admin_remove_rsvp(uuid) from public, anon;
 grant execute on function public.admin_remove_rsvp(uuid) to authenticated;
+
+-- =============================================================
+--  RPC: restore_rsvp — trazer de volta o que saiu da lista
+--
+--  Porta de organizador, como o admin_remove_rsvp: exige is_admin(),
+--  e tem UM gate — custo real lançado recusa. Sem gate de prazo, mesma
+--  assimetria já decidida na 17 e pelo mesmo motivo: o organizador
+--  precisa poder corrigir engano depois do prazo.
+--
+--  Restaurar mexe no dinheiro tanto quanto excluir, só que pelo outro
+--  lado: devolve um consumidor à conta e muda quanto cada um paga. A
+--  regra é uma só, agora para as TRÊS portas — lançar custo congela a
+--  lista.
+--
+--  A COLISÃO, que é cenário provável e não exótico: alguém cancela,
+--  muda de ideia e confirma de novo com o mesmo contato. Restaurar a
+--  antiga levanta 23505 no rsvps_contact_norm_active_idx. Isso é o
+--  índice fazendo o trabalho dele — quem traduz para gente é o painel.
+-- =============================================================
+create or replace function public.restore_rsvp(p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_closing boolean;
+begin
+  if not public.is_admin() then
+    raise exception 'Só o organizador pode trazer de volta uma confirmação.';
+  end if;
+
+  select (actual_beer_cost is not null
+          or actual_soda_cost is not null
+          or actual_water_cost is not null
+          or actual_adult_pizza_price is not null
+          or actual_child_pizza_price is not null)
+    into v_closing
+    from public.settings where id = 1;
+
+  if v_closing then
+    raise exception 'As compras já começaram: trazer alguém de volta agora mudaria o rateio de quem já pagou. Para corrigir mesmo assim, limpe o custo lançado na aba Contas, traga de volta, e lance o valor de novo.';
+  end if;
+
+  update public.rsvps
+     set deleted_at = null,
+         deleted_by = null
+   where id = p_id
+     and deleted_at is not null;
+end;
+$$;
+
+revoke all on function public.restore_rsvp(uuid) from public, anon;
+grant execute on function public.restore_rsvp(uuid) to authenticated;
 
 -- =============================================================
 --  RPC: rsvp_status — o formulário público precisa saber se ainda
@@ -646,10 +727,12 @@ create policy "admin reads rsvps" on public.rsvps
   for select to authenticated
   using (public.is_admin());
 
+-- Não existe política de DELETE em rsvps, e a ausência é a regra (Fatia 18).
+-- A que havia aqui era resto do modelo antigo: capacidade morta que ninguém
+-- chamava, mas que a API expunha — um admin logado montando a chamada REST
+-- na mão apagava a linha por cima da trava do custo lançado, sem deixar
+-- nada na lixeira. `deleted_at` é a única saída da lista.
 drop policy if exists "admin deletes rsvps" on public.rsvps;
-create policy "admin deletes rsvps" on public.rsvps
-  for delete to authenticated
-  using (public.is_admin());
 
 -- ---- people ----
 drop policy if exists "admin reads people" on public.people;
@@ -669,10 +752,34 @@ create policy "admin edits people" on public.people
   using (public.is_admin())
   with check (public.is_admin());
 
+-- Mesma coisa em people, e pelo mesmo motivo. Ver o bloco de rsvps acima.
 drop policy if exists "admin deletes people" on public.people;
-create policy "admin deletes people" on public.people
-  for delete to authenticated
-  using (public.is_admin());
+
+-- =============================================================
+--  E O GRANT, que é a outra metade da mesma porta
+--
+--  Derrubar a política sozinha deixa a porta ENCOSTADA, não trancada:
+--  o Supabase concede `all` para anon e authenticated nas tabelas novas
+--  do schema public, e com o grant presente e a política ausente o
+--  DELETE não dá erro — a RLS torna as linhas invisíveis para o
+--  comando, ele apaga zero e devolve SUCESSO. Fechar em silêncio é um
+--  jeito ruim de fechar.
+--
+--  Sem o grant vira 42501: alto, achável no log, impossível de
+--  confundir com "apagou". E fecha o anon, que tinha DELETE e era
+--  barrado SÓ pela RLS — um `using (true)` distraído daqui a seis meses
+--  reabriria para o mundo. Grant ausente não reabre por descuido de
+--  política.
+--
+--  Esta linha tem de existir NO ARQUIVO, e não só no banco: sem ela uma
+--  instalação do zero nasce com o grant de volta pelo default do
+--  Supabase, e o banco novo diverge do de produção em silêncio.
+--
+--  Não afeta nada que exista: as RPCs são `security definer` e rodam
+--  como dono, o js/ não apaga, a trava do reset é DDL, e a cascata do
+--  FK é ação interna de integridade referencial.
+-- =============================================================
+revoke delete on public.rsvps, public.people from anon, authenticated;
 
 -- ---- config ----
 drop policy if exists "admin reads settings" on public.settings;
