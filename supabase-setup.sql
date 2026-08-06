@@ -91,6 +91,7 @@ end $$;
 
 drop function if exists public.create_rsvp(text, text, smallint[], text, jsonb);
 drop function if exists public.rsvp_status();
+drop function if exists public.cancel_rsvp(uuid);
 drop table if exists public.people;
 drop table if exists public.rsvps;
 drop table if exists public.settings;
@@ -197,11 +198,26 @@ create table public.rsvps (
   contact        text not null check (length(btrim(contact)) between 3 and 160),
   contact_norm   text generated always as (public.normalize_contact(contact)) stored,
   invited_by  smallint[] not null check (public.valid_invited_by(invited_by)),
-  notes    text check (notes is null or length(notes) <= 500)
+  notes    text check (notes is null or length(notes) <= 500),
+
+  -- Exclusão REVERSÍVEL (Fatia 17). NULL = ativa. Cancelar pelo convidado
+  -- e excluir pelo painel marcam esta coluna; nada apaga linha de RSVP.
+  -- A trava do reset conta cancelados de propósito: cancelada é dado real
+  -- de convidado, e é o conteúdo da lixeira do painel.
+  deleted_at timestamptz
 );
 
 create index rsvps_created_at_idx    on public.rsvps (created_at desc);
 create index rsvps_contact_norm_idx on public.rsvps (contact_norm);
+
+-- Um contato só pode ter UMA confirmação ativa. O dedupe do create_rsvp já
+-- cancela a anterior, mas dois envios simultâneos passavam pelos dois lados
+-- e geravam duas linhas ativas em silêncio — corrida que existe desde a
+-- Fatia 0. Com o índice, isso vira erro alto em vez de duplicata invisível.
+-- Parcial (`where deleted_at is null`) porque cancelar não pode impedir o
+-- convidado de confirmar de novo com o mesmo contato.
+create unique index rsvps_contact_norm_active_idx
+  on public.rsvps (contact_norm) where deleted_at is null;
 
 -- =============================================================
 --  TABELA: people — unidade de consumo
@@ -414,10 +430,15 @@ begin
     raise exception 'O grupo precisa ter exatamente um responsável.';
   end if;
 
-  -- dedupe: reenvio com o mesmo contato substitui o anterior
-  -- (as linhas de people somem junto pelo ON DELETE CASCADE)
-  delete from public.rsvps
-   where contact_norm = public.normalize_contact(p_contact);
+  -- dedupe sob exclusão reversível: o reenvio CANCELA o anterior em vez de
+  -- apagá-lo, e só considera duplicata o que está ativo — senão uma
+  -- cancelada antiga bloquearia o índice ou seria ressuscitada.
+  -- Dentro da transação o update tira a linha antiga do predicado do índice
+  -- parcial antes de o insert entrar.
+  update public.rsvps
+     set deleted_at = now()
+   where contact_norm = public.normalize_contact(p_contact)
+     and deleted_at is null;
 
   insert into public.rsvps (lead_name, contact, invited_by, notes)
   values (
@@ -452,6 +473,65 @@ revoke all on function public.create_rsvp(text, text, smallint[], text, jsonb) f
 grant execute on function public.create_rsvp(text, text, smallint[], text, jsonb) to anon, authenticated;
 
 -- =============================================================
+--  RPC: cancel_rsvp — o convidado desmarca a própria confirmação
+--  O uuid É a credencial: 128 bits, devolvido pelo create_rsvp e
+--  guardado no navegador de quem confirmou. Mesmo padrão de link de
+--  descadastro. Por isso a função NÃO devolve conteúdo da linha e NÃO
+--  distingue "não existe" de "não é sua" de "já cancelada": as três
+--  respondem igual. Diferenciar transformaria o endpoint num oráculo
+--  para descobrir se um uuid existe.
+--
+--  GATE DUPLO. Cancelar exige as duas condições:
+--    1. prazo aberto — mesma regra de confirmar;
+--    2. nenhum custo real lançado.
+--
+--  A segunda não é redundante com a primeira: a compra pode acontecer
+--  ANTES do prazo (fornecedor pede antecedência). Se o chopp foi pago
+--  no dia 15 e alguém cancela no dia 20, ainda dentro do prazo, o
+--  dinheiro já saiu e passaria a ser dividido entre menos gente.
+--  Lançar custo congela a lista — vale para esta porta e para o
+--  excluir do painel.
+-- =============================================================
+create or replace function public.cancel_rsvp(p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_deadline timestamptz;
+  v_closing  boolean;
+begin
+  select rsvp_deadline,
+         (actual_beer_cost is not null
+          or actual_soda_cost is not null
+          or actual_water_cost is not null
+          or actual_adult_pizza_price is not null
+          or actual_child_pizza_price is not null)
+    into v_deadline, v_closing
+    from public.settings where id = 1;
+
+  if v_deadline is not null and now() > v_deadline then
+    raise exception 'O prazo para mudar a confirmação terminou em %.',
+      to_char(v_deadline at time zone 'America/Sao_Paulo', 'DD/MM/YYYY');
+  end if;
+
+  if v_closing then
+    raise exception 'As compras já começaram e a lista está fechada. Fale com quem te convidou.';
+  end if;
+
+  -- Sem retorno e sem contagem: zero linhas afetadas é sucesso silencioso.
+  update public.rsvps
+     set deleted_at = now()
+   where id = p_id
+     and deleted_at is null;
+end;
+$$;
+
+revoke all on function public.cancel_rsvp(uuid) from public;
+grant execute on function public.cancel_rsvp(uuid) to anon, authenticated;
+
+-- =============================================================
 --  RPC: rsvp_status — o formulário público precisa saber se ainda
 --  está aberto, mas o anon NÃO pode ler a tabela settings (lá tem preço).
 --  Esta função devolve só o necessário: aberto? e qual o prazo.
@@ -472,7 +552,7 @@ revoke all on function public.rsvp_status() from public;
 grant execute on function public.rsvp_status() to anon, authenticated;
 
 -- =============================================================
---  HIGIENE: o anon só deve executar create_rsvp e rsvp_status.
+--  HIGIENE: o anon só deve executar create_rsvp, rsvp_status e cancel_rsvp.
 --  As auxiliares ganham EXECUTE para PUBLIC por default do Postgres.
 --  Não são brecha (validadores puros, sem acesso a dado), mas nada as
 --  chama a partir do anon: rodam na coluna gerada, no CHECK da tabela

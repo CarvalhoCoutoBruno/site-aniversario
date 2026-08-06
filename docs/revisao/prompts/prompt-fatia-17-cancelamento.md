@@ -35,10 +35,25 @@ cancelada **sai dos números** — some da lista, do Resumo, das Compras e das C
 - **Marca `deleted_at`, não apaga.**
 - O `uuid` **é** a credencial: 128 bits, não se adivinha, mesmo padrão de link de descadastro.
 - **Não devolva conteúdo da linha** nem diferencie "não existe" de "não é sua" — sem oráculo.
-- **Gate de prazo: cancelar obedece o mesmo prazo que confirmar.** Depois do prazo, não cancela.
-  Isso não é detalhe de UI, é a regra de negócio do projeto: o custo é **comprometido na
-  confirmação** (é por isso que no-show não muda o rateio, §4.2). Deixar cancelar depois do prazo
-  seria deixar alguém sair da conta com a pizza já encomendada.
+- **Gate duplo: cancelar exige prazo aberto E nenhum custo real lançado.** Basta uma das duas
+  condições falhar para recusar.
+
+  O **prazo** vem da regra do projeto: o custo é **comprometido na confirmação** (é por isso que
+  no-show não muda o rateio, §4.2). Deixar cancelar depois do prazo seria deixar alguém sair da
+  conta com a pizza já encomendada.
+
+  O **custo lançado** cobre o buraco que o prazo sozinho não cobre, e foi decisão do Bruno: se a
+  compra acontecer **antes** do prazo (o fornecedor pede antecedência), quem cancelar depois disso
+  empurra a conta para quem ficou — o dinheiro já saiu e passa a ser dividido entre menos gente.
+  Então **qualquer `actual_*_cost` preenchido congela a lista na hora**. Regra fácil de explicar ao
+  grupo: *comprou, lança na hora* — lançar o custo é o que protege quem pagou.
+
+  **Efeito colateral que precisa estar visível no painel:** lançar custo passa a ter uma consequência
+  para o convidado. A aba Contas tem de dizer isso onde o organizador digita ("ao lançar o gasto,
+  ninguém mais consegue cancelar"), senão ele congela a lista sem saber.
+
+  Do lado do convidado, quando bloqueado: mensagem própria para cada caso — prazo encerrado, ou "as
+  compras já começaram; fale com quem te convidou". Nada de erro genérico.
 
 ### 4. O dedupe do `create_rsvp` tem de aprender o modelo novo
 Hoje o reenvio apaga o grupo anterior de mesmo `contact_norm`. Com exclusão reversível isso muda:
@@ -90,6 +105,17 @@ lixeira do painel (Fatia 18), e `whatsapp_contato`, que saiu.
   seguem intactas.
 - Tabela de hashes no `status.md`.
 
+## Nota sobre o rateio — para não inventar conserto que não é preciso
+Cancelamento **não** deixa ninguém no prejuízo, e é importante que isso fique claro antes de
+alguém "melhorar" o cálculo: o rateio divide o **custo real** entre quem consome, então
+`Σ das 3 contas = custo real` continua valendo sempre. Quem pagou é ressarcido integralmente pelo
+acerto; o que muda é **quanto cada um que ficou paga**. A lista de Compras recalcula (ela é lista de
+compra, tem de refletir a realidade); o rateio não, porque parte do gasto e não da estimativa.
+
+A **única** borda em que a soma não fecha é o caso órfão — se todo mundo que consome um item
+cancelar, aquele custo fica sem ninguém para ratear. Isso já é tratado: o selo fica **vermelho** com
+a diferença em reais. Não crie tratamento novo para isso.
+
 ## Observação
-Se em algum ponto o modelo reversível colidir com o rateio (por exemplo, cancelar depois do
-fechamento lançado), **pare e pergunte no plano** em vez de decidir sozinho — ali é dinheiro.
+Se em algum outro ponto o modelo reversível colidir com o rateio, **pare e pergunte no plano** em
+vez de decidir sozinho — ali é dinheiro.
