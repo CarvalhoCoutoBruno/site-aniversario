@@ -1,7 +1,8 @@
 # Status — Fatia 11: redesign do convite ("cartaz de boteco")
 
 **Fatia fechada,** com o recorte que o review pediu: o `localStorage` (commit 6) saiu e nasce
-junto com o P6. Uma coisa ficou pendente do lado do Bruno — ver *O que sobrou*.
+junto com o P6. Depois do fechamento entraram o `UPDATE` do salão e a correção de um bug de
+fuso — as duas últimas seções.
 
 | | |
 |---|---|
@@ -156,8 +157,10 @@ agora **dentro** do hero. O `BRIEFING.md` já está atualizado.
   persistir por um tempo — não é bug, é cache. E as quatro `<meta>` de `og:` são o **único**
   conteúdo escrito à mão do convite: o WhatsApp não executa JavaScript, então mudar data ou local
   no painel exige mexer nelas junto. Está registrado no próprio `index.html`.
-- **Pendências antigas seguem:** rotacionar a senha do Postgres, e conferir preços e prazo antes
-  de divulgar o link. O prazo hoje é **02/10/2026**.
+- **Pendências antigas seguem:** rotacionar a senha do Postgres, e conferir preços antes de
+  divulgar o link. O prazo é **01/10/2026, 23:59:59 em São Paulo** — a saída bruta do bloco de
+  verificação diz `2026-10-02` porque `::date` casta o timestamp em UTC; o valor certo é o de
+  cima (ver *Depois do fechamento*).
 
 **Para a fatia do admin (Cowork):**
 
