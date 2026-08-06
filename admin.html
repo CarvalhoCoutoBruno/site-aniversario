@@ -75,7 +75,7 @@
         <div class="res-bar" id="resDeadlineBarWrap" hidden>
           <div class="res-bar-fill" id="resDeadlineBar"></div>
         </div>
-        <p class="res-nota" id="resDeadlineNota"></p>
+        <p class="res-note" id="resDeadlineNote"></p>
       </div>
 
       <div class="res-block res-block-flat">
@@ -88,7 +88,7 @@
 
       <div class="res-block">
         <b class="res-title">Recados e restrições</b>
-        <p class="res-nota" id="resNotesNota">Ninguém escreveu nada ainda.</p>
+        <p class="res-note" id="resNotesNote">Ninguém escreveu nada ainda.</p>
         <div class="res-notes" id="resNotes"></div>
       </div>
       </section>
@@ -117,13 +117,13 @@
       <section class="ad-panel" id="panel-shopping" role="tabpanel" aria-labelledby="tab-shopping" hidden>
       <div class="res-block">
         <b class="res-title">Lista de compra</b>
-        <p class="res-nota" id="shoppingBase">&mdash;</p>
+        <p class="res-note" id="shoppingBase">&mdash;</p>
         <div class="shopping-list" id="shoppingList"></div>
         <p class="msg-toast" id="shoppingWarning" hidden></p>
         <button type="button" class="ad-btn ad-btn-wide" id="btnCopyShopping">
           &#128203; Copiar para o fornecedor
         </button>
-        <p class="res-nota" id="shoppingCopyMsg"></p>
+        <p class="res-note" id="shoppingCopyMsg"></p>
         <textarea class="shopping-text" id="shoppingText" rows="10" readonly hidden></textarea>
       </div>
 
@@ -132,7 +132,7 @@
           <b>Custo estimado</b>
           <b class="mono shopping-cost" id="shoppingCost">&mdash;</b>
         </div>
-        <p class="res-nota">
+        <p class="res-note">
           Usa os preços de referência dos Ajustes &mdash; não é o gasto real.
           O que foi pago de verdade entra em Contas.
         </p>
@@ -148,13 +148,13 @@
 
       <div class="res-block">
         <b class="res-title">Custo real</b>
-        <p class="res-nota">
+        <p class="res-note">
           O que foi pago de verdade, depois da compra. Deixe em branco o que ainda não fechou —
           <strong>vazio quer dizer "ainda não sei", não zero</strong>.
         </p>
         <form id="closingForm" novalidate>
           <div id="closingCosts"></div>
-          <p class="res-nota ct-sub">Preço real da pizza — em branco, vale o preço de referência dos Ajustes.</p>
+          <p class="res-note ct-sub">Preço real da pizza — em branco, vale o preço de referência dos Ajustes.</p>
           <div id="closingPizzas"></div>
           <button type="submit" class="aj-save" id="btnSaveClosing">Salvar custo real</button>
           <p class="msg-toast" id="closingMsg"></p>
@@ -163,7 +163,7 @@
 
       <div class="res-block">
         <b class="res-title">Rateio</b>
-        <p class="res-nota ct-nota-invited">
+        <p class="res-note ct-guest-note">
           Convidado não paga: o consumo dele é bancado por <strong>quem o convidou</strong>,
           dividido igualmente quando foi mais de um.
         </p>
@@ -175,7 +175,7 @@
 
       <div class="res-block">
         <b class="res-title">Quem pagou cada item</b>
-        <p class="res-nota">
+        <p class="res-note">
           O valor vem do custo real acima — <strong>ninguém digita valor aqui</strong>, só escolhe
           o nome.
         </p>
@@ -193,7 +193,7 @@
         <div class="ct-share" id="settlementShare" hidden>
           <button type="button" class="ad-btn ad-btn-wide" id="btnCopySettlement">&#128203; Copiar resumo</button>
           <a class="ad-btn ad-btn-wide" id="btnWhatsSettlement" target="_blank" rel="noopener">&#128172; Mandar no WhatsApp</a>
-          <p class="res-nota" id="settlementCopyMsg"></p>
+          <p class="res-note" id="settlementCopyMsg"></p>
           <textarea id="settlementText" class="shopping-text" rows="6" readonly hidden></textarea>
         </div>
       </div>
@@ -363,11 +363,11 @@
     <!-- Barra de abas. Rótulo de texto, sem ícone: glifo ambíguo foi
          testado e descartado pelo design. -->
     <nav class="ad-tabs" role="tablist" aria-label="Seções do painel">
-      <button type="button" class="ad-tab-btn" role="tab" id="tab-overview" data-aba="resumo" aria-controls="panel-overview">Resumo</button>
-      <button type="button" class="ad-tab-btn" role="tab" id="tab-guests" data-aba="quem-vem" aria-controls="panel-guests">Quem vem</button>
-      <button type="button" class="ad-tab-btn" role="tab" id="tab-shopping" data-aba="compras" aria-controls="panel-shopping">Compras</button>
-      <button type="button" class="ad-tab-btn" role="tab" id="tab-accounts" data-aba="contas" aria-controls="panel-accounts">Contas</button>
-      <button type="button" class="ad-tab-btn" role="tab" id="tab-settings" data-aba="ajustes" aria-controls="panel-settings">Ajustes</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-overview" data-tab="overview" aria-controls="panel-overview">Resumo</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-guests" data-tab="guests" aria-controls="panel-guests">Quem vem</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-shopping" data-tab="shopping" aria-controls="panel-shopping">Compras</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-accounts" data-tab="accounts" aria-controls="panel-accounts">Contas</button>
+      <button type="button" class="ad-tab-btn" role="tab" id="tab-settings" data-tab="settings" aria-controls="panel-settings">Ajustes</button>
     </nav>
   
 

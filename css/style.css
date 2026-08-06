@@ -15,7 +15,7 @@
 }
 /* O bloco @media (prefers-color-scheme: dark) que ficava aqui saiu na
    Fatia 14. Ele já não tinha leitor: os dois <body> carregam classe de
-   escopo (.pagina-convite / .pagina-admin) e ambas redeclaram --bg,
+   escopo (.page-invite / .page-admin) e ambas redeclaram --bg,
    --ink, --line e --brand, que vencem o :root em toda a subárvore.
    Verificado por medição antes e depois da remoção — idêntico. */
 
@@ -165,7 +165,7 @@ textarea { resize: vertical; }
 /* =====================================================================
    ADMIN — pele própria (Fatia 12)
    =====================================================================
-   Tudo escopado em .pagina-admin, inclusive as regras herdadas das
+   Tudo escopado em .page-admin, inclusive as regras herdadas das
    fatias anteriores: a pele antiga do CONVITE ficou fora de escopo na
    Fatia 9 e, quando a nova entrou na 11, venceu por especificidade. Aqui
    os dois lados nascem escopados, então quem decide é a ordem da
@@ -350,8 +350,8 @@ textarea { resize: vertical; }
 .page-admin .res-block-cab b { font-size: 15px; }
 .page-admin .res-block-cab p { margin: 2px 0 0; font-size: 12.5px; color: var(--ad-mudo); }
 .page-admin .res-title { display: block; margin-bottom: 4px; font-size: 15px; }
-.page-admin .res-nota { margin: 10px 0 0; font-size: 13px; color: var(--ad-mudo); }
-.page-admin .res-nota b { color: var(--ad-tinta); }
+.page-admin .res-note { margin: 10px 0 0; font-size: 13px; color: var(--ad-mudo); }
+.page-admin .res-note b { color: var(--ad-tinta); }
 
 .page-admin .res-bar {
   flex: 1; height: 8px; border-radius: 4px; background: var(--ad-fundo); overflow: hidden;
@@ -570,7 +570,7 @@ textarea { resize: vertical; }
   background: var(--ad-ambar-bg);
 }
 .page-admin .ct-unknown::placeholder { color: var(--ad-ambar-txt); opacity: .75; }
-.page-admin .ct-nota-invited { margin: 4px 0 14px; }
+.page-admin .ct-guest-note { margin: 4px 0 14px; }
 
 .page-admin .ct-account {
   padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2);
@@ -582,8 +582,8 @@ textarea { resize: vertical; }
 .page-admin .ct-account-top b:first-child { font-size: 15px; }
 .page-admin .ct-account-total { font-size: 16px; font-weight: 500; }
 .page-admin .ct-account-total small { font-size: 11px; font-weight: 400; color: var(--ad-mudo); }
-.page-admin .ct-account-total.topay { color: var(--ad-erro-txt); }
-.page-admin .ct-account-total.toreceive { color: var(--ad-ok-txt); }
+.page-admin .ct-account-total.to-pay { color: var(--ad-erro-txt); }
+.page-admin .ct-account-total.to-receive { color: var(--ad-ok-txt); }
 
 .page-admin .ct-items { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
 .page-admin .ct-item { display: flex; gap: 6px; font-size: 12.5px; color: var(--ad-mudo); }
@@ -654,9 +654,9 @@ textarea { resize: vertical; }
 /* =====================================================================
    CONVITE — pele "cartaz de boteco" (Fatia 11)
    =====================================================================
-   Tudo aqui é escopado em .pagina-convite. O admin.html usa o MESMO
+   Tudo aqui é escopado em .page-invite. O admin.html usa o MESMO
    arquivo e não pode herdar paleta nem fonte daqui: as classes
-   compartilhadas (.chip, .campo, .msg-toast) seguem definidas fora
+   compartilhadas (.chip, .field, .msg-toast) seguem definidas fora
    deste bloco.
 
    Direção: cartaz de boteco. Papel creme, tipografia gritada, traço
@@ -686,7 +686,7 @@ textarea { resize: vertical; }
      --cv-vermelho-txt (5.51:1). Medido, não estimado. */
 
   /* Remapeia as variáveis GLOBAIS dentro do convite: os componentes
-     compartilhados (input, textarea, .chip, .pessoa-card) leem --bg,
+     compartilhados (input, textarea, .chip, .person-card) leem --bg,
      --ink e --line, e é aqui que eles ganham a paleta boteco em vez da
      do :root.
 
@@ -733,7 +733,7 @@ textarea { resize: vertical; }
 .page-invite a { color: var(--cv-azul); }
 .page-invite .btn { text-decoration: none; }
 
-/* 16px é o mínimo que evita o zoom automático do iOS ao focar um campo. */
+/* 16px é o mínimo que evita o zoom automático do iOS ao focar um field. */
 .page-invite input,
 .page-invite textarea,
 .page-invite select { font-size: 16px; }
@@ -1041,7 +1041,7 @@ textarea { resize: vertical; }
 .page-invite .person-body .p-name {
   background: var(--cv-papel-3); border-color: var(--cv-linha);
 }
-/* No admin o .pref-grupo é coluna de 200px num flex horizontal; aqui o
+/* No admin o .pref-group é coluna de 200px num flex horizontal; aqui o
    contêiner é vertical, e o flex-basis vira ALTURA — 200px de vazio
    dentro do card. */
 .page-invite .pref-group { flex: none; }

@@ -191,7 +191,7 @@
 
   <!-- Template de card de pessoa (clonado via JS).
        Bebida e comida agora vivem numa lista só ("Vai querer"): o
-       payload não muda, os data-bebida/data-comida continuam os mesmos.
+       payload não muda, os data-drink/data-food continuam os mesmos.
        O <select> de relação saiu — era ele que vazava da tela a 390px,
        e o valor dele nunca foi lido por ninguém. -->
   <template id="tplPerson">
@@ -207,18 +207,18 @@
         <div class="pref-group p-grupo-tipo">
           <span class="pref-title mono">É</span>
           <div class="pref-chips p-kind">
-            <label class="chip checked"><input type="radio" value="adulto" checked /><span>Adulto</span></label>
-            <label class="chip"><input type="radio" value="crianca" /><span>Criança</span></label>
+            <label class="chip checked"><input type="radio" value="adult" checked /><span>Adulto</span></label>
+            <label class="chip"><input type="radio" value="child" /><span>Criança</span></label>
           </div>
         </div>
 
         <div class="pref-group">
           <span class="pref-title mono">Vai querer</span>
           <div class="pref-chips p-prefs">
-            <label class="chip"><input type="checkbox" data-bebida="bebe_agua" /><span>Água</span></label>
-            <label class="chip"><input type="checkbox" data-bebida="bebe_refri" /><span>Refri</span></label>
-            <label class="chip p-chip-chopp"><input type="checkbox" data-bebida="bebe_chopp" /><span>Chopp</span></label>
-            <label class="chip"><input type="checkbox" data-comida="come_pizza" /><span>Pizza</span></label>
+            <label class="chip"><input type="checkbox" data-drink="wants_water" /><span>Água</span></label>
+            <label class="chip"><input type="checkbox" data-drink="wants_soda" /><span>Refri</span></label>
+            <label class="chip p-chip-beer"><input type="checkbox" data-drink="wants_beer" /><span>Chopp</span></label>
+            <label class="chip"><input type="checkbox" data-food="wants_pizza" /><span>Pizza</span></label>
           </div>
           <small class="field-hint p-beer-warning" hidden>Chopp só para adulto.</small>
         </div>

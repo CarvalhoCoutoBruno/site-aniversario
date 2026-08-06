@@ -43,8 +43,8 @@
 
      O estado vive no hash: sobrevive ao reload e ao botão voltar, é
      compartilhável, e não guarda nada no aparelho de ninguém. */
-  const TABS = ["resumo", "quem-vem", "compras", "contas", "ajustes"];
-  const DEFAULT_TAB = "resumo";
+  const TABS = ["overview", "guests", "shopping", "accounts", "settings"];
+  const DEFAULT_TAB = "overview";
 
   function tabFromHash() {
     const h = (location.hash || "").replace(/^#/, "");
@@ -53,7 +53,7 @@
 
   function showTab(id) {
     for (const a of TABS) {
-      $(`#aba-${a}`).hidden = a !== id;
+      $(`#panel-${a}`).hidden = a !== id;
       const botao = $(`#tab-${a}`);
       botao.classList.toggle("active", a === id);
       botao.setAttribute("aria-selected", String(a === id));
@@ -64,7 +64,7 @@
 
   $$(".ad-tab-btn").forEach((b) => {
     b.addEventListener("click", () => {
-      const id = b.dataset.aba;
+      const id = b.dataset.tab;
       // replaceState e não hash direto: um toque em aba não merece uma
       // entrada no histórico, mas a URL precisa refletir onde você está
       history.replaceState(null, "", `#${id}`);
@@ -127,8 +127,8 @@
 
   let lastParty = null;
 
-  const PARTY_FIELDS = ["titulo", "subtitulo", "data_texto", "local", "local_mapa",
-                          "nome_aniv_1", "nome_aniv_2", "nome_aniv_3"];
+  const PARTY_FIELDS = ["title", "subtitle", "date_text", "venue", "map_url",
+                        "celebrant_1_name", "celebrant_2_name", "celebrant_3_name"];
 
   // datetime-local <-> timestamptz, sempre em -03:00, mesma disciplina
   // do prazo: o dia sai do fuso de São Paulo, não do navegador.
@@ -154,7 +154,7 @@
       return partyToast("Não consegui carregar o convite.", "err");
     }
     lastParty = data;
-    for (const col of PARTY_FIELDS) $(`#cv_${col}`).value = data[col] || "";
+    for (const col of PARTY_FIELDS) $(`#party_${col}`).value = data[col] || "";
     $("#party_starts_at").value = dateToInput(data.starts_at);
     $("#inviteUpdatedAt").textContent = data.updated_at
       ? `Editado em ${fmtDateTime(data.updated_at)}`
@@ -173,33 +173,33 @@
     const btn = $("#btnSaveInvite");
     partyToast("");
 
-    const txt = (id) => $(`#cv_${id}`).value.trim();
-    const obrigatorios = [["titulo", "Título"], ["local", "Local"],
-                          ["nome_aniv_1", "1º aniversariante"],
-                          ["nome_aniv_2", "2º aniversariante"],
-                          ["nome_aniv_3", "3º aniversariante"]];
-    for (const [col, label] of obrigatorios) {
+    const txt = (id) => $(`#party_${id}`).value.trim();
+    const required = [["title", "Título"], ["venue", "Local"],
+                          ["celebrant_1_name", "1º aniversariante"],
+                          ["celebrant_2_name", "2º aniversariante"],
+                          ["celebrant_3_name", "3º aniversariante"]];
+    for (const [col, label] of required) {
       if (!txt(col)) return partyFieldError(col, `Preencha "${label}".`);
     }
-    if (!$("#party_starts_at").value) return partyFieldError("data", "Escolha a data e a hora da festa.");
+    if (!$("#party_starts_at").value) return partyFieldError("starts_at", "Escolha a data e a hora da festa.");
 
     // o link vai direto para o href do convite: um valor colado errado
     // viraria link quebrado na cara do convidado
-    const mapa = txt("local_mapa");
-    if (mapa && !/^https?:\/\//i.test(mapa)) {
-      return partyFieldError("local_mapa", "O link do mapa precisa começar com http:// ou https://.");
+    const mapUrl = txt("map_url");
+    if (mapUrl && !/^https?:\/\//i.test(mapUrl)) {
+      return partyFieldError("map_url", "O link do mapa precisa começar com http:// ou https://.");
     }
 
     const patch = {
-      title: txt("titulo"),
-      subtitle: txt("subtitulo") || null,
+      title: txt("title"),
+      subtitle: txt("subtitle") || null,
       starts_at: inputToDate($("#party_starts_at").value),
-      date_text: txt("data_texto") || null,
-      venue: txt("local"),
-      map_url: mapa || null,
-      celebrant_1_name: txt("nome_aniv_1"),
-      celebrant_2_name: txt("nome_aniv_2"),
-      celebrant_3_name: txt("nome_aniv_3"),
+      date_text: txt("date_text") || null,
+      venue: txt("venue"),
+      map_url: mapUrl || null,
+      celebrant_1_name: txt("celebrant_1_name"),
+      celebrant_2_name: txt("celebrant_2_name"),
+      celebrant_3_name: txt("celebrant_3_name"),
       updated_at: new Date().toISOString(),
     };
 
@@ -225,7 +225,7 @@
 
   function partyFieldError(col, msg) {
     partyToast(msg, "err");
-    const el = $(`#cv_${col}`);
+    const el = $(`#party_${col}`);
     if (el) el.focus();
   }
 
@@ -254,16 +254,16 @@
   const MAX_RATE = 999.999;
 
   const PRICE_FIELDS = [
-    ["preco_litro_chopp", "Chopp (por litro)"],
-    ["preco_litro_refri", "Refrigerante (por litro)"],
-    ["preco_litro_agua", "Água (por litro)"],
-    ["preco_pizza_adulto", "Pizza — adulto (por pessoa)"],
-    ["preco_pizza_crianca", "Pizza — criança (por pessoa)"],
+    ["beer_price_per_liter", "Chopp (por litro)"],
+    ["soda_price_per_liter", "Refrigerante (por litro)"],
+    ["water_price_per_liter", "Água (por litro)"],
+    ["adult_pizza_price", "Pizza — adulto (por pessoa)"],
+    ["child_pizza_price", "Pizza — criança (por pessoa)"],
   ];
   const RATE_FIELDS = [
-    ["litros_chopp_por_adulto", "Chopp por adulto"],
-    ["litros_refri_por_pessoa", "Refrigerante por pessoa"],
-    ["litros_agua_por_pessoa", "Água por pessoa"],
+    ["beer_liters_per_adult", "Chopp por adulto"],
+    ["soda_liters_per_person", "Refrigerante por pessoa"],
+    ["water_liters_per_person", "Água por pessoa"],
   ];
 
   /* ---- parsing pt-BR ----
@@ -469,9 +469,9 @@
      ler as linhas e decidir update ou insert.                         */
 
   const CELEBRANT_DRINKS = [
-    ["bebe_agua", "Água"],
-    ["bebe_refri", "Refrigerante"],
-    ["bebe_chopp", "Chopp"],
+    ["wants_water", "Água"],
+    ["wants_soda", "Refrigerante"],
+    ["wants_beer", "Chopp"],
   ];
 
   // aniversariante_id -> id da linha em `pessoas` (ausente = ainda não cadastrado)
@@ -509,7 +509,7 @@
             <div class="pref-group">
               <span class="pref-title">🍕 Comida</span>
               <div class="pref-chips a-food">
-                <label class="chip"><input type="checkbox" data-col="come_pizza" /><span>Pizza</span></label>
+                <label class="chip"><input type="checkbox" data-col="wants_pizza" /><span>Pizza</span></label>
               </div>
             </div>
           </div>
@@ -526,7 +526,7 @@
   /* Espelho de UX da constraint chopp_nao_para_crianca. A fonte da
      verdade da regra é o banco; isto só evita o erro cru na tela. */
   function enableCelebrantBeerRule(block) {
-    const beer = block.querySelector('[data-col="bebe_chopp"]');
+    const beer = block.querySelector('[data-col="wants_beer"]');
     const chip = block.querySelector(".a-chip-chopp");
     const warning = block.querySelector(".a-beer-warning");
     function aplicar() {
@@ -564,10 +564,10 @@
       const block = $(`.celebrant-block[data-aniv="${p.celebrant_id}"]`);
       if (!block) continue; // linha órfã: id sem nome correspondente no config.js
 
-      const radio = block.querySelector(`.a-kind input[value="${p.kind}"]`);
+      const radio = block.querySelector(`.a-kind input[value="${p.age_group}"]`);
       if (radio) { radio.checked = true; $$(".a-kind .chip", block).forEach((c) => c.classList.remove("checked")); radio.closest(".chip").classList.add("checked"); }
       for (const [col] of CELEBRANT_DRINKS) setChip(block.querySelector(`[data-col="${col}"]`), !!p[col]);
-      setChip(block.querySelector('[data-col="come_pizza"]'), !!p.wants_pizza);
+      setChip(block.querySelector('[data-col="wants_pizza"]'), !!p.wants_pizza);
       enableCelebrantBeerRule(block); // reaplica: se veio criança, o chopp precisa travar
     }
   }
@@ -589,16 +589,16 @@
     let error = null;
     for (const block of $$(".celebrant-block")) {
       const k = Number(block.dataset.aniv);
-      const kind = block.querySelector('.a-kind input[value="child"]').checked ? "child" : "adult";
+      const ageGroup = block.querySelector('.a-kind input[value="child"]').checked ? "child" : "adult";
       const registro = {
         // `nome` fica de fora de propósito: a linha de aniversariante NÃO
         // guarda nome. A `festa` é a fonte única, e quem alimenta o
         // calculo.js resolve pelo pessoasParaCalculo(). Gravar aqui
         // repopularia a coluna e a divergência voltaria pelo outro lado.
-        kind,
+        age_group: ageGroup,
         role: "celebrant",
         celebrant_id: k,
-        wants_pizza: block.querySelector('[data-col="come_pizza"]').checked,
+        wants_pizza: block.querySelector('[data-col="wants_pizza"]').checked,
       };
       for (const [col] of CELEBRANT_DRINKS) registro[col] = block.querySelector(`[data-col="${col}"]`).checked;
       if (kind === "child") registro.wants_beer = false; // cinto e suspensório
@@ -692,7 +692,7 @@
     ];
 
     $("#shoppingBase").textContent =
-      `Calculada sobre ${c.totalPeople} ${c.totalPeople === 1 ? "confirmado" : "confirmedPeople"}, ` +
+      `Calculada sobre ${c.totalPeople} ${c.totalPeople === 1 ? "confirmado" : "confirmados"}, ` +
       "aniversariantes incluídos.";
     $("#shoppingList").innerHTML = items.map(([name, amount]) => `
       <div class="shopping-row">
@@ -704,8 +704,8 @@
     // Com os preços ainda nas sementes (0), o custo sai zerado. Os
     // volumes seguem úteis; a tela avisa em vez de deixar o organizador
     // achar que a conta quebrou.
-    const prices = ["preco_litro_chopp", "preco_litro_refri", "preco_litro_agua",
-                    "preco_pizza_adulto", "preco_pizza_crianca"];
+    const prices = ["beer_price_per_liter", "soda_price_per_liter", "water_price_per_liter",
+                    "adult_pizza_price", "child_pizza_price"];
     const noPrices = prices.every((k) => Number(lastSettings[k]) === 0);
     const warning = $("#shoppingWarning");
     warning.hidden = !noPrices;
@@ -728,7 +728,7 @@
       "",
       ...items.map(([name, amount]) => `${name}: ${amount}`),
       "",
-      `Base: ${total} ${total === 1 ? "confirmado" : "confirmedPeople"}`,
+      `Base: ${total} ${total === 1 ? "confirmado" : "confirmados"}`,
     ].join("\n");
   }
 
@@ -775,13 +775,13 @@
      wiring de ultimosGrupos é o coração desta fatia.               */
 
   const COST_FIELDS = [
-    ["custo_real_chopp", "Chopp"],
-    ["custo_real_refri", "Refrigerante"],
-    ["custo_real_agua", "Água"],
+    ["actual_beer_cost", "Chopp"],
+    ["actual_soda_cost", "Refrigerante"],
+    ["actual_water_cost", "Água"],
   ];
   const ACTUAL_PIZZA_FIELDS = [
-    ["preco_real_pizza_adulto", "Pizza — adulto (por pessoa)"],
-    ["preco_real_pizza_crianca", "Pizza — criança (por pessoa)"],
+    ["actual_adult_pizza_price", "Pizza — adulto (por pessoa)"],
+    ["actual_child_pizza_price", "Pizza — criança (por pessoa)"],
   ];
 
   function renderClosingFields() {
@@ -800,7 +800,7 @@
       if (!el) continue;
       const empty = cfg[col] === null || cfg[col] === undefined;
       el.value = empty ? "" : fmtNumberBR(cfg[col], 2, 2);
-      // borda âmbar enquanto é "ainda não sei": o campo em branco aqui não
+      // borda âmbar enquanto é "ainda não sei": o field em branco aqui não
       // é erro nem zero, é uma pendência — e tem que parecer uma.
       el.classList.toggle("pending", empty);
     }
@@ -855,7 +855,7 @@
   }
 
   /* ---- o rateio (só leitura) ---- */
-  const ACCOUNT_ITEMS = [["chopp", "Chopp"], ["refri", "Refri"], ["agua", "Água"], ["pizza", "Pizza"]];
+  const ACCOUNT_ITEMS = [["beer", "Chopp"], ["soda", "Refri"], ["water", "Água"], ["pizza", "Pizza"]];
 
   /* ================= O CONTRATO COM O calculo.js =================
      O módulo é PURO: dado entra, número sai. Não é papel dele saber onde
@@ -952,7 +952,7 @@
 
     $("#settlementBalances").innerHTML = a.balancesPerCelebrant.map((s) => {
       const label = s.balance > 0 ? "a pagar" : s.balance < 0 ? "a receber" : "quite";
-      const classe = s.balance > 0 ? "topay" : s.balance < 0 ? "toreceive" : "";
+      const classe = s.balance > 0 ? "to-pay" : s.balance < 0 ? "to-receive" : "";
       return `<div class="ct-account">
         <div class="ct-account-top">
           <b>${esc(s.name)}</b>
@@ -977,14 +977,14 @@
       ? `<ul class="ct-transfers">${a.transfers.map((t) =>
           `<li><b>${esc(t.fromName)}</b> → <b>${esc(t.toName)}</b><b class="mono">${esc(Calc.formatBRL(t.amount))}</b></li>`
         ).join("")}</ul>`
-      : '<p class="res-nota">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte. 🎉</p>';
+      : '<p class="res-note">Ninguém deve nada a ninguém — cada um pagou exatamente a própria parte. 🎉</p>';
   }
 
   const PAID_BY_FIELDS = [
-    ["pago_por_chopp", "chopp", "Chopp"],
-    ["pago_por_refri", "refri", "Refrigerante"],
-    ["pago_por_agua", "agua", "Água"],
-    ["pago_por_pizza", "pizza", "Pizza"],
+    ["beer_paid_by", "beer", "Chopp"],
+    ["soda_paid_by", "soda", "Refrigerante"],
+    ["water_paid_by", "water", "Água"],
+    ["pizza_paid_by", "pizza", "Pizza"],
   ];
 
   function renderPayers(costPerItem) {
@@ -1133,7 +1133,7 @@
   function renderOverview(groups, todas, cont) {
     $("#resConfirmed").textContent = todas.length;
     $("#resBreakdown").textContent =
-      `${cont.adults} ${cont.adults === 1 ? "adult" : "adults"} · ` +
+      `${cont.adults} ${cont.adults === 1 ? "adulto" : "adultos"} · ` +
       `${cont.children} ${cont.children === 1 ? "criança" : "crianças"}`;
     $("#resGroups").textContent = groups.length;
 
@@ -1193,9 +1193,9 @@
     }
 
     // e nada de "faltam -3 dias"
-    $("#resDeadlineNota").innerHTML = vencido
+    $("#resDeadlineNote").innerHTML = vencido
       ? "As confirmações estão <b>encerradas</b>."
-      : `Faltam <b>${days} ${days === 1 ? "day" : "days"}</b> para fechar as confirmações.`;
+      : `Faltam <b>${days} ${days === 1 ? "dia" : "dias"}</b> para fechar as confirmações.`;
   }
 
   // O que separa restrição de recado é o que muda a compra.
@@ -1203,7 +1203,7 @@
 
   function renderNotes(groups) {
     const comRecado = groups.filter((g) => g.notes && g.notes.trim());
-    $("#resNotesNota").textContent = comRecado.length
+    $("#resNotesNote").textContent = comRecado.length
       ? `${comRecado.length} ${comRecado.length === 1 ? "person escreveu" : "people escreveram"} algo.`
       : "Ninguém escreveu nada ainda.";
     // esc() em tudo: é texto que o convidado escreveu
@@ -1229,10 +1229,10 @@
 
     const cont = { water: 0, soda: 0, beer: 0, pizza: 0, adults: 0, children: 0 };
     for (const p of todas) {
-      if (p.kind === "adult") cont.adults++; else cont.children++;
+      if (p.age_group === "adult") cont.adults++; else cont.children++;
       if (p.wants_water) cont.water++;
       if (p.wants_soda) cont.soda++;
-      if (p.wants_beer && p.kind === "adult") cont.beer++;
+      if (p.wants_beer && p.age_group === "adult") cont.beer++;
       if (p.wants_pizza) cont.pizza++;
     }
 
@@ -1255,16 +1255,16 @@
      Um card por grupo, expansível. A tabela de 7 colunas saiu: no
      celular — que é onde o painel é usado — ela era ilegível. */
 
-  let activeFilter = "todos";           // "todos" | "criancas" | "1" | "2" | "3"
+  let activeFilter = "all";             // "all" | "children" | "1" | "2" | "3"
   const openCards = new Set();           // ids dos cards expandidos
   let lastList = null;              // { grupos, porGrupo } do último carregamento
 
   function renderFilters() {
     const names = celebrantNames();
-    const defs = [["todos", "Todos"], ["criancas", "Com crianças"],
+    const defs = [["all", "Todos"], ["children", "Com crianças"],
                   ["1", names[0]], ["2", names[1]], ["3", names[2]]];
     $("#filtersGroups").innerHTML = defs.map(([id, name]) =>
-      `<button type="button" class="ad-filter${id === activeFilter ? " active" : ""}" data-filtro="${id}">${esc(name)}</button>`
+      `<button type="button" class="ad-filter${id === activeFilter ? " active" : ""}" data-filter="${id}">${esc(name)}</button>`
     ).join("");
     $$("#filtersGroups .ad-filter").forEach((b) => b.addEventListener("click", () => {
       activeFilter = b.dataset.filter;
@@ -1277,17 +1277,17 @@
   // sem nome, e sumir com ela já foi bug uma vez.
   const personName = (p, i) => p.name || `Acompanhante ${i}`;
 
-  function matchesSearch(g, people, termo) {
-    if (!termo) return true;
+  function matchesSearch(g, people, term) {
+    if (!term) return true;
     // varre também o nome dos acompanhantes: "o Léo vem?" é pergunta natural
     const targetTime = [g.lead_name, g.contact,
                   ...people.map((p, i) => personName(p, i))].join(" ").toLowerCase();
-    return targetTime.includes(termo);
+    return targetTime.includes(term);
   }
 
   function matchesFilter(g, people) {
-    if (activeFilter === "todos") return true;
-    if (activeFilter === "criancas") return people.some((p) => p.kind === "child");
+    if (activeFilter === "all") return true;
+    if (activeFilter === "children") return people.some((p) => p.age_group === "child");
     // O filtro é LENTE, não contabilidade: um grupo com convidado_por
     // [1,3] aparece nos dois. Quem paga o quê está em Contas, onde o
     // mesmo convidado vale meia unidade para cada anfitrião — por isso
@@ -1298,16 +1298,16 @@
   function renderList() {
     if (!lastList) return;
     const { groups, byGroup } = lastList;
-    const termo = $("#searchGroups").value.trim().toLowerCase();
+    const term = $("#searchGroups").value.trim().toLowerCase();
 
     const visiveis = groups.filter((g) => {
       const people = byGroup.get(g.id) || [];
-      return matchesFilter(g, people) && matchesSearch(g, people, termo);
+      return matchesFilter(g, people) && matchesSearch(g, people, term);
     });
 
-    const filtrando = !!termo || activeFilter !== "todos";
+    const filtering = !!term || activeFilter !== "all";
     $("#listEmpty").hidden = groups.length > 0;
-    $("#listNoResult").hidden = !(groups.length > 0 && visiveis.length === 0 && filtrando);
+    $("#listNoResult").hidden = !(groups.length > 0 && visiveis.length === 0 && filtering);
 
     $("#listGroups").innerHTML = visiveis.map((g) => groupCard(g, byGroup.get(g.id) || [])).join("");
     wireCards();
@@ -1315,13 +1315,13 @@
 
   function groupCard(g, people) {
     const aberto = openCards.has(g.id);
-    const anfitrioes = (g.invited_by || [])
+    const hosts = (g.invited_by || [])
       .map((id) => celebrantName(id, "?" + id)).join(", ");
     const rows = people.map((p, i) => {
       const items = preferences(p);
       return `<div class="person-row">
         <span class="person-row-name">${esc(personName(p, i))}</span>
-        <span class="mono person-row-kind${p.kind === "child" ? " child" : ""}">${p.kind === "child" ? "criança" : "adulto"}</span>
+        <span class="mono person-row-kind${p.age_group === "child" ? " child" : ""}">${p.age_group === "child" ? "criança" : "adulto"}</span>
         <span class="mono person-row-items">${items.length ? esc(items.join(" · ").toLowerCase()) : "—"}</span>
       </div>`;
     }).join("");
@@ -1330,7 +1330,7 @@
       <button type="button" class="group-top" data-toggle="${esc(g.id)}" aria-expanded="${aberto}">
         <span class="group-who">
           <b>${esc(g.lead_name)}</b>
-          <span class="mono group-meta">${esc(g.contact)}${anfitrioes ? " · guest por " + esc(anfitrioes) : ""}</span>
+          <span class="mono group-meta">${esc(g.contact)}${hosts ? " · convidado por " + esc(hosts) : ""}</span>
         </span>
         <span class="mono group-count">${people.length}</span>
         <span class="group-arrow" aria-hidden="true">${aberto ? "▲" : "▼"}</span>
@@ -1413,7 +1413,7 @@
     const copy = [
       `${g.lead_name} · ${g.contact}`,
       `convidado por: ${(g.invited_by || []).map((i) => celebrantName(i, "?" + i)).join(", ") || "—"}`,
-      ...people.map((p, i) => `- ${personName(p, i)} (${p.kind}): ${preferences(p).join(", ") || "nada"}`),
+      ...people.map((p, i) => `- ${personName(p, i)} (${p.age_group}): ${preferences(p).join(", ") || "nada"}`),
       g.notes ? `recado: ${g.notes}` : null,
     ].filter(Boolean).join("\n");
 
@@ -1437,7 +1437,7 @@
   $("#searchGroups").addEventListener("input", renderList);
   $("#btnClearSearch").addEventListener("click", () => {
     $("#searchGroups").value = "";
-    activeFilter = "todos";
+    activeFilter = "all";
     renderFilters();
     renderList();
   });

@@ -408,7 +408,7 @@ begin
 
   select count(*) into v_leads
   from jsonb_array_elements(p_people) e
-  where e->>'papel' = 'lead';
+  where e->>'role' = 'lead';
 
   if v_leads <> 1 then
     raise exception 'O grupo precisa ter exatamente um responsável.';
@@ -434,13 +434,13 @@ begin
     (rsvp_id, name, age_group, wants_water, wants_soda, wants_beer, wants_pizza, role, sort_order)
   select
     v_id,
-    nullif(btrim(coalesce(e->>'nome', '')), ''),
-    e->>'tipo',
-    coalesce((e->>'bebe_agua')::boolean,  false),
-    coalesce((e->>'bebe_refri')::boolean, false),
-    coalesce((e->>'bebe_chopp')::boolean, false),
-    coalesce((e->>'come_pizza')::boolean, false),
-    e->>'papel',
+    nullif(btrim(coalesce(e->>'name', '')), ''),
+    e->>'age_group',
+    coalesce((e->>'wants_water')::boolean,  false),
+    coalesce((e->>'wants_soda')::boolean, false),
+    coalesce((e->>'wants_beer')::boolean, false),
+    coalesce((e->>'wants_pizza')::boolean, false),
+    e->>'role',
     (ord - 1)::smallint
   from jsonb_array_elements(p_people) with ordinality as t(e, ord);
 

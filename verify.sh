@@ -84,8 +84,8 @@ else
 fi
 
 # o formulário não pode voltar a inserir direto na tabela
-if grep -qE '\.from\("rsvps"\)\.insert|\.from\("pessoas"\)\.insert' js/main.js 2>/dev/null; then
-  erro "js/main.js insere direto na tabela — a escrita anônima é só via criar_rsvp"
+if grep -qE '\.from\("rsvps"\)\.insert|\.from\("people"\)\.insert' js/main.js 2>/dev/null; then
+  erro "js/main.js insere direto na tabela — a escrita anônima é só via create_rsvp"
 else
   ok "js/main.js escreve só pelo RPC"
 fi

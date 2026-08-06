@@ -24,7 +24,7 @@
 
      ⚠️ Isto passou a ser ASSÍNCRONO. Os chips de "quem te convidou"
      nascem vazios no HTML e são montados aqui; se a festa não carregar,
-     eles ficam vazios e o envio é barrado por um campo que o convidado
+     eles ficam vazios e o envio é barrado por um field que o convidado
      não vê na tela — ele preencheria tudo e não conseguiria enviar.
      Por isso a falha esconde o convite inteiro e mostra um aviso, em
      vez de deixar meia tela funcionando.                            */
@@ -392,7 +392,7 @@
 
     if (isLead) {
       node.classList.add("lead");
-      // O responsável não digita o nome duas vezes: o campo de cima já é
+      // O responsável não digita o nome duas vezes: o field de cima já é
       // o que o envio usa. E ele é sempre adulto — o convite não é
       // mandado para criança —, então o tipo vira rótulo fixo em vez de
       // escolha. O payload continua saindo com tipo "adulto".
@@ -419,8 +419,8 @@
      banco. A tela desmarca e desabilita na hora, para o convidado
      entender antes de enviar em vez de tomar erro do servidor. */
   function enableBeerRule(card) {
-    const beer = card.querySelector('[data-bebida="bebe_chopp"]');
-    const beerChip = card.querySelector(".p-chip-chopp");
+    const beer = card.querySelector('[data-drink="wants_beer"]');
+    const beerChip = card.querySelector(".p-chip-beer");
     const warning = card.querySelector(".p-beer-warning");
     const childRadio = card.querySelector('.p-kind input[value="child"]');
 
@@ -471,7 +471,7 @@
   }
 
   // primeiro card = responsável. O nome dele não é digitado aqui: vem do
-  // campo de cima, que é o que o envio já usava.
+  // field de cima, que é o que o envio já usava.
   list.appendChild(newCard(true));
 
   $("#addPerson").addEventListener("click", () => {
@@ -509,15 +509,15 @@
       // Descartar quem não tem nome (como o formulário antigo fazia)
       // some com um consumidor e desequilibra o rateio.
       name: name || (isLead ? "" : null),
-      kind: childRadio && childRadio.checked ? "child" : "adult",
+      age_group: childRadio && childRadio.checked ? "child" : "adult",
       role: isLead ? "lead" : "companion",
       wants_water: false, wants_soda: false, wants_beer: false, wants_pizza: false,
     };
     // Bebida e comida moram no mesmo contêiner agora; a leitura passou a
     // ser pelos data-*, que não mudaram, e não pelo grupo em que estavam.
-    $$("[data-bebida]:checked", card).forEach((i) => { p[i.dataset.bebida] = true; });
-    $$("[data-comida]:checked", card).forEach((i) => { p[i.dataset.comida] = true; });
-    if (p.kind === "child") p.wants_beer = false; // cinto e suspensório
+    $$("[data-drink]:checked", card).forEach((i) => { p[i.dataset.drink] = true; });
+    $$("[data-food]:checked", card).forEach((i) => { p[i.dataset.food] = true; });
+    if (p.age_group === "child") p.wants_beer = false; // cinto e suspensório
     return p;
   }
 
@@ -595,7 +595,7 @@
     const names = people.map((p, i) => ({
       role: i === 0 ? "Você" : "Acompanhante",
       name: p.name || "sem nome",
-      kind: p.kind === "child" ? "criança" : "adulto",
+      kind: p.age_group === "child" ? "criança" : "adulto",
     }));
 
     const day = party && party.starts_at
@@ -604,7 +604,7 @@
       : null;
     const quantos = people.length === 1 ? "1 lugar" : `${people.length} lugares`;
     $("#successSummary").innerHTML =
-      `Guardamos <b>${esc(quantos)}</b>${day ? ` no day ${esc(day)}` : ""}. Já estamos contando as pizzas.`;
+      `Guardamos <b>${esc(quantos)}</b>${day ? ` no dia ${esc(day)}` : ""}. Já estamos contando as pizzas.`;
 
     $("#successList").innerHTML = names.map((n) => `
       <div class="row-ok">

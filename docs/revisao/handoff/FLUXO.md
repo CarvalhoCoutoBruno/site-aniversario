@@ -138,6 +138,31 @@ commits. Ele **não** decide espaçamento, cor, tamanho de fonte nem hierarquia:
 cobre um caso, a pergunta vai para o `plano.md` e o trabalho para naquele ponto — inventar vira
 divergência silenciosa, que só aparece na conferência de fidelidade, tarde demais.
 
+## Idioma: código em inglês, texto em português
+
+Nome de tabela, coluna, função, constraint, índice, valor de enum, classe de CSS, id de HTML e
+identificador de JS: **inglês**.
+
+Tudo que o usuário lê — rótulo, mensagem de erro (inclusive as que o Postgres levanta), título,
+copy — e **todo comentário**: **português**. O time escreve em pt-BR; comentário é para o time.
+
+A fronteira que dá trabalho é a string: às vezes ela é texto (`"Confirme até…"`), às vezes é
+código (`"celebrant"`, `"#partyTitle"`, `"wants_beer"`). Quem for renomear em massa precisa de um
+scanner que classifique região do fonte, não de um `grep`/`sed` — o histórico deste repo tem três
+acidentes de regex, incluindo um que trocou palavra dentro de frase que o convidado lê.
+
+## A era do recreate acabou — com uma exceção registrada
+
+A regra da Fatia 8 continua: mudança de schema é aditiva.
+
+**Exceção, autorizada pelo Bruno na tradução para inglês:** o schema foi derrubado e recriado do
+zero, porque renomear 35 colunas, 4 tabelas e 4 funções por `ALTER` deixaria uma trilha de
+migrations sem valor histórico. O que tornou isso aceitável foi o dado: a única confirmação da
+base era um teste dos próprios organizadores. **Backup impresso na conversa antes**, e conteúdo
+real (festa, preços, prazo, consumo dos aniversariantes) restaurado depois, campo a campo.
+
+Se houver confirmação de convidado de verdade, isso não se repete.
+
 ## Convenções deste repo
 
 - Branch por rodada: `feat/`, `fix/` ou `chore/` + a fatia (ex.: `feat/fatia-2-config`), apagada após o merge.
