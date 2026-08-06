@@ -17,6 +17,10 @@ window.CONFIG = {
   supabase: {
     url: "https://mbzuxkvrrtvbgkikrivh.supabase.co",
     anonKey: "sb_publishable_K86bohNhtKvfzytzszn_YA_UlNN2iDL",
+    // O bucket se chama "fotos" e é LEGADO de propósito: renomear bucket
+    // no Supabase não é rename, é criar outro e mover objeto a objeto, e
+    // há foto de verdade lá dentro. Ganho cosmético, risco de perder
+    // imagem — fica assim. Não é esquecimento.
     photosBucket: "fotos",
   },
 };

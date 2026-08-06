@@ -6,7 +6,7 @@
    testá-lo sem navegador e sem banco (ver tests/calc.test.js).
 
    QUEM PAGA: só os 3 aniversariantes. Convidado não paga nada — o
-   consumo dele é bancado por quem o convidou (convidado_por do grupo),
+   consumo dele é bancado por quem o convidou (invited_by do grupo),
    dividido igualmente quando há mais de um. Cada aniversariante paga
    100% do próprio consumo. No fim existem só 3 contas.
 
@@ -19,20 +19,20 @@
    aniversariante para rotular contas, saldos e o texto do acerto. Ele
    NÃO sabe onde o nome mora — quem chama é que entrega o dado resolvido.
    No painel a linha de aniversariante tem `nome` NULO (a fonte única é a
-   tabela `festa`), e o `pessoasParaCalculo()` do admin.js resolve antes
+   tabela `party`), e o `pessoasParaCalculo()` do admin.js resolve antes
    de chamar. Um chamador que passar as linhas cruas recebe
    "Aniversariante 1" — e estará certo, porque não entregou o nome.
 
    Entradas:
-     pessoas[] — { id, rsvp_id, nome, tipo, bebe_agua, bebe_refri,
-                   bebe_chopp, come_pizza, papel, aniversariante_id }
-     grupos[]  — { id, convidado_por: [1..3], nome_principal, contato }
-     config    — mesma forma da tabela `config` (reais, não centavos)
+     pessoas[] — { id, rsvp_id, nome, tipo, wants_water, wants_soda,
+                   wants_beer, wants_pizza, papel, celebrant_id }
+     grupos[]  — { id, invited_by: [1..3], lead_name, contato }
+     config    — mesma forma da tabela `settings` (reais, não centavos)
    ============================================================= */
 (function (root) {
   "use strict";
 
-  // Peso interno em SEXTOS de pessoa. |convidado_por| ∈ {1,2,3}, então
+  // Peso interno em SEXTOS de pessoa. |invited_by| ∈ {1,2,3}, então
   // 6/n é sempre inteiro (6, 3 ou 2) — o rateio roda em aritmética
   // inteira do começo ao fim, sem erro de ponto flutuante.
   const SIXTHS = 6;
@@ -174,10 +174,10 @@
 
   /* ---------- atribuição: quem banca o consumo de quem ---------- */
 
-  // Devolve [{ id: aniversariante_id, peso }] em sextos de pessoa.
+  // Devolve [{ id: celebrant_id, peso }] em sextos de pessoa.
   // Aniversariante: 6 sextos (1 pessoa inteira) para si mesmo.
-  // Convidado/acompanhante: 6/n para cada um dos n do convidado_por.
-  // A chave `null` acumula consumo sem dono (grupo sem convidado_por
+  // Convidado/acompanhante: 6/n para cada um dos n do invited_by.
+  // A chave `null` acumula consumo sem dono (grupo sem invited_by
   // válido) — não deveria existir, mas se existir é preciso que o
   // dinheiro NÃO seja redistribuído: ele some do rateio e derruba o selo.
   function weightsForPerson(p, groups) {
@@ -225,7 +225,7 @@
       preenchido(cfg.actual_water_cost);
 
     // conta de cada aniversariante, por item
-    const accounts = new Map(); // aniversariante_id -> { chopp, refri, agua, pizza }
+    const accounts = new Map(); // celebrant_id -> { chopp, refri, agua, pizza }
     const ensureAccount = (k) => {
       if (!accounts.has(k)) accounts.set(k, { beer: 0, soda: 0, water: 0, pizza: 0 });
       return accounts.get(k);

@@ -20,7 +20,7 @@
   }
 
   /* ================= DADOS DO CONVITE =================
-     Vêm da tabela `festa` (leitura pública), não mais do config.js.
+     Vêm da tabela `party` (leitura pública), não mais do config.js.
 
      ⚠️ Isto passou a ser ASSÍNCRONO. Os chips de "quem te convidou"
      nascem vazios no HTML e são montados aqui; se a festa não carregar,
@@ -33,7 +33,7 @@
   let timer = null;
   let inviteFailed = false;
   let rsvpClosedFlag = false;
-  let party = null;        // a linha da tabela `festa`, para quem precisa dela depois
+  let party = null;        // a linha da tabela `party`, para quem precisa dela depois
 
   async function loadParty() {
     if (!sb) return failInvite();
@@ -51,7 +51,7 @@
   }
 
   /* As idades não existem em dado nenhum — nem no config.js antigo, nem
-     na tabela festa. Ficam aqui porque esta festa é esta festa; virar
+     na tabela party. Ficam aqui porque esta festa é esta festa; virar
      schema seria fatia à parte.
 
      ⚠️ A posição amarra idade e nome: IDADES[i] é a idade de
@@ -115,7 +115,7 @@
       `${f.title} · ${names.join(", ")} · ${new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(new Date(f.starts_at))}`;
 
     // O value é o ID (posição), nunca o nome: é o que o banco grava em
-    // convidado_por e o que liga o convidado ao aniversariante que
+    // invited_by e o que liga o convidado ao aniversariante que
     // banca o consumo dele. Renomear não quebra registro nenhum.
     $("#chipsCelebrants").innerHTML = names
       .map((name, i) => `<label class="chip">
@@ -320,7 +320,7 @@
   loadPhotos();
 
   /* ================= PRAZO DE CONFIRMAÇÃO =================
-     status_rsvp() é a única leitura que o visitante anônimo tem.
+     rsvp_status() é a única leitura que o visitante anônimo tem.
      Se der erro de rede, deixa o formulário aberto: o RPC rejeita de
      qualquer jeito, e é melhor errar para o lado de deixar tentar. */
   async function checkDeadline() {
@@ -351,7 +351,7 @@
 
   /* Duas coisas fecham o formulário: o prazo e a festa já ter acontecido.
      O primeiro a fechar escreve o texto — e como o tick() roda síncrono
-     e o status_rsvp() é assíncrono, "a festa já rolou" ganha do prazo,
+     e o rsvp_status() é assíncrono, "a festa já rolou" ganha do prazo,
      que é a precedência certa: não adianta falar de prazo depois da
      festa. */
   function closeForm(title, text) {
@@ -576,7 +576,7 @@
     onSuccess(people);
   });
 
-  // As exceptions do criar_rsvp já são escritas para o convidado ler.
+  // As exceptions do create_rsvp já são escritas para o convidado ler.
   function errorMessage(error) {
     const m = (error && (error.message || error.hint)) || "";
     if (/confirma[çc][õo]es foram encerradas/i.test(m)) return m;

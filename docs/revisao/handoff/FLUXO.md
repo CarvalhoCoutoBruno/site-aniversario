@@ -163,6 +163,20 @@ real (festa, preços, prazo, consumo dos aniversariantes) restaurado depois, cam
 
 Se houver confirmação de convidado de verdade, isso não se repete.
 
+**Este foi o último recreate barato.** Enquanto o banco tinha só dado descartável, dropar e
+recriar era mais limpo que acumular migração. A partir do momento em que convidados começarem a
+confirmar, recriar volta a ser inaceitável — e o que garante isso é a **trava do reset**, que
+precisa estar viva.
+
+⚠️ **A trava morre em silêncio quando o schema é renomeado.** Ela pergunta por
+`to_regclass('public.<tabela>')` e lê a configuração por `to_jsonb`+chave: nome de tabela que não
+existe devolve NULL, chave que não existe em `jsonb` devolve NULL — nenhum dos dois dá erro.
+Aconteceu na refatoração para inglês: as duas guardas passaram caladas e sobrou só a de `rsvps`.
+
+Por isso o teste da trava **não é opcional** e tem duas direções: com dado real ela precisa
+**abortar**, e num schema vazio precisa **deixar passar**. Uma guarda que só foi testada num
+sentido não foi testada.
+
 ## Convenções deste repo
 
 - Branch por rodada: `feat/`, `fix/` ou `chore/` + a fatia (ex.: `feat/fatia-2-config`), apagada após o merge.

@@ -40,7 +40,7 @@ begin
   -- prazo, custo real e quem pagou. Sem esta trava, uma base com rsvps
   -- vazio mas config preenchida perderia tudo isso em silêncio.
   --
-  -- Leitura via to_jsonb + EXECUTE de propósito: colunas novas (pago_por_*)
+  -- Leitura via to_jsonb + EXECUTE de propósito: colunas novas (paid_by_*)
   -- podem ainda não existir na primeira execução, e referenciá-las direto
   -- quebraria o script no parse.
   if to_regclass('public.settings') is not null then
@@ -168,7 +168,7 @@ as $$
 $$;
 
 -- =============================================================
---  VALIDAÇÃO DE convidado_por
+--  VALIDAÇÃO DE invited_by
 --  Guarda IDs estáveis (1, 2, 3) apontando para as posições de
 --  festa.aniversariantes no config.js — não o nome. É a CHAVE do
 --  rateio: define qual aniversariante banca o consumo do grupo.
@@ -217,8 +217,8 @@ create table public.people (
   wants_beer        boolean not null default false,
   wants_pizza        boolean not null default false,
   role             text not null check (role in ('lead', 'companion', 'celebrant')),
-  -- 1/2/3 só para aniversariante: é o elo entre convidado_por e a
-  -- linha pagante. Mesmos valores que convidado_por usa.
+  -- 1/2/3 só para aniversariante: é o elo entre invited_by e a
+  -- linha pagante. Mesmos valores que invited_by usa.
   celebrant_id smallint,
   sort_order             smallint not null default 0,
   created_at         timestamptz not null default now(),
@@ -236,7 +236,7 @@ create table public.people (
       (role <> 'celebrant' and rsvp_id is not null)
     ),
 
-  -- aniversariante_id existe se e somente se papel = 'aniversariante'.
+  -- celebrant_id existe se e somente se papel = 'aniversariante'.
   -- CASE (e não OR de dois ramos) porque CHECK só rejeita em FALSE:
   -- com id NULL, "papel = 'aniversariante' and id between 1 and 3"
   -- avalia para NULL, e a linha passaria batido.
@@ -271,8 +271,8 @@ create unique index people_celebrant_id_unique
 --  local e os nomes. Preço, custo real e pagadores seguem na `config`,
 --  que continua fechada.
 --
---  A posição do aniversariante é o id (1/2/3) usado em convidado_por e
---  em aniversariante_id. Em colunas nomeadas, e não num array, a
+--  A posição do aniversariante é o id (1/2/3) usado em invited_by e
+--  em celebrant_id. Em colunas nomeadas, e não num array, a
 --  posição fica explícita — não dá para reordenar sem perceber.
 -- =============================================================
 create table public.party (
@@ -306,7 +306,7 @@ on conflict (id) do nothing;
 
 -- =============================================================
 --  TABELA: config — linha única, editável pelo painel
---  custo_real_* nasce NULL de propósito:
+--  actual_* nasce NULL de propósito:
 --  NULL = "ainda não fechei"; 0 = "não gastei nada".
 -- =============================================================
 create table public.settings (
@@ -339,7 +339,7 @@ create table public.settings (
   -- O valor do item não é digitado — vem do custo já calculado no
   -- fechamento; aqui só se registra o pagador.
   -- CHECK simples basta: "x is null or ..." nunca avalia para NULL, ao
-  -- contrário do que aconteceu em aniversariante_id_coerente.
+  -- contrário do que aconteceu em celebrant_id_consistent.
   beer_paid_by  smallint check (beer_paid_by  is null or beer_paid_by  between 1 and 3),
   soda_paid_by  smallint check (soda_paid_by  is null or soda_paid_by  between 1 and 3),
   water_paid_by   smallint check (water_paid_by   is null or water_paid_by   between 1 and 3),
@@ -351,7 +351,7 @@ create table public.settings (
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 
 -- =============================================================
---  RPC: criar_rsvp — insert atômico (grupo + pessoas numa transação)
+--  RPC: create_rsvp — insert atômico (grupo + pessoas numa transação)
 --
 --  SECURITY DEFINER: roda com o privilégio do dono, então a RLS das
 --  tabelas não se aplica. Por isso NÃO existe política de insert para
@@ -377,7 +377,7 @@ declare
   v_deadline      timestamptz;
 begin
   -- prazo de confirmação: o banco é a última linha de defesa.
-  -- A tela também fecha (via status_rsvp), mas isso não é confiável sozinho.
+  -- A tela também fecha (via rsvp_status), mas isso não é confiável sozinho.
   select rsvp_deadline into v_deadline from public.settings where id = 1;
   if v_deadline is not null and now() > v_deadline then
     raise exception 'As confirmações foram encerradas em %.',
@@ -428,7 +428,7 @@ begin
   )
   returning id into v_id;
 
-  -- aniversariante_id fica NULL: a constraint aniversariante_id_coerente
+  -- celebrant_id fica NULL: a constraint celebrant_id_consistent
   -- garante que ninguém vindo do formulário público é pagante.
   insert into public.people
     (rsvp_id, name, age_group, wants_water, wants_soda, wants_beer, wants_pizza, role, sort_order)
@@ -452,8 +452,8 @@ revoke all on function public.create_rsvp(text, text, smallint[], text, jsonb) f
 grant execute on function public.create_rsvp(text, text, smallint[], text, jsonb) to anon, authenticated;
 
 -- =============================================================
---  RPC: status_rsvp — o formulário público precisa saber se ainda
---  está aberto, mas o anon NÃO pode ler a tabela config (lá tem preço).
+--  RPC: rsvp_status — o formulário público precisa saber se ainda
+--  está aberto, mas o anon NÃO pode ler a tabela settings (lá tem preço).
 --  Esta função devolve só o necessário: aberto? e qual o prazo.
 -- =============================================================
 create or replace function public.rsvp_status()
@@ -472,11 +472,11 @@ revoke all on function public.rsvp_status() from public;
 grant execute on function public.rsvp_status() to anon, authenticated;
 
 -- =============================================================
---  HIGIENE: o anon só deve executar criar_rsvp e status_rsvp.
+--  HIGIENE: o anon só deve executar create_rsvp e rsvp_status.
 --  As auxiliares ganham EXECUTE para PUBLIC por default do Postgres.
 --  Não são brecha (validadores puros, sem acesso a dado), mas nada as
 --  chama a partir do anon: rodam na coluna gerada, no CHECK da tabela
---  e dentro do criar_rsvp, sempre com o privilégio do dono.
+--  e dentro do create_rsvp, sempre com o privilégio do dono.
 -- =============================================================
 revoke all on function public.normalize_contact(text) from public, anon, authenticated;
 revoke all on function public.valid_invited_by(smallint[]) from public, anon, authenticated;

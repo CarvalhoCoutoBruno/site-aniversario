@@ -37,7 +37,7 @@
   /* ================= ABAS =================
      As abas trocam VISIBILIDADE e nada mais: não disparam carregamento.
      Carregar sob demanda derrubaria a guarda de completude do
-     recomputar() — a aba Contas renderizaria antes de `pessoas` chegar,
+     recomputar() — a aba Contas renderizaria antes de `people` chegar,
      que é a corrida que a Fatia 4 matou. E não há o que otimizar: são
      ~30 grupos e ~60 pessoas.
 
@@ -122,7 +122,7 @@
      `config`, fechada.
 
      Os nomes dos aniversariantes moram aqui, e a POSIÇÃO é o id usado
-     em convidado_por e aniversariante_id. Em colunas nomeadas em vez de
+     em invited_by e celebrant_id. Em colunas nomeadas em vez de
      array, não dá para reordenar sem perceber.                      */
 
   let lastParty = null;
@@ -457,11 +457,11 @@
   }
 
   /* ================= ANIVERSARIANTES como consumidores =================
-     Linhas de `pessoas` com papel='aniversariante', rsvp_id NULL e
-     aniversariante_id 1/2/3. É o que dá ao rateio o consumo próprio de
+     Linhas de `people` com papel='aniversariante', rsvp_id NULL e
+     celebrant_id 1/2/3. É o que dá ao rateio o consumo próprio de
      cada um — sem elas, a Fatia 4 estima sem eles e a 5 fica sem pagante.
 
-     ⚠️ NÃO usar .upsert(): o índice único de aniversariante_id é PARCIAL
+     ⚠️ NÃO usar .upsert(): o índice único de celebrant_id é PARCIAL
      (where papel='aniversariante'), e o ON CONFLICT precisa repetir o
      predicado para inferir um índice parcial. O supabase-js só emite
      "on conflict (coluna)", forma que o Postgres rejeita com
@@ -474,7 +474,7 @@
     ["wants_beer", "Chopp"],
   ];
 
-  // aniversariante_id -> id da linha em `pessoas` (ausente = ainda não cadastrado)
+  // celebrant_id -> id da linha em `people` (ausente = ainda não cadastrado)
   const celebrantRowId = new Map();
 
   function renderCelebrantBlocks() {
@@ -768,7 +768,7 @@
      Lança o custo real e mostra as 3 contas — uma por aniversariante.
      Convidado não paga: o consumo dele é bancado por quem o convidou.
 
-     ⚠️ O rateio precisa dos GRUPOS (rsvps.convidado_por), não só das
+     ⚠️ O rateio precisa dos GRUPOS (rsvps.invited_by), não só das
      pessoas: é o elo convidado -> pagante. Sem eles todo convidado vira
      "consumo sem dono" e é descartado (não redistribuído), o rateio sai
      muito abaixo do gasto e o selo fica vermelho. Falha alto, mas o
@@ -862,7 +862,7 @@
      o nome do aniversariante mora — é papel de quem chama entregar o dado
      já resolvido.
 
-     Por isso a linha de aniversariante em `pessoas` tem `nome` NULO: a
+     Por isso a linha de aniversariante em `people` tem `nome` NULO: a
      `festa` é a fonte única. Este helper resolve o nome antes de o dado
      entrar na conta, e TODO ponto que alimenta o módulo passa por aqui —
      não há `.map()` inline espalhado.
@@ -1042,7 +1042,7 @@
     const btn = $("#btnSaveSettlement");
     settlementToast("");
 
-    // update estreito: só os 4 pago_por. Nunca encosta em custo_real_*
+    // update estreito: só os 4 pago_por. Nunca encosta em actual_*
     // (Fatia 5) nem nos campos da Fatia 2.
     const patch = { updated_at: new Date().toISOString() };
     for (const [col] of PAID_BY_FIELDS) {
@@ -1117,7 +1117,7 @@
       byGroup.get(person.rsvp_id).push(person);
     }
     lastPeople = p.data || [];   // TODAS: as de grupo e as 3 de aniversariante
-    lastGroups = g.data || [];    // o elo convidado -> pagante (convidado_por)
+    lastGroups = g.data || [];    // o elo convidado -> pagante (invited_by)
     recompute();
     render(g.data || [], byGroup, celebrants);
   }
@@ -1288,7 +1288,7 @@
   function matchesFilter(g, people) {
     if (activeFilter === "all") return true;
     if (activeFilter === "children") return people.some((p) => p.age_group === "child");
-    // O filtro é LENTE, não contabilidade: um grupo com convidado_por
+    // O filtro é LENTE, não contabilidade: um grupo com invited_by
     // [1,3] aparece nos dois. Quem paga o quê está em Contas, onde o
     // mesmo convidado vale meia unidade para cada anfitrião — por isso
     // esta aba não mostra total nenhum por aniversariante.
