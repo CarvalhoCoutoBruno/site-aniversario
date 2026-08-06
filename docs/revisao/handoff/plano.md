@@ -1,6 +1,6 @@
-# Plano — Fatia 13: Admin, abas "Quem vem" e "Compras"
+# Plano — Fatia 14: Admin, aba "Ajustes"
 
-Branch: `feat/fatia-13-admin-lista-compras`
+Branch: `feat/fatia-14-admin-ajustes`
 
 Entradas: `prompt.md` (Cowork) + `docs/revisao/design/admin/prompt-design.md` §2/§3/§4 e o mockup.
 
@@ -8,141 +8,143 @@ Entradas: `prompt.md` (Cowork) + `docs/revisao/design/admin/prompt-design.md` §
 
 ## Os quatro riscos
 
-### 1. Excluir apaga dado real e não tem desfazer
+### 1. `update` estreito — e a boa notícia é que o mockup ajuda
 
-**Concordo com a confirmação nomeada**, e acho que ela basta como fricção — mas quero somar uma
-coisa que não é fricção e vale mais.
+Esta é a aba que mais escreve, e o mockup **quebra o `configForm` de hoje em três acordeões com
+um Salvar cada** (Preços de referência · Consumo por pessoa · Prazo). Isso não é só layout: cada
+`update` passa a carregar naturalmente só as colunas do seu bloco, em vez de um objeto com
+preços + taxas + prazo juntos.
 
-A frase: *"Apagar a confirmação de Rosaura e as 2 pessoas do grupo? Isso não tem como desfazer."*
-Nome, contagem e a consequência, nas palavras de quem vai clicar.
+Os arrays já existem separados no código (`CAMPOS_PRECO`, `CAMPOS_TAXA`), então o corte cai
+exatamente onde a estrutura já estava. Ver **P1** — mudar o número de "Salvar" é comportamento,
+não layout, e por isso pergunto.
 
-Não proponho fricção maior (digitar o nome, segurar o botão) por dois motivos: o botão já mora
-**dentro do card expandido**, então são dois toques deliberados até chegar nele; e fricção alta em
-ação frequente ensina a passar por ela no automático, o que piora em vez de melhorar.
+O que vale em qualquer cenário: **nenhum formulário monta objeto por varredura**. Cada `patch`
+lista as colunas dele, escritas à mão. `custo_real_*` e `pago_por_*` não aparecem em `patch`
+nenhum desta fatia, e isso vira asserção por `SELECT` depois de cada salvamento.
 
-**O que eu somo:** depois de excluir, o toast mostra **o conteúdo apagado em texto** — nome,
-contato, pessoas e recado. Não é desfazer, mas é o que permite refazer à mão se foi engano, e
-custa uma linha. Sem isso o dado simplesmente evapora.
+### 2. Renomear aniversariante e as duas moradas
 
-⚠️ Registro para o Bruno: **não existe lixeira**. Se você quiser desfazer de verdade, isso é uma
-coluna `apagado_em` e mudança de RLS — fatia própria, não esta.
+O nome vive em `festa.nome_aniv_*` (fonte da verdade) e em `pessoas.nome` (snapshot de quando o
+aniversariante foi cadastrado). O `nomeDoAniversariante()` já lê da `festa`, então a UI inteira
+segue o nome novo **sem** re-salvar Aniversariantes — foi o que eu confirmei à mão quando o
+"Bocão" virou "JH Boca".
 
-### 2. Quem muda dado tem de atualizar o estado compartilhado
+Nesta fatia isso vira **teste**, não confiança: renomear pelo Convite e provar que Resumo, cards
+de "Quem vem", filtros e o bloco de Aniversariantes mostram o nome novo, e que a Rosaura continua
+com `convidado_por [3]` — o id não se mexe.
 
-É o preço da decisão da Fatia 12 e é aqui que ele vence. **Não vou remendar os arrays na mão.**
-Depois de um `delete` bem-sucedido, chamo `carregarRSVPs()` de novo: ele refaz as duas consultas,
-reescreve `ultimasPessoas` e `ultimosGrupos`, chama `recomputar()` (que remonta Resumo, Estimativa
-e Rateio) e re-renderiza a lista.
+⚠️ O snapshot continua podendo divergir. **Proponho fechar isso aqui**, já que estou no
+formulário que renomeia: ao salvar o Convite, atualizar também `pessoas.nome` das linhas
+`papel='aniversariante'` cujo nome mudou. É a mesma coisa que fiz à mão, agora automática. Não
+muda schema e não mexe em `convidado_por`.
 
-Custa uma ida a mais ao banco. Ganha a garantia de que o estado da tela é o estado do banco —
-remendar array à mão é onde nasce divergência silenciosa, e aqui a divergência apareceria como
-número errado de pizza.
+### 3. Prazo e fuso
 
-### 3. WhatsApp e o código do país
+Já foi corrigido duas vezes nesta base. O invariante do `verify.sh` cobre a formatação; a **ida e
+volta** é teste de tela: salvar 01/10 → recarregar → continuar 01/10, sob pelo menos dois fusos de
+navegador. `dataDoPrazo`/`prazoDaData` não mudam — só mudam de lugar.
 
-O `contato_norm` guarda só dígitos. A Rosaura está como `51995509956`; `wa.me/51995509956`
-mandaria para o **Peru**. Regras, sem inventar DDD nenhum:
+### 4. Fotos
 
-| Caso | O que faço |
-|---|---|
-| tem `@` | **não** mostra WhatsApp; mostra "Enviar e-mail" com `mailto:` |
-| 10 ou 11 dígitos | celular ou fixo brasileiro com DDD → prefixo `55` |
-| 12 ou 13 dígitos começando com `55` | já tem DDI → uso como está |
-| qualquer outro tamanho | **sem link.** Mostro o contato como texto e uma nota de que não dá para montar o link |
+Upload e exclusão mexem no Storage, não no Postgres, e também não têm desfazer. A confirmação
+nomeia o arquivo e diz onde ele aparece: *"Apagar a foto IMG_1234.jpg? Ela sai do carrossel do
+convite e isso não tem como desfazer."*
 
-O último caso é o importante: número curto, DDI estrangeiro ou lixo digitado não vira link
-adivinhado. Melhor não ter botão do que ter botão que abre conversa com desconhecido.
+Diferente do RSVP, aqui **não dá para mostrar o conteúdo apagado em texto** — é uma imagem. Então
+o toast diz o nome do arquivo, que é o que permite reenviar o original se a pessoa ainda o tiver.
 
-### 4. Escape
+### 5. O bloco `@media (prefers-color-scheme: dark)` — pode sair, e já podia
 
-Nome, contato e recado vão para markup novo. `esc()` em todo texto, e `encodeURIComponent` no que
-entra em URL — o `href` do WhatsApp é o ponto onde escapar texto não basta. Teste com
-`<img src=x onerror=...>` no nome e no recado, como na Fatia 1.
+Fui verificar em vez de supor. Existem 14 seletores globais que leem `var(--*)` (`body`, `a`,
+`.btn-primary`, `.chip`, `input`…), mas **os dois `<body>` já carregam classe de escopo**:
+
+```
+index.html:29  <body class="pagina-convite">
+admin.html:16  <body class="pagina-admin">
+```
+
+Uma variável declarada em `.pagina-*` vence a de `:root` para toda a subárvore, inclusive no modo
+escuro. Ou seja, o bloco **já está morto desde a Fatia 12** — a aba Contas ser provisória não muda
+nada, porque ela também mora dentro de `.pagina-admin`. As medições das Fatias 12 e 13 (claro e
+escuro idênticos nas duas páginas) são a prova empírica disso.
+
+**Removo nesta fatia**, com uma medição antes e depois para não confiar só no raciocínio.
 
 ---
 
-## O que muda na tela
+## Como a aba fica
 
-### Aba "Quem vem"
+Seis blocos, na ordem do mockup — cinco acordeões e as fotos sempre abertas:
 
-- Busca (`type=search`, 16px) por nome ou contato.
-- Fila de filtros roláveis: **Todos**, **Com crianças**, e um por aniversariante — os nomes saem
-  de `festa`, não são literais.
-- Um **card por grupo**: nome do responsável, linha mono com `contato · convidado por X`, pílula
-  com a contagem e a seta. Ao tocar, expande com uma linha por pessoa (nome, tipo, itens), o
-  recado e as duas ações.
-- Acompanhante sem nome continua **"Acompanhante N"** — a pessoa existe no rateio mesmo sem nome,
-  e sumir com ela foi bug uma vez.
-- A hora de chegada usa o `fmtData()` já corrigido na Fatia 12 (fuso da festa).
+| Bloco | Descrição | Escreve em |
+|---|---|---|
+| **O convite** | título, subtítulo, data e hora, local, mapa, os 3 nomes | `festa` |
+| **Preços de referência** | os 5 preços | `config` |
+| **Consumo por pessoa** | as 3 taxas de litros | `config` |
+| **Prazo** | quando o formulário fecha | `config` |
+| **Aniversariantes** | o que cada um consome | `pessoas` |
+| **Fotos do convite** | enviar, listar, excluir | Storage |
 
-### Aba "Compras"
+O acordeão nasce fechado, como no mockup. Não guardo qual estava aberto: diferente da aba, isso
+não é lugar onde se volta — e um `#ajustes` que reabre um acordeão específico seria estado demais
+para o ganho.
 
-- Bloco "Lista de compra" com uma linha por item (chopp/refri/água em litros, pizzas em unidades),
-  sobre a mesma `Calculo.estimativa()` de hoje. **Só leitura.**
-- Sub: "Calculada sobre N confirmados, aniversariantes incluídos."
-- Bloco "Custo estimado" com a nota de que usa preço de referência, não gasto real.
-- Botão **copiar para o fornecedor**, com o mesmo padrão de queda do acerto
-  (`navigator.clipboard` → `<textarea>` visível e selecionado).
-- O aviso de "preços ainda zerados" que hoje existe na estimativa **continua**.
-
-### Limpeza
-
-Saem as seções provisórias `estSecao` e o bloco da tabela. Contas e Ajustes seguem provisórias.
+**O aviso das `<meta>` `og:`** entra **dentro do acordeão "O convite"**, colado nos campos de
+data e local — que são exatamente os que ficam mentindo no preview. Não em rodapé: quem edita a
+data tem que ler ali.
 
 ---
 
 ## Commits
 
-1. `feat`: aba "Quem vem" — cards, expandir, busca e filtros (sem ações ainda)
-2. `feat`: ações do card — WhatsApp com DDI e exclusão com confirmação nomeada + recarga do estado
-3. `feat`: aba "Compras" + copiar para o fornecedor
-4. `chore`: remoção das duas seções provisórias e do CSS órfão
+1. `feat`: a casca da aba — os seis blocos, acordeão, e os formulários existentes remontados
+2. `feat`: os `Salvar` por bloco, com `patch` explícito por formulário
+3. `feat`: sincronizar `pessoas.nome` ao renomear pelo Convite + o aviso das `<meta>` `og:`
+4. `feat`: fotos no visual novo, com confirmação nomeada
+5. `chore`: remoção do `@media prefers-color-scheme` do `:root`, das seções provisórias e do CSS órfão
 
 ---
 
 ## Verificação
 
-`./verify.sh` verde em cada commit, **incluindo o invariante de fuso**. Depois:
+`./verify.sh` verde em cada commit, com o invariante de fuso. Depois:
 
-1. **Rosaura intacta ao fim** — linha, pessoas e recado, saída crua. Nenhum `delete` sem `where`.
-2. **Exclusão**: crio um RSVP de teste, excluo **por ele**, provo por `SELECT` que o grupo e as
-   pessoas sumiram (cascade) e que a contagem geral caiu exatamente o esperado.
-3. **Estado compartilhado**: excluir na aba "Quem vem" e provar, **sem recarregar**, que Resumo e
-   Compras mudaram de número.
-4. **WhatsApp**: o `href` gerado para `51995509956` tem que ser `wa.me/5551995509956`; mais os
-   casos de e-mail, DDI já incluso e número inválido.
-5. **XSS**: nome e recado com carga; provo que não executa e que o HTML saiu escapado.
-6. **Copiar**: o texto bate com os números da tela, e o caminho de clipboard negada.
-7. **Screenshots a 390px**: lista, card expandido, busca/filtro ativo, estado vazio, aba Compras.
-   Mais um de desktop.
-8. **Convite intacto** (comparação site contra site, como na Fatia 12) e **modo escuro idêntico**.
+1. **`update` estreito, formulário por formulário**, por `SELECT`: salvar Convite não toca
+   `config`; salvar Preços não toca taxas, prazo, `custo_real_*`, `pago_por_*` nem `festa`; e
+   assim por diante. Vou **plantar valor** em `custo_real_chopp` e `pago_por_chopp` antes da
+   bateria e provar que sobrevivem a todos os salvamentos — depois limpo.
+2. **Ida e volta do prazo**: salvar 01/10 → recarregar → 01/10, em dois fusos de navegador.
+3. **Renomear aniversariante**: nome novo em Resumo, cards, filtros e no bloco de Aniversariantes;
+   `convidado_por` da Rosaura segue `[3]`; e `pessoas.nome` acompanha.
+4. **Fotos**: subir uma de teste, listar, excluir **essa**; provar por listagem que as fotos reais
+   do bucket não foram tocadas.
+5. **Modo escuro idêntico** antes **e depois** de remover o bloco do `:root`.
+6. **Convite intacto** (site contra site, como nas duas últimas).
+7. **Confirmações reais intactas** ao fim, saída crua.
+8. **Screenshots a 390px** de cada bloco aberto, mais um de desktop.
+9. **Tabela de hashes no `status.md`** — Branch, commit e `origin/main` pós-push. A da Fatia 13
+   saiu sem ela; é o que o `fechou` confere, e a falha foi minha.
 
 ---
 
 ## Perguntas
 
-**P1 — o mockup não cobre estado vazio, e existem dois.** "Nenhuma confirmação ainda" (banco
-vazio) e "nenhum resultado" (busca ou filtro que não casa) são situações diferentes: a primeira
-pede paciência, a segunda pede limpar o filtro. **Proponho** duas mensagens distintas, a segunda
-com um botão "limpar busca e filtros". Confirma, ou o Design tem desenho para isso?
+**P1 — três "Salvar" no lugar de um.** O mockup quebra preços, taxas e prazo em três acordeões,
+cada um com seu botão. Hoje é um formulário e um salvamento. **Sou a favor de seguir o mockup**:
+cada `update` fica naturalmente estreito, e o toast passa a dizer exatamente o que mudou. O risco
+é editar dois blocos e salvar um só — **proponho marcar o cabeçalho do acordeão com "não salvo"**
+enquanto houver alteração pendente. Confirma? (Mudar o número de salvamentos é comportamento, por
+isso não decidi sozinho.)
 
-**P2 — o texto do "copiar para o fornecedor" não está no mockup.** Proponho:
+**P2 — o mockup não cobre o editor de Aniversariantes.** Ele mostra `["Bruno", "chopp · pizza"]`
+como campo de texto, o que é claramente placeholder: o editor real são três blocos com chips de
+consumo por pessoa, e a regra do chopp para criança vale ali também. **Proponho** manter a
+estrutura de blocos + chips que já existe, só revestida com os tokens novos e dentro do acordeão.
+É hierarquia, então pergunto em vez de decidir — mas não vejo outra leitura possível.
 
-```
-Festa dos 160 anos — lista de compra
-Chopp: 92,5 L
-Refrigerante: 21,6 L
-Água: 18 L
-Pizza (adulto): 34
-Pizza (criança): 9
-Base: 63 confirmados
-```
+**P3 — sincronizar `pessoas.nome` ao renomear (o risco 2).** Isso resolve a divergência de vez,
+mas é uma escrita a mais que o formulário do Convite não fazia. Entra nesta fatia, ou é fatia
+própria junto com a lixeira/`cancelar_rsvp`, que também mexe em `pessoas`?
 
-Sem preço: é lista para o fornecedor, não orçamento. Confirma o formato?
-
-**P3 — o filtro por aniversariante e quem tem mais de um.** Um grupo pode ter
-`convidado_por = [1,3]`. **Proponho** que ele apareça no filtro do Bruno **e** no do JH Boca —
-"quem o Bruno chamou" inclui quem ele chamou junto com outro. É leitura de negócio, não de
-layout, por isso pergunto em vez de decidir.
-
-Os commits 1 e 4 não dependem de nenhuma das três; P1 trava o fim do commit 1 e P2 o commit 3.
+Os commits 1, 4 e 5 não dependem de nenhuma das três.
