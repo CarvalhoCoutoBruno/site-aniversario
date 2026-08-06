@@ -1,148 +1,174 @@
-# Status — Fatia 14: Admin, aba "Ajustes"
+# Status — Fatia 15: Admin, aba "Contas" (as 4 fases)
 
-**Fatia fechada.** Os últimos `<details>` provisórios do Convite, Preços/taxas/prazo e
-Aniversariantes saíram; só Contas continua provisória, e ela é a Fatia 15. O bloco escuro do
-`:root` saiu com medição, e o teste do upload achou um bug de mount duplo.
+**Fatia fechada. O painel está migrado por inteiro** — zero `<details>`, zero classes de CSS sem
+consumidor. O backlog do admin zerou.
 
 | | |
 |---|---|
-| Branch | `feat/fatia-14-admin-ajustes` → merge `--ff-only` → apagada |
-| Commits | 4, cada um verde no `./verify.sh` |
-| Commit do código | `a53e598abc964644c78e27ae4af0d3173e75f139` |
-| `origin/main` após o push | `b40595e6bf7961cf7ad32db8f867f862e6357214` (este `status.md`) |
+| Branch | `feat/fatia-15-admin-contas` → merge `--ff-only` → apagada |
+| Commits | 2, cada um verde no `./verify.sh` |
+| Commit do código | `HASH_CODIGO` |
+| `origin/main` após o push | `HASH_ORIGIN` |
 | `main == origin/main` | **sim** |
+| `tests/calculo.test.js` | **63 asserções, inalteradas** — `calculo.js` só ganhou comentário |
 
-## O bug que o teste do upload achou
+## O conserto do nome, provado de ponta a ponta
 
-Subi um arquivo pelo input e **dois** chegaram no bucket, com nomes diferentes e o toast dizendo
-"1 foto(s) enviada(s)". A causa não estava no upload: **dois caminhos chamam `mostrarPainel()`** —
-o `getSession()` de quem já tinha sessão e o `submit` do formulário — e sem trava o
-`prepararUpload()` registrava os listeners em dobro.
-
-Para um usuário real o caminho é estreito (com sessão, o formulário de login nem aparece), mas é
-duplicação de listener esperando ocasião, e duplicava também todo o carregamento. Guarda de
-idempotência no `mostrarPainel()`.
-
-Apareceu ao testar, não ao ler o código — é a terceira fatia seguida em que isso acontece.
-
-## O bloco `@media (prefers-color-scheme: dark)` — removido com prova
-
-Não confiei no raciocínio. Medi nove propriedades **com o navegador no escuro**, antes e depois de
-remover:
+Com `pessoas.nome` **NULO** nas três linhas de aniversariante:
 
 ```
-antes : body rgb(236,234,229) · coluna rgb(247,246,243) · bloco rgb(255,255,255)
-        input rgb(255,255,255) · salvar rgb(29,78,216) · alerta rgb(253,246,236)
-depois: idênticos, nas nove
-mediaQueryEscuraViva: []      ← nenhuma regra escura restou na folha
+banco   : [[1, None], [2, None], [3, None]]
+tela    : Bruno · Braz · JH Boca          (rateio, saldos, filtros, Resumo)
+WhatsApp: "Acerto das contas:\n• JH Boca → Bruno: R$ 50,00"
 ```
 
-E o convite, comparado site contra site com o navegador no escuro: **44 elementos, zero
-diferenças**.
-
-Atualizei também os comentários que descreviam o bloco: eles explicavam *por que* o remapeamento
-de variáveis existe, e a razão mudou — continuar dizendo "para vencer o `@media`" seria descrever
-um arquivo que não existe mais.
-
-## `update` estreito — provado, não afirmado
-
-Plantei valor nos campos da Fatia 15 antes da bateria e salvei cada formulário isolado:
+O texto do WhatsApp é o que fecha a prova: ele é montado **dentro** do `resumoAcerto()`, e chegou
+com os nomes certos porque o `pessoasParaCalculo()` resolveu antes de o dado entrar. Sem o helper,
+o mesmo módulo devolve:
 
 ```
-plantado:  custo_real_chopp = 1234.56 | pago_por_chopp = 2
-
-depois de salvar SÓ Preços:
-  preco_pizza_adulto      21.50    <- mudou
-  litros_chopp_por_adulto 2.500    <- outro formulário: intacto
-  prazo                   01/10/2026  <- outro formulário: intacto
-  custo_real_chopp        1234.56  <- INTACTO
-  pago_por_chopp          2        <- INTACTO
-  festa                   não tocada
-
-depois de salvar Prazo (uma coluna só) e o Convite:
-  prazo                   05/10/2026 23:59:59  <- mudou
-  preco_pizza_adulto      21.50    <- intacto
-  custo_real_chopp        1234.56  <- INTACTO
-  pago_por_chopp          2        <- INTACTO
+Aniversariante 1 | Aniversariante 2 | Aniversariante 3
 ```
 
-O corte em três formulários é o que torna isso barato: o `patch` é pequeno porque o formulário é
-pequeno. O de Prazo tem **uma coluna**.
+(medido rodando o `calculo.js` com as linhas cruas, no `jsc`).
 
-## Renomear aniversariante — as duas moradas em acordo
+As duas condições do review estão cumpridas: a sincronia criada na Fatia 14 **saiu**, e o cadastro
+de aniversariante **parou de gravar `nome`** — as duas repopulariam a coluna por caminhos
+diferentes. O contrato ficou escrito no cabeçalho do `calculo.js`.
 
-Renomeei "JH Boca" → "JH Bocão" pelo bloco do Convite e **não** salvei Aniversariantes:
+## As 4 fases, com o estado que produziu cada uma
 
+### `pendente` — nada lançado
 ```
-filtros de "Quem vem": Todos · Com crianças · Bruno · Braz · JH Bocão
-blocos de Aniversariantes: Bruno (id 1) · Braz (id 2) · JH Bocão (id 3)
-
-festa  : ['Bruno', 'Braz', 'JH Bocão']
-pessoas: [[1,'Bruno'], [2,'Braz'], [3,'JH Bocão']]     ← o snapshot acompanhou sozinho
-Rosaura: convidado_por [3]                             ← amarrada pelo ID, não pelo nome
+selo : ○ "Feche o custo real primeiro: falta lançar o gasto de chopp, refrigerante ou água."
+campos: placeholder "não sei", borda âmbar
 ```
 
-O `update` da sincronia é estreito como o review pediu: só a coluna `nome`, só
-`papel='aniversariante'`, só para quem mudou.
-
-## "não salvo"
-
+### `nao-confere` — o caso órfão
 ```
-ao abrir                    []
-depois de digitar em Preços ["precos"]
-depois de salvar Preços     []
-depois de recarregar        []      ← não nasce sujo
+plantado: chopp 700,00 · refri 100,00 (ÓRFÃO: ninguém bebe refri) · água 50,00 · pizza 30,00
+selo : ! "As contas do rateio não fecham — resolva isso antes de acertar entre vocês."
+Total gasto R$ 880,00  ·  Total rateado R$ 780,00
 ```
+Os R$ 100 do refrigerante não têm dono. Segui a nota do review e **não** tentei o caminho do
+`convidado_por` inválido — ele é inalcançável, a constraint impede.
 
-Liga no `input` do usuário, não no preenchimento programático.
-
-## Prazo: ida e volta
-
-Pela tela: salvei 05/10 → recarreguei → voltou `2026-10-05`.
-
-E a ida e volta das duas funções sob seis fusos:
+### `falta-pagador`
 ```
-America/Sao_Paulo  2026-10-01 -> 2026-10-01T23:59:59-03:00 -> 2026-10-01  ok
-UTC                                                            2026-10-01  ok
-Europe/Lisbon                                                  2026-10-01  ok
-Asia/Tokyo                                                     2026-10-01  ok
-Pacific/Kiritimati                                             2026-10-01  ok
-Pacific/Midway                                                 2026-10-01  ok
+plantado: refri 0,00 (ninguém bebe, então 0 é o valor certo) · só o chopp com pagador
+selo : ✓ "Indique quem pagou: água, pizza."
+Total gasto R$ 780,00  ·  Total rateado R$ 780,00     ← já bate
 ```
+O selo fica azul (o rateio confere) mas o acerto segue bloqueado — as duas coisas são distintas,
+e a tela mostra isso.
 
-## Fotos
-
+### `completo`
 ```
-confirm: "Apagar a foto 1785982574657_zz-teste-fatia14.png? Ela sai do carrossel do
-          convite e isso não tem como desfazer."
-toast:   "Apagada: 1785982574658_zz-teste-fatia14.png"
+selo : ✓ "As contas fecham: a soma do que cada um paga bate com o gasto total, até o centavo."
+saldos: Bruno   R$ 50,00 a receber   (deve 650,00 · pagou 700,00)
+        Braz    R$  0,00 quite       (deve  50,00 · pagou  50,00)
+        JH Boca R$ 50,00 a pagar     (deve  80,00 · pagou  30,00)
+transferência: JH Boca → Bruno: R$ 50,00
 ```
 
-As três fotos reais do bucket seguem lá, com os nomes originais. E o banco recusou apagar
-`storage.objects` direto (`Direct deletion from storage tables is not allowed`) — a limpeza teve
-de passar pela API, o que é o comportamento certo.
+## O ×6,5 da regra §4.2 — na tela e no módulo
 
-## Dado do Bruno, ao fim
+A base: 5 convidados só do Bruno + 1 dividido Bruno/Braz + o próprio Bruno, todos no chopp.
+A Rosaura está na base e bebe **água e pizza, não chopp**, então não perturba o `C_chopp` — mas
+entra no total gasto, como o review lembrou.
 
 ```
-preços : pizza 20.00 / pizza-criança 20.00 / chopp 10.00 / refri 5.00 / água 3.00
-taxas  : chopp 2.500 / refri 0.600 / água 0.500
-prazo  : 01/10/2026 23:59:59 (São Paulo)
-fatia 15 (custo_real_chopp / pago_por_chopp): None / None — o plantio foi limpo
-festa  : 'Festa dos 160 anos' · 'Salão Grande — …' · Bruno · Braz · JH Boca
-pessoas: [[1,'Bruno'], [2,'Braz'], [3,'JH Boca']]
+C_chopp = 70000 centavos / 7 consumidores = 10000 centavos
+unidades do Bruno = 5 + 0,5 + 1 = 6,5
+esperado 6,5 × C_chopp = 65000 centavos
+na conta do Bruno      = 65000 centavos   -> bate
+o Braz leva os 0,5     =  5000 centavos
+```
+
+E na tela, no mesmo estado: **"Bruno R$ 650,00 — Chopp R$ 650,00"** e **"Braz R$ 50,00"**.
+
+## Reconciliação — em centavos inteiros
+
+```
+custoRealTotal : 78000 centavos
+totalRateado   : 78000 centavos
+Σ das 3 contas : 78000 centavos
+bate ao centavo: true
+```
+
+Comparei em inteiros e não em string formatada. A armadilha era real:
+
+```
+formatarBRL(123456) = "R$ 1.234,56"
+o caractere 3 é código 160 (não-quebrável), não 32 (espaço comum)
+```
+
+## `update` estreito — a prova invertida
+
+Plantei nos campos da **Ajustes** e salvei os **dois** formulários desta aba:
+
+```
+--- plantados na Ajustes, sobreviveram ---
+preco_pizza_adulto      : 20.00
+litros_chopp_por_adulto : 2.500
+prazo                   : 01/10/2026 23:59:59
+preco_litro_chopp/refri : 10.00 / 5.00
+--- escritos por esta aba ---
+custo_real chopp/refri/agua      : 700.00 / 0.00 / 50.00
+pago_por chopp/refri/agua/pizza  : 1 / 2 / 2 / 3
+festa                            : não tocada
+```
+
+## De onde veio cada número
+
+Nenhuma cifra foi calculada no `admin.js`. Contas, detalhe por item, totais, o valor ao lado de
+"quem pagou", saldos, transferências e o texto do acerto vêm de
+`Calculo.rateio()` / `acerto()` / `resumoAcerto()` / `formatarBRL()`. O selo escolhe a fase pelos
+gatilhos do módulo, e o texto do impedimento é o `motivo` — não reescrito na tela.
+
+## Compartilhar
+```
+texto : "Festa dos 160 anos 🎉\n\nAcerto das contas:\n• JH Boca → Bruno: R$ 50,00"
+wa.me : mesmo texto, sem número — quem compartilha escolhe o contato
+clipboard negada: "Não consegui copiar sozinho — o texto está aí embaixo, selecionado."
+                  (textarea visível e selecionado)
+```
+
+## Um bug meu, da fatia passada
+
+A guarda que eu pus no `mostrarPainel()` na Fatia 14 travava o painel **inteiro** — e isso criou
+um caso pior que o bug original: com uma **sessão morta em cache**, o `getSession()` monta o
+painel, a trava fecha, e o login seguinte (com a senha certa) não recarrega nada. O organizador
+fica olhando um painel vazio depois de entrar.
+
+Apareceu comigo mesmo, tentando logar nesta fatia com o token do usuário da fatia anterior.
+O que precisava de trava era só o `prepararUpload()`; recarregar dado é idempotente.
+
+## Não-regressão
+```
+modo escuro (admin) : 6 propriedades, claro × escuro — nenhuma diferença
+convite intacto     : 44 elementos × 14 propriedades — NENHUMA diferença
+<details> no admin  : 0
+classes de CSS órfãs: nenhuma
+```
+
+## Estado final do banco
+```
+config: pizza 20.00 · litros chopp 2.500 · prazo 01/10/2026 23:59:59
+fechamento (custo_real_* / pago_por_*): NULL — o fechamento de verdade é depois da festa
+festa  : 'Festa dos 160 anos' · Bruno · Braz · JH Boca
+pessoas de aniversariante: nome NULO de propósito, consumo restaurado
 Rosaura: 51995509956, convidado_por [3], 'Te amooooo' — intacta
-total rsvps: 1 · pessoas órfãs: 0 · admins: 4 · usuário de teste: 0
-fotos: as 3 originais
+total rsvps: 1 · pessoas órfãs: 0 · admins: 4 · usuários de teste: 0
 ```
 
-## O que fica para a Fatia 15
+Os 6 RSVPs de teste foram apagados **pelo prefixo `zz-teste-`**, nunca em bloco.
 
-- **Contas** é a última aba provisória, com as 4 fases.
-- **O conserto de verdade do nome**, que o review registrou: parar de guardar o nome na linha de
-  aniversariante. A `festa` é a fonte e a coluna pode ficar nula nessas linhas — a constraint
-  `principal_tem_nome` só exige nome para `papel='principal'`. Não foi feito agora porque exigiria
-  auditar todos os leitores de `pessoas.nome`, e os principais (contas, saldos, transferências)
-  **serão reescritos na 15**. Lá sai de graça.
-- **A lixeira + `cancelar_rsvp`** seguem como fatia própria, juntas.
-- `.btn-lg` foi a última classe de CSS sem consumidor; a folha está limpa.
+## O que sobra no projeto
+
+O painel está migrado por inteiro. Sobra **uma fatia opcional**: lixeira + `cancelar_rsvp` +
+`whatsapp_contato` — as três mexem em schema e no mesmo lugar, e o review da 13 já registrou que
+elas andam juntas. **A festa funciona sem.**
+
+Pendências suas, de sempre: rotacionar a senha do Postgres, e conferir os preços antes de
+divulgar o link.
