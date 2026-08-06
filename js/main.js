@@ -197,7 +197,11 @@
     const hora = new Intl.DateTimeFormat("pt-BR", {
       timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false,
     }).format(new Date(festa.data)).replace(":00", "h").replace(":", "h");
-    return festa.local ? `${hora}, ${festa.local}. Corre.` : `${hora}. Corre.`;
+    // Só o nome do salão, não o endereço inteiro: `local` guarda a linha
+    // completa ("Salão X — Rua Y, 000, Bairro, Cidade/UF") e ela não cabe
+    // numa chamada de urgência. O endereço completo segue na ficha acima.
+    const salao = festa.local ? festa.local.split(/[—,]/)[0].trim() : "";
+    return salao ? `${hora}, ${salao}. Corre.` : `${hora}. Corre.`;
   }
 
   function tick() {

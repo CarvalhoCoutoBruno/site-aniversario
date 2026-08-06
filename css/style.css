@@ -34,7 +34,7 @@ body {
   line-height: 1.55;
   overflow-x: hidden;
 }
-h1, h2, h3, .hero-title { font-family: "Fraunces", Georgia, serif; }
+h1, h2, h3 { font-family: "Fraunces", Georgia, serif; }
 a { color: var(--brand); }
 
 /* ===================== BOTÕES ===================== */
@@ -59,61 +59,7 @@ a { color: var(--brand); }
 }
 .btn-ghost:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); }
 
-/* ===================== HERO ===================== */
-.hero {
-  position: relative; text-align: center;
-  padding: clamp(3rem, 8vw, 6rem) 1.2rem clamp(2.5rem, 6vw, 4rem);
-  background:
-    radial-gradient(1200px 500px at 50% -10%, color-mix(in srgb, var(--brand) 22%, transparent), transparent),
-    radial-gradient(800px 400px at 90% 10%, color-mix(in srgb, var(--brand-3) 22%, transparent), transparent),
-    radial-gradient(800px 400px at 10% 20%, color-mix(in srgb, var(--brand-2) 20%, transparent), transparent);
-}
-.hero-inner { max-width: 780px; margin: 0 auto; position: relative; z-index: 2; }
-.hero-eyebrow {
-  font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-  font-size: .8rem; color: var(--brand-2); margin: 0 0 .6rem;
-}
-.hero-title {
-  font-size: clamp(2.6rem, 9vw, 5rem); line-height: 1.02; margin: 0;
-  background: linear-gradient(120deg, var(--brand), var(--brand-2) 60%, var(--brand-3));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.hero-sub { font-size: clamp(1.05rem, 3vw, 1.35rem); color: var(--ink-soft); margin: .6rem 0 1.4rem; }
-
-/* Countdown */
-.countdown { display: flex; gap: .6rem; justify-content: center; margin: 0 0 1.8rem; flex-wrap: wrap; }
-.cd-box {
-  background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px;
-  min-width: 64px; padding: .6rem .4rem; box-shadow: 0 6px 18px -12px rgba(0,0,0,.3);
-}
-.cd-box b { display: block; font-size: 1.6rem; font-family: "Fraunces", serif; color: var(--brand); }
-.cd-box span { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
-
-/* ===================== CARROSSEL ===================== */
-.carrossel {
-  position: relative; max-width: 900px; margin: 0 auto;
-  border-radius: 24px; overflow: hidden; background: var(--bg-soft);
-  border: 1px solid var(--line); box-shadow: var(--shadow);
-  aspect-ratio: 16 / 10;
-}
-.carrossel-track { display: flex; height: 100%; transition: transform .6s cubic-bezier(.6,.05,.2,1); }
-.carrossel-track .slide {
-  min-width: 100%; height: 100%;
-}
-.carrossel-track .slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.car-dots { position: absolute; bottom: 12px; left: 0; right: 0; display: flex; gap: .4rem; justify-content: center; }
-.car-dots button {
-  width: 9px; height: 9px; border-radius: 50%; border: none; cursor: pointer;
-  background: rgba(255,255,255,.5); padding: 0; transition: transform .2s, background .2s;
-}
-.car-dots button.ativo { background: #fff; transform: scale(1.4); }
-.carrossel-vazio { text-align: center; color: var(--ink-soft); max-width: 900px; margin: 0 auto; padding: 2rem; }
-
 /* ===================== RSVP ===================== */
-.rsvp { padding: clamp(2.5rem, 6vw, 4rem) 1.2rem 3rem; }
-.secao-titulo { font-size: clamp(1.8rem, 5vw, 2.6rem); text-align: center; margin: 0 0 .3rem; }
-.secao-sub { text-align: center; color: var(--ink-soft); margin: 0 0 2rem; }
-
 form { display: flex; flex-direction: column; gap: 1.3rem; }
 .campo { display: flex; flex-direction: column; gap: .45rem; border: none; padding: 0; margin: 0; }
 .campo label, .campo legend { font-weight: 600; font-size: .95rem; }
@@ -143,15 +89,6 @@ textarea { resize: vertical; }
   color: #fff; border-color: transparent;
 }
 
-.pessoa-card { border: 1.5px solid var(--line); border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; gap: .9rem; background: var(--bg); }
-.pessoa-card.responsavel { border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
-.pessoa-topo { display: flex; gap: .5rem; align-items: center; }
-.pessoa-topo .p-nome { flex: 1 1 auto; }
-.p-remover {
-  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; cursor: pointer;
-  border: 1.5px solid var(--line); background: var(--bg-soft); color: var(--err); font-size: 1rem;
-}
-.p-remover:hover { border-color: var(--err); }
 .pessoa-prefs { display: flex; flex-wrap: wrap; gap: 1rem; }
 .pref-grupo { flex: 1 1 200px; }
 .pref-titulo { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .45rem; color: var(--ink-soft); }
@@ -159,15 +96,6 @@ textarea { resize: vertical; }
 .form-status { text-align: center; font-weight: 600; margin: 0; min-height: 1.2rem; }
 .form-status.ok { color: var(--ok); }
 .form-status.err { color: var(--err); }
-
-/* Sucesso */
-.sucesso { text-align: center; padding: 2rem 1rem; }
-.sucesso .big { font-size: 3.5rem; }
-.sucesso h2 { margin: .4rem 0; }
-
-/* ===================== RODAPÉ ===================== */
-.rodape { text-align: center; padding: 2rem 1rem 3rem; color: var(--ink-soft); font-size: .9rem; }
-.rodape a { color: var(--ink-soft); }
 
 /* ===================== CONFETE ===================== */
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; }
@@ -231,22 +159,8 @@ tr:last-child td { border-bottom: none; }
 
 .pref-grupo .p-aviso-chopp { display: block; margin-top: .35rem; }
 
-.rsvp-encerrado {
-  text-align: center;
-  border: 1.5px dashed var(--line);
-  border-radius: 16px;
-  padding: 2rem 1.25rem;
-}
-.rsvp-encerrado .big { font-size: 2.5rem; line-height: 1; }
-.rsvp-encerrado h3 { margin: .6rem 0 .35rem; font-size: 1.25rem; }
-.rsvp-encerrado p { color: var(--ink-soft); margin: 0; }
 
 /* ---- Ajustes da revisão da Fatia 1 ---- */
-.pessoa-rotulo {
-  font-size: .78rem; font-weight: 700; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--ink-soft);
-}
-.pessoa-card.responsavel .pessoa-rotulo { color: var(--brand); }
 
 .contador { align-self: flex-end; font-variant-numeric: tabular-nums; }
 .contador.no-limite { color: var(--err); font-weight: 600; }
@@ -377,7 +291,13 @@ tr:last-child td { border-bottom: none; }
   margin: 0 auto;
   min-height: 100vh;
   background: var(--cv-papel);
+  /* coluna flex + margin-top:auto no rodapé: nos estados curtos (erro,
+     carrossel vazio) o rodapé vai para o fim da tela em vez de flutuar
+     no meio, com creme sobrando embaixo dele */
+  display: flex;
+  flex-direction: column;
 }
+.pagina-convite .folha .rodape { margin-top: auto; }
 
 .pagina-convite h1, .pagina-convite h2, .pagina-convite h3 {
   font-family: "Anton", Impact, sans-serif;
@@ -486,6 +406,10 @@ tr:last-child td { border-bottom: none; }
   letter-spacing: .12em; color: var(--cv-mudo-2); padding-top: 4px;
 }
 .pagina-convite .ficha b { font-weight: 700; }
+/* o endereço tem duas linhas de texto; sem o block o link do mapa emenda
+   no fim da frase e o convidado não o encontra */
+.pagina-convite .ficha-onde #cardLocal { display: block; }
+.pagina-convite .ficha-onde .link-mapa { display: block; width: max-content; }
 .pagina-convite .link-mapa {
   display: inline-block; margin-top: 8px;
   min-height: 44px; line-height: 44px;   /* alvo de toque */
@@ -664,6 +588,8 @@ tr:last-child td { border-bottom: none; }
 .pagina-convite .p-tipo .chip, .pagina-convite .chips .chip { font-weight: 700; padding: 13px 4px; }
 
 /* ---- cards de pessoa ---- */
+/* sem o gap os cards encostam e a borda de um vira o topo do outro */
+.pagina-convite #pessoasLista { display: flex; flex-direction: column; gap: 16px; }
 .pagina-convite .pessoa-card {
   border: 2px solid var(--cv-tinta); border-radius: 0;
   background: var(--cv-papel-2); padding: 0; gap: 0;
@@ -689,6 +615,10 @@ tr:last-child td { border-bottom: none; }
 .pagina-convite .pessoa-corpo .p-nome {
   background: var(--cv-papel-3); border-color: var(--cv-linha);
 }
+/* No admin o .pref-grupo é coluna de 200px num flex horizontal; aqui o
+   contêiner é vertical, e o flex-basis vira ALTURA — 200px de vazio
+   dentro do card. */
+.pagina-convite .pref-grupo { flex: none; }
 .pagina-convite .pref-titulo {
   display: block; margin-bottom: 8px; font-size: 10px;
   letter-spacing: .12em; color: var(--cv-mudo); font-weight: 400;
