@@ -649,7 +649,11 @@ tr:last-child td { border-bottom: none; }
   display: block; width: 100%; border: none; cursor: pointer;
   background: var(--cv-vermelho); color: var(--cv-papel);
   font-family: "Anton", Impact, sans-serif; font-weight: 400;
-  font-size: 23px; text-transform: uppercase; padding: 18px;
+  /* 24px e não os 23px do mockup: creme sobre #d8352a dá 4.10:1, que
+     passa em AA large mas não em AA normal — e o corte de "large" é
+     24px para peso 400. Um pixel resolve, e é o próprio prompt-design
+     que manda não usar #d8352a abaixo de 24px. */
+  font-size: 24px; text-transform: uppercase; padding: 18px;
   box-shadow: 5px 5px 0 var(--cv-tinta);
 }
 .pagina-convite .btn-enviar:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--cv-tinta); }
