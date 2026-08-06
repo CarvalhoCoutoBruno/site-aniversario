@@ -40,18 +40,6 @@ a { color: var(--brand); }
   padding: .8rem 1.5rem; transition: transform .15s ease, box-shadow .2s ease, opacity .2s;
 }
 .btn:active { transform: scale(.97); }
-.btn-primary {
-  color: #fff;
-  background: linear-gradient(120deg, var(--brand), var(--brand-2));
-  box-shadow: var(--shadow);
-}
-.btn-primary:hover { transform: translateY(-2px); }
-.btn-primary:disabled { opacity: .6; cursor: progress; transform: none; }
-.btn-ghost {
-  background: transparent; color: var(--brand);
-  border: 1.5px dashed var(--brand); padding: .7rem 1.2rem;
-}
-.btn-ghost:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); }
 
 /* ===================== RSVP ===================== */
 form { display: flex; flex-direction: column; gap: 1.3rem; }
@@ -105,14 +93,11 @@ textarea { resize: vertical; }
 /* ===================== ADMIN ===================== */
 .pagina-admin .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
 
-.pagina-admin .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .9rem; margin-bottom: 1.8rem; }
 .pagina-admin .stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; }
 .pagina-admin .stat b { display: block; font-size: 1.9rem; font-family: "Fraunces", serif; color: var(--brand); }
 .pagina-admin .stat span { font-size: .82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 
 
-.pagina-admin .admin-secao { margin-top: 2.5rem; }
-.pagina-admin .admin-secao h2 { font-size: 1.4rem; }
 .pagina-admin .fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .8rem; margin-top: 1rem; }
 .pagina-admin .foto-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
 .pagina-admin .foto-item img { width: 100%; height: 100%; object-fit: cover; }
@@ -155,64 +140,27 @@ textarea { resize: vertical; }
 }
 
 /* ---- Fatia 2: tela de config ---- */
-.pagina-admin .config-secao > summary { cursor: pointer; list-style: none; }
-.pagina-admin .config-secao > summary::-webkit-details-marker { display: none; }
-.pagina-admin .config-secao > summary h2 { display: inline; }
-.pagina-admin .config-secao > summary::before { content: "▸ "; color: var(--brand); font-weight: 700; }
-.pagina-admin .config-secao[open] > summary::before { content: "▾ "; }
 
 .pagina-admin .config-bloco { border: 1.5px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; margin: 1rem 0 0; }
 .pagina-admin .config-bloco legend { font-weight: 700; padding: 0 .4rem; }
 
-.pagina-admin .config-grid {
-  display: grid; gap: .8rem; margin-top: .6rem;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-}
 .pagina-admin .config-campo { display: flex; flex-direction: column; gap: .3rem; }
 .pagina-admin .config-campo span { font-size: .85rem; font-weight: 600; }
 
-.pagina-admin .config-acoes { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1.2rem; }
 
 /* ---- Fatia 3: aniversariantes ---- */
 .pagina-admin .aniv-bloco legend small { font-weight: 400; color: var(--ink-soft); }
 .pagina-admin .aniv-bloco .pessoa-prefs { margin-top: .4rem; }
 
 /* ---- Fatia 4: estimativa ---- */
-.pagina-admin .est-titulo { font-size: 1rem; margin: 1.4rem 0 .1rem; color: var(--ink-soft);
-              text-transform: uppercase; letter-spacing: .05em; }
-.pagina-admin .est-titulo:first-of-type { margin-top: .8rem; }
 
 /* ---- Fatia 5: fechamento e rateio ---- */
-.pagina-admin .conta-aniv { border: 1.5px solid var(--line); border-radius: 14px;
-              padding: .8rem 1rem; margin-top: .6rem; background: var(--bg); }
-.pagina-admin .conta-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
-.pagina-admin .conta-topo b { font-size: 1.05rem; }
-.pagina-admin .conta-total { font-family: "Fraunces", serif; font-size: 1.3rem; color: var(--brand); }
-.pagina-admin .conta-itens { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
 
-.pagina-admin .selo { margin-top: 1.2rem; padding: .8rem 1rem; border-radius: 12px;
-        font-weight: 600; line-height: 1.45; border: 1.5px solid; }
-.pagina-admin .selo.verde    { color: var(--ok);  border-color: var(--ok);
-                 background: color-mix(in srgb, var(--ok) 10%, transparent); }
-.pagina-admin .selo.vermelho { color: var(--err); border-color: var(--err);
-                 background: color-mix(in srgb, var(--err) 10%, transparent); }
-.pagina-admin .selo.cinza    { color: var(--ink-soft); border-color: var(--line); background: var(--bg-soft); }
 
 /* ---- Fatia 6: acerto ---- */
-.pagina-admin .saldo-pagar   { color: var(--err); }
-.pagina-admin .saldo-receber { color: var(--ok); }
-.pagina-admin .conta-total small { font-size: .7rem; font-family: "Inter", sans-serif;
-                     text-transform: uppercase; letter-spacing: .05em; }
-.pagina-admin .transferencias { list-style: none; padding: 0; margin: 1rem 0 0; display: flex;
-                  flex-direction: column; gap: .5rem; }
-.pagina-admin .transferencias li { background: var(--bg-soft); border: 1.5px solid var(--line);
-                     border-radius: 12px; padding: .7rem 1rem; font-size: 1.05rem; }
 .pagina-admin .config-campo span small { font-weight: 400; color: var(--ink-soft); }
 
 /* ---- Fatia 7: compartilhar o acerto ---- */
-.pagina-admin .acerto-texto { width: 100%; margin-top: .8rem; font-family: inherit;
-                font-size: .9rem; padding: .7rem; border-radius: 12px;
-                border: 1.5px solid var(--line); background: var(--bg-soft); color: var(--ink); }
 
 /* =====================================================================
    ADMIN — pele própria (Fatia 12)
@@ -614,6 +562,14 @@ textarea { resize: vertical; }
    ABA "CONTAS" — a do dinheiro
    --------------------------------------------------------------------- */
 .pagina-admin .ct-sub { margin: 4px 0 0; }
+
+/* "ainda não sei" é uma pendência, não um erro nem um zero. Âmbar é a
+   cor de pendente no pacote de design. */
+.pagina-admin .ct-nao-sei.pendente {
+  border-color: var(--ad-ambar-borda);
+  background: var(--ad-ambar-bg);
+}
+.pagina-admin .ct-nao-sei::placeholder { color: var(--ad-ambar-txt); opacity: .75; }
 .pagina-admin .ct-nota-convidado { margin: 4px 0 14px; }
 
 .pagina-admin .ct-conta {
@@ -700,8 +656,8 @@ textarea { resize: vertical; }
    =====================================================================
    Tudo aqui é escopado em .pagina-convite. O admin.html usa o MESMO
    arquivo e não pode herdar paleta nem fonte daqui: as classes
-   compartilhadas (.btn, .chip, .campo, .msg-toast, .stat, .selo,
-   .conta-aniv) seguem definidas fora deste bloco.
+   compartilhadas (.chip, .campo, .msg-toast) seguem definidas fora
+   deste bloco.
 
    Direção: cartaz de boteco. Papel creme, tipografia gritada, traço
    grosso e sombra dura deslocada. Coluna única de 460px — o convite é

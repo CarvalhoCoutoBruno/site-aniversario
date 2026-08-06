@@ -87,20 +87,24 @@
   // já logado?
   sb.auth.getSession().then(({ data }) => { if (data.session) mostrarPainel(); });
 
-  /* Guarda contra montar o painel duas vezes. Dois caminhos chamam esta
-     função — o getSession() de quem já estava logado e o submit do
-     formulário — e sem a trava os listeners de upload eram registrados
-     em dobro: um arquivo escolhido subia duas vezes, com dois nomes.
-     Apareceu ao testar o upload, não ao ler o código. */
-  let painelMontado = false;
+  /* A trava é sobre REGISTRAR LISTENER, não sobre montar o painel.
+
+     Na Fatia 14 eu tinha travado o mostrarPainel() inteiro, e isso criou
+     um caso pior: com uma sessão morta em cache, o getSession() monta o
+     painel, a trava fecha, e o login seguinte — bem-sucedido — não
+     recarrega nada. O organizador fica olhando um painel vazio depois de
+     entrar com a senha certa.
+
+     O que precisava de trava era só o prepararUpload(), que duplicava os
+     listeners e fazia um arquivo escolhido subir duas vezes. Recarregar
+     dado é idempotente e pode acontecer de novo à vontade. */
+  let uploadPreparado = false;
 
   async function mostrarPainel() {
-    if (painelMontado) return;
-    painelMontado = true;
     $("#loginBox").hidden = true;
     $("#painel").hidden = false;
     mostrarAba(abaDoHash());
-    prepararUpload();
+    if (!uploadPreparado) { uploadPreparado = true; prepararUpload(); }
     // A festa vem PRIMEIRO e sozinha: os nomes dos aniversariantes saem
     // dela, e quem renderiza rótulo (cadastro, seletor de pagador,
     // coluna "convidou") pegaria o fallback se rodasse em paralelo.
@@ -784,7 +788,7 @@
     const campo = ([col, rotulo]) => `
       <label class="config-campo">
         <span>${esc(rotulo)}</span>
-        <input type="text" inputmode="decimal" id="fec_${col}" placeholder="em branco = não fechado" />
+        <input type="text" inputmode="decimal" id="fec_${col}" class="ct-nao-sei" placeholder="não sei" />
       </label>`;
     $("#fecCustos").innerHTML = CAMPOS_CUSTO.map(campo).join("");
     $("#fecPizzas").innerHTML = CAMPOS_PIZZA_REAL.map(campo).join("");
@@ -793,7 +797,12 @@
   function preencherFechamento(cfg) {
     for (const [col] of [...CAMPOS_CUSTO, ...CAMPOS_PIZZA_REAL]) {
       const el = $(`#fec_${col}`);
-      if (el) el.value = cfg[col] === null || cfg[col] === undefined ? "" : fmtNumeroBR(cfg[col], 2, 2);
+      if (!el) continue;
+      const vazio = cfg[col] === null || cfg[col] === undefined;
+      el.value = vazio ? "" : fmtNumeroBR(cfg[col], 2, 2);
+      // borda âmbar enquanto é "ainda não sei": o campo em branco aqui não
+      // é erro nem zero, é uma pendência — e tem que parecer uma.
+      el.classList.toggle("pendente", vazio);
     }
   }
 
