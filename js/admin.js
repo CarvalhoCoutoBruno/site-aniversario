@@ -1109,17 +1109,40 @@
     ]);
     if (g.error || p.error) { console.error(g.error || p.error); return; }
 
+    // ---- O FILTRO DO CANCELADO, E ELE ENTRA SÓ AQUI ----------------
+    // Esta é a única leitura de `rsvps` e `people` do painel: lista,
+    // Resumo, Compras e Contas derivam todos de lastGroups/lastPeople.
+    // Por isso o filtro cabe num ponto só — e por isso adicionar uma
+    // consulta nova em outro lugar destruiria a propriedade. Se
+    // precisar de dado do banco, tire daqui.
+    //
+    // O pulo do gato: `deleted_at` mora em `rsvps`, NÃO em `people`.
+    // Filtrar só os grupos deixaria as pessoas do grupo cancelado
+    // dentro de lastPeople — e elas seguiriam contando em estimativa,
+    // rateio e acerto. Cancelar um grupo sumiria da lista e continuaria
+    // comprando chopp para ele.
+    //
+    // Filtro no cliente e não `!inner` na consulta: people tem as 3
+    // linhas de aniversariante, que não têm rsvp_id nenhum — um join
+    // interno derrubaria justamente elas.
+    const activeGroups = (g.data || []).filter((r) => r.deleted_at == null);
+    const activeIds = new Set(activeGroups.map((r) => r.id));
+    const activePeople = (p.data || []).filter(
+      (person) => person.role === "celebrant" || activeIds.has(person.rsvp_id),
+    );
+    // ----------------------------------------------------------------
+
     const byGroup = new Map();
     const celebrants = [];
-    for (const person of p.data || []) {
+    for (const person of activePeople) {
       if (person.role === "celebrant") { celebrants.push(person); continue; }
       if (!byGroup.has(person.rsvp_id)) byGroup.set(person.rsvp_id, []);
       byGroup.get(person.rsvp_id).push(person);
     }
-    lastPeople = p.data || [];   // TODAS: as de grupo e as 3 de aniversariante
-    lastGroups = g.data || [];    // o elo convidado -> pagante (invited_by)
+    lastPeople = activePeople;   // as de grupo ATIVO e as 3 de aniversariante
+    lastGroups = activeGroups;    // o elo convidado -> pagante (invited_by)
     recompute();
-    render(g.data || [], byGroup, celebrants);
+    render(activeGroups, byGroup, celebrants);
   }
 
   /* ================= ABA RESUMO =================
@@ -1404,12 +1427,15 @@
     // Nomear quem vai sumir, e a consequência. "Tem certeza?" genérico
     // não diz o que se perde.
     const quantas = people.length === 1 ? "a 1 pessoa" : `as ${people.length} pessoas`;
-    const frase = `Apagar a confirmação de ${g.lead_name} e ${quantas} do grupo? ` +
-      "Isso não tem como desfazer.";
+    const frase = `Tirar a confirmação de ${g.lead_name} e ${quantas} do grupo? ` +
+      "Ela sai da lista e de todas as contas. O registro fica guardado no banco, " +
+      "mas ainda não há tela para trazer de volta.";
     if (!confirm(frase)) return;
 
-    // O conteúdo apagado, em texto, montado ANTES de sumir: não é
-    // desfazer, mas é o que permite refazer à mão se foi engano.
+    // O conteúdo, em texto, montado ANTES de sumir da tela. Desde que a
+    // exclusão virou reversível isto deixou de ser a única cópia — o
+    // registro fica no banco com deleted_at —, mas segue útil: é o que
+    // permite refazer na hora, sem SQL, enquanto a lixeira não existe.
     const copy = [
       `${g.lead_name} · ${g.contact}`,
       `convidado por: ${(g.invited_by || []).map((i) => celebrantName(i, "?" + i)).join(", ") || "—"}`,
@@ -1417,11 +1443,19 @@
       g.notes ? `recado: ${g.notes}` : null,
     ].filter(Boolean).join("\n");
 
-    const { error } = await sb.from("rsvps").delete().eq("id", id);
-    if (error) { console.error(error); return listToast("Não consegui apagar.", "err"); }
+    // Pela RPC, não por `.from("rsvps").delete()`: a trava do custo
+    // lançado tem de morar no banco. Este código roda no navegador de
+    // quem tem o console aberto — checar no JS seria decoração.
+    const { error } = await sb.rpc("admin_remove_rsvp", { p_id: id });
+    if (error) {
+      console.error(error);
+      // A mensagem da RPC já explica o caso e a saída; mostrar ela crua
+      // vale mais que um "não consegui" genérico.
+      return listToast(error.message || "Não consegui tirar da lista.", "err");
+    }
 
     openCards.delete(id);
-    listToast("Apagado. O que sumiu:\n" + copy, "ok");
+    listToast("Fora da lista. O que saiu:\n" + copy, "ok");
     // Recarrega em vez de remendar os arrays: é o que garante que Resumo,
     // Compras e Contas mudem junto. Busca e filtro sobrevivem porque
     // moram em variáveis, não no HTML.

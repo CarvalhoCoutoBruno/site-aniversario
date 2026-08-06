@@ -572,6 +572,18 @@ textarea { resize: vertical; }
 .page-admin .ct-unknown::placeholder { color: var(--ad-ambar-txt); opacity: .75; }
 .page-admin .ct-guest-note { margin: 4px 0 14px; }
 
+/* O aviso de que lançar custo fecha a lista. Fica onde o organizador
+   digita, e não numa ajuda escondida, porque a consequência é dele mas
+   quem sente é o convidado. Borda à esquerda em vez de fundo forte: é
+   aviso, não erro — ele lê antes de digitar, não depois de errar. */
+.page-admin .ct-freeze {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--ad-vermelho);
+  background: var(--ad-fundo);
+  border-radius: 0 6px 6px 0;
+}
+
 .page-admin .ct-account {
   padding: 12px 0; border-bottom: 1px solid var(--ad-linha-2);
 }
@@ -1089,6 +1101,39 @@ textarea { resize: vertical; }
   text-align: center; font-weight: 700; margin: 0; min-height: 1.2rem; font-size: 14px;
 }
 .page-invite .form-status.err { color: var(--cv-vermelho-txt); }
+/* 5.70:1 sobre o papel — medido. O verde óbvio (#22a852) dá 2.2 e
+   reprovaria; aqui só cabe verde escuro. */
+.page-invite .form-status.ok  { color: #1b6b3a; }
+
+/* ---- tarja de quem já confirmou neste navegador ----
+   Fica ANTES do formulário porque a informação muda o que a pessoa vai
+   fazer com ele: sem a tarja, quem já confirmou vê os campos
+   preenchidos e não entende de onde vieram. Traço à esquerda em vez de
+   moldura de 3px: é recado, não é o carimbo de prazo encerrado. */
+.page-invite .rsvp-again {
+  background: var(--cv-papel-2);
+  border-left: 4px solid var(--cv-azul);
+  padding: 14px 16px;
+  margin: 0 0 18px;
+}
+.page-invite .rsvp-again p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--cv-corpo); }
+.page-invite .rsvp-again b { color: var(--cv-tinta); }
+
+/* Sair da lista não é a ação principal desta tela — confirmar é. Por
+   isso o cancelar vem como link sublinhado e não como botão vermelho:
+   quem procura acha, quem não procura não tromba. */
+.page-invite .btn-cancel-rsvp {
+  margin-top: 10px;
+  background: none; border: 0; padding: 0;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--cv-vermelho-txt); text-decoration: underline;
+  text-underline-offset: 3px; cursor: pointer;
+}
+.page-invite .btn-cancel-rsvp:hover { color: var(--cv-tinta); }
+.page-invite .btn-cancel-rsvp:disabled { color: var(--cv-mudo); cursor: default; text-decoration: none; }
+.page-invite .rsvp-again .form-status { text-align: left; min-height: 0; }
+.page-invite .rsvp-again .form-status:empty { display: none; }
 
 /* ---- prazo encerrado ---- */
 .page-invite .rsvp-closed {

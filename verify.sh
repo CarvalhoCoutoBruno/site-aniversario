@@ -90,6 +90,36 @@ else
   ok "js/main.js escreve só pelo RPC"
 fi
 
+# A LEITURA ÚNICA de rsvps, e o filtro do cancelado.
+#
+# O modo de falha da Fatia 17 não é o filtro estar errado — é ele estar
+# CERTO e alguém, meses depois, adicionar uma segunda consulta sem ele.
+# Uma confirmação cancelada que volta a contar não quebra tela nenhuma:
+# ela compra chopp a mais e some no meio de um número plausível.
+#
+# A propriedade que o painel tem hoje é que existe UMA leitura de rsvps,
+# e tudo mais deriva de lastGroups/lastPeople. É essa propriedade que se
+# verifica aqui, porque é ela que torna o filtro suficiente.
+# O padrão exige o RECEPTOR (`sb.from`, e não `` `.from ``): sem isso a
+# checagem casa com os comentários que citam a chamada, e passa a acusar
+# o texto que explica a regra. Aconteceu na primeira versão desta linha.
+leituras=$(grep -cE '[A-Za-z_]\.from\("rsvps"\)' js/*.js 2>/dev/null | awk -F: '{s += $2} END {print s + 0}')
+if [ "$leituras" -ne 1 ]; then
+  erro "js/ tem $leituras leituras de rsvps — o filtro do cancelado só cobre a única leitura do loadRSVPs()"
+elif ! grep -q 'deleted_at == null' js/admin.js 2>/dev/null; then
+  erro "a leitura de rsvps perdeu o filtro deleted_at — cancelado voltaria a contar"
+else
+  ok "leitura única de rsvps, com o filtro do cancelado"
+fi
+
+# Excluir do painel é RPC, não delete direto: a trava do custo lançado
+# mora no banco porque este código roda no navegador do organizador.
+if grep -qE '[A-Za-z_]\.from\("rsvps"\)\.delete' js/admin.js 2>/dev/null; then
+  erro "js/admin.js apaga direto — o excluir passa por admin_remove_rsvp, que é onde a trava vive"
+else
+  ok "o excluir do painel passa pela RPC"
+fi
+
 # Formatação de data/hora presa ao fuso da festa.
 #
 # Dois bugs desta família já passaram: o prazo avançando um dia (Fatia 7) e

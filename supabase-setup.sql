@@ -92,6 +92,7 @@ end $$;
 drop function if exists public.create_rsvp(text, text, smallint[], text, jsonb);
 drop function if exists public.rsvp_status();
 drop function if exists public.cancel_rsvp(uuid);
+drop function if exists public.admin_remove_rsvp(uuid);
 drop table if exists public.people;
 drop table if exists public.rsvps;
 drop table if exists public.settings;
@@ -530,6 +531,63 @@ $$;
 
 revoke all on function public.cancel_rsvp(uuid) from public;
 grant execute on function public.cancel_rsvp(uuid) to anon, authenticated;
+
+-- =============================================================
+--  RPC: admin_remove_rsvp — a outra porta, a do organizador
+--
+--  Mesma regra de congelamento, UM gate só: custo lançado recusa.
+--  O organizador NÃO tem o gate do prazo, e a assimetria é de
+--  propósito — ele precisa poder corrigir engano depois do prazo
+--  (grupo duplicado, teste esquecido, quem confirmou duas vezes por
+--  caminhos diferentes). Entre o prazo e a compra ainda não há
+--  dinheiro comprometido; travá-lo ali tiraria a correção sem
+--  proteger nada.
+--
+--  Por que RPC e não trigger na tabela: o trigger pegaria também o
+--  `update ... set deleted_at` que o create_rsvp usa no dedupe, e o
+--  reenvio de um convidado morreria com erro de compra. A regra mora
+--  nas duas portas, não na tabela.
+--
+--  Por que RPC e não checagem no JS: o painel roda no navegador de
+--  quem abriu o console. A trava tem de estar no banco para valer.
+--
+--  Saída de emergência, sem código: limpar o campo de custo, excluir,
+--  lançar o custo de novo.
+-- =============================================================
+create or replace function public.admin_remove_rsvp(p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_closing boolean;
+begin
+  if not public.is_admin() then
+    raise exception 'Só o organizador pode excluir confirmações.';
+  end if;
+
+  select (actual_beer_cost is not null
+          or actual_soda_cost is not null
+          or actual_water_cost is not null
+          or actual_adult_pizza_price is not null
+          or actual_child_pizza_price is not null)
+    into v_closing
+    from public.settings where id = 1;
+
+  if v_closing then
+    raise exception 'As compras já começaram: excluir agora mudaria o rateio de quem já pagou. Para corrigir mesmo assim, limpe o custo lançado na aba Contas, exclua, e lance o custo de novo.';
+  end if;
+
+  update public.rsvps
+     set deleted_at = now()
+   where id = p_id
+     and deleted_at is null;
+end;
+$$;
+
+revoke all on function public.admin_remove_rsvp(uuid) from public, anon;
+grant execute on function public.admin_remove_rsvp(uuid) to authenticated;
 
 -- =============================================================
 --  RPC: rsvp_status — o formulário público precisa saber se ainda

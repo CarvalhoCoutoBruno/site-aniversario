@@ -120,6 +120,15 @@
       <p id="rsvpClosedText">O prazo para confirmar presença já passou.</p>
     </div>
 
+    <!-- Tarja de quem já confirmou NESTE navegador. Some quando não há
+         registro guardado, e some quando o prazo fecha — o main.js
+         decide. O texto de dentro é escrito lá porque leva a data. -->
+    <div class="rsvp-again" id="rsvpAgain" hidden>
+      <p id="rsvpAgainText"></p>
+      <button type="button" class="btn-cancel-rsvp" id="btnCancelRsvp">Não vou mais poder ir</button>
+      <p class="form-status" id="cancelStatus" role="status"></p>
+    </div>
+
     <form id="rsvpForm" novalidate>
       <label class="field" for="lead">
         <span class="field-label">Seu nome</span>
@@ -131,7 +140,9 @@
         <input type="text" id="contact" name="contact" required placeholder="(51) 90000-0000" />
         <small class="field-hint">
           É por aqui que a gente te acha. Confirmando de novo com o mesmo
-          contato, a resposta anterior é <strong>substituída</strong>.
+          contato, a resposta anterior é <strong>substituída</strong> — é assim que
+          se muda o que foi confirmado. Para <strong>sair</strong> da lista de um
+          aparelho que não foi o da confirmação, fale com quem te convidou.
         </small>
       </label>
 

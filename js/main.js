@@ -130,6 +130,12 @@
     $("#hero-content").hidden = false;
     tick();
     timer = setInterval(tick, 1000);
+
+    // Por último, e só aqui: restaurar depende dos chips de
+    // aniversariante, que acabaram de nascer duas dezenas de linhas
+    // acima. Os cards de pessoa já existem — o corpo síncrono da IIFE
+    // terminou antes desta resposta chegar da rede.
+    restoreRsvp();
   }
 
   // Um estado só para o convite inteiro: sem hero pela metade ao lado
@@ -362,6 +368,11 @@
     $("#rsvpClosedText").textContent = text;
     $("#rsvpClosed").hidden = false;
     $("#deadlineNotice").hidden = true;
+    // A tarja pode já estar na tela: o restore é síncrono e o
+    // rsvp_status() chega depois. Fechado o prazo, o cancelar sai junto
+    // com o formulário — a RPC recusaria de qualquer jeito, e botão que
+    // só serve para tomar erro é armadilha.
+    $("#rsvpAgain").hidden = true;
   }
 
   /* O prazo é gravado como 23:59:59-03:00, então em qualquer fuso a
@@ -380,6 +391,152 @@
       : `As confirmações fecharam em ${shortDate(d)} — a pizza já foi encomendada.`;
   }
   checkDeadline();
+
+  /* ================= O QUE ESTE NAVEGADOR LEMBRA =================
+     Quem confirmou guarda aqui o uuid da confirmação e o que mandou.
+     O uuid É a credencial de cancelar — 128 bits, mesmo padrão de link
+     de descadastro — e por isso o cancel_rsvp não devolve conteúdo e
+     não distingue "não existe" de "já cancelada".
+
+     LIMITAÇÃO ASSUMIDA, e está escrita na tela: trocou de aparelho,
+     limpou o navegador ou abriu anônimo, não há como cancelar sozinho.
+     Consertar isso pediria uma leitura de rsvps para o anon — que é
+     exatamente o oráculo que evitamos: com ela, qualquer um descobre
+     quem vai à festa digitando telefones. O preço é o convidado ter de
+     falar com quem o convidou; a alternativa é vazar a lista inteira.
+
+     O storage pode estourar (Safari privado, cota cheia) e pode vir
+     corrompido de uma versão anterior. Nenhum dos dois pode derrubar o
+     convite: falha de memória vira "não lembro", nunca tela quebrada. */
+  const STORE_KEY = "rsvp-v1";
+
+  function rememberRsvp(id, payload) {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ ...payload, id, at: Date.now() }));
+    } catch (e) {
+      console.warn("Não consegui lembrar a confirmação neste navegador:", e);
+    }
+  }
+
+  function recallRsvp() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return null;
+      const r = JSON.parse(raw);
+      // Sem uuid não dá para cancelar, e sem people não dá para
+      // preencher: qualquer um dos dois faltando, o registro não serve.
+      if (!r || typeof r.id !== "string" || !Array.isArray(r.people)) return null;
+      return r;
+    } catch (e) {
+      console.warn("Registro local ilegível, descartando:", e);
+      forgetRsvp();
+      return null;
+    }
+  }
+
+  function forgetRsvp() {
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* nada a fazer */ }
+  }
+
+  /* Devolve o formulário ao estado em que ele foi enviado. Roda no fim
+     do renderInvite() porque depende dos chips de aniversariante, que
+     só existem depois que a party carrega. */
+  function restoreRsvp() {
+    const saved = recallRsvp();
+    if (!saved) return;
+
+    $("#lead").value = saved.lead || "";
+    $("#contact").value = saved.contact || "";
+    $("#message").value = saved.notes || "";
+    $("#message").dispatchEvent(new Event("input"));   // acende o contador
+
+    const marcados = new Set(saved.invitedBy || []);
+    $$(".celebrant-check", $("#chipsCelebrants")).forEach((inp) => {
+      inp.checked = marcados.has(Number(inp.value));
+      inp.dispatchEvent(new Event("change"));   // o chip pinta pelo listener
+    });
+
+    // Os cards são reconstruídos do zero: o primeiro é o responsável, o
+    // resto acompanhante. Reaproveitar os que estão na tela daria o
+    // mesmo trabalho e deixaria sobra quando a confirmação anterior
+    // tinha menos gente.
+    list.innerHTML = "";
+    saved.people.forEach((person, i) => {
+      const card = newCard(i === 0);
+      list.appendChild(card);
+      fillCard(card, person);
+    });
+    refreshAddButton();
+
+    showAgainBanner(saved);
+  }
+
+  function fillCard(card, person) {
+    const nameField = card.querySelector(".p-name");
+    if (nameField) nameField.value = person.name || "";
+
+    // O tipo primeiro: a regra do chopp reage a ele e desabilita o chip
+    // na criança. Marcar as bebidas antes seria marcar o que a regra
+    // desmarcaria em seguida.
+    const kind = card.querySelector(`.p-kind input[value="${person.age_group === "child" ? "child" : "adult"}"]`);
+    if (kind) { kind.checked = true; kind.dispatchEvent(new Event("change")); }
+
+    $$("[data-drink],[data-food]", card).forEach((inp) => {
+      const campo = inp.dataset.drink || inp.dataset.food;
+      inp.checked = !inp.disabled && person[campo] === true;
+      const chip = inp.closest(".chip");
+      if (chip) chip.classList.toggle("checked", inp.checked);
+    });
+  }
+
+  function showAgainBanner(saved) {
+    if (rsvpClosedFlag) return;     // prazo fechado não oferece cancelar
+    const quando = new Date(saved.at);
+    const quantos = saved.people.length === 1 ? "1 lugar" : `${saved.people.length} lugares`;
+    $("#rsvpAgainText").innerHTML =
+      `Você já confirmou <b>${esc(quantos)}</b>` +
+      (isNaN(quando) ? "" : ` em ${esc(shortDate(quando))}`) +
+      ". O formulário está do jeito que você mandou — é só ajustar e enviar de novo, " +
+      "que a confirmação anterior é <b>substituída</b>.";
+    $("#rsvpAgain").hidden = false;
+  }
+
+  $("#btnCancelRsvp").addEventListener("click", async () => {
+    const saved = recallRsvp();
+    const status = $("#cancelStatus");
+    status.className = "form-status";
+    status.textContent = "";
+    if (!saved || !sb) { $("#rsvpAgain").hidden = true; return; }
+
+    // Nomear quem sai. "Tem certeza?" não diz o que se perde.
+    const nomes = saved.people.map((p, i) => p.name || (i === 0 ? "você" : "acompanhante"));
+    if (!confirm(`Tirar ${nomes.join(", ")} da lista? Depois dá para confirmar de novo, ` +
+                 "enquanto o prazo estiver aberto.")) return;
+
+    const btn = $("#btnCancelRsvp");
+    btn.disabled = true;
+    btn.textContent = "Cancelando...";
+
+    const { error } = await sb.rpc("cancel_rsvp", { p_id: saved.id });
+
+    btn.disabled = false;
+    btn.textContent = "Não vou mais poder ir";
+    if (error) {
+      // As duas recusas do cancel_rsvp — prazo encerrado e compras
+      // começadas — já vêm escritas para o convidado ler.
+      console.error(error);
+      return fail(status, error.message || "Não consegui cancelar agora. Tente de novo em instantes.");
+    }
+
+    // O formulário CONTINUA na tela, preenchido: plano muda duas vezes,
+    // e quem cancelou hoje pode reconfirmar amanhã sem redigitar tudo.
+    forgetRsvp();
+    $("#rsvpAgain").hidden = true;
+    const fs = $("#formStatus");
+    fs.className = "form-status ok";
+    fs.textContent = "Cancelado — você saiu da lista. Mudou de ideia? É só confirmar de novo.";
+    $("#rsvpSection").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   /* ================= PESSOAS (responsável + acompanhantes) ================= */
   const MAX_COMPANIONS = 5;
@@ -554,7 +711,7 @@
     btn.disabled = true;
     btn.textContent = "Enviando...";
 
-    const { error } = await sb.rpc("create_rsvp", {
+    const { data, error } = await sb.rpc("create_rsvp", {
       p_lead_name: lead,
       p_contact: contact,
       p_invited_by: invitedBy,
@@ -569,6 +726,17 @@
       btn.disabled = false;
       btn.textContent = "Confirmar";
       return fail(status, errorMessage(error));
+    }
+
+    // O create_rsvp devolve o uuid da linha. É ele que este navegador
+    // guarda, e é o que permite cancelar depois. Se por qualquer motivo
+    // não vier, o resto do sucesso segue igual: o convidado ESTÁ
+    // confirmado — o que se perde é só o poder de desmarcar sozinho.
+    if (typeof data === "string" && data) {
+      rememberRsvp(data, { lead, contact, invitedBy, notes: message, people });
+    } else {
+      console.warn("create_rsvp não devolveu id; sem cancelar por este navegador.");
+      forgetRsvp();   // não deixar apontando para a confirmação ANTERIOR, que o reenvio acabou de cancelar
     }
 
     // sucesso: o botão NÃO volta a habilitar
@@ -632,6 +800,13 @@
     btn.disabled = false;
     btn.textContent = "Confirmar";
     $("#formStatus").textContent = "";
+    $("#formStatus").className = "form-status";
+    // Voltando do sucesso, a tarja aparece pelo mesmo motivo de sempre:
+    // há confirmação guardada. É aqui que o "não vou mais poder ir"
+    // entra na tela para quem acabou de confirmar e se arrependeu na
+    // hora — sem precisar recarregar a página.
+    const saved = recallRsvp();
+    if (saved) showAgainBanner(saved);
     $("#rsvpSection").scrollIntoView({ behavior: "smooth" });
   });
 
