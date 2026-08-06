@@ -6,9 +6,9 @@ mais identificador em português — nem em comentário.
 | | |
 |---|---|
 | Branch | `fix/fatia-16-fecha-idioma` → merge `--ff-only` → apagada |
-| Commits | 8, cada um verde no `./verify.sh` |
-| Commit do código | `HASH_CODIGO` |
-| `origin/main` após o push | `HASH_ORIGIN` |
+| Commits | 9, cada um verde no `./verify.sh` |
+| Commit do código | `f887e9a3a6bc1aa92c585fd3ca1c2876a66e730b` |
+| `origin/main` após o push | `5c958683ee384d06b3421c2e499b4370941dfc8a` |
 | `main == origin/main` | **sim** |
 | `tests/calc.test.js` | 63 asserções, inalteradas |
 
