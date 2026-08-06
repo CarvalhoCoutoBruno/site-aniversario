@@ -148,12 +148,7 @@ agora **dentro** do hero. O `BRIEFING.md` já está atualizado.
 
 ## O que sobrou
 
-**Para o Bruno, uma decisão:**
-
-- **`festa.local` ainda diz "Salão 3".** O `prompt-design.md` pede "Salão Grande", mas o review
-  mandou confirmar com você antes — é dado seu, não do mockup. **Não rodei o `UPDATE`.** O valor
-  atual é `Salão 3 — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS`. Se o nome mudou
-  mesmo, é um comando e a saída crua vai para cá.
+**Nada pendente do lado do Bruno.**
 
 **Para saber, não para fazer:**
 
@@ -171,6 +166,49 @@ agora **dentro** do hero. O `BRIEFING.md` já está atualizado.
   É anterior a esta fatia e o redesign do admin resolve de uma vez.
 - Se `whatsapp_contato` entrar na `festa` (P2), lembrar que essa tabela é **lida por qualquer
   visitante** — o telefone ali é publicamente legível.
+
+## Depois do fechamento
+
+### O `UPDATE` do salão — feito
+
+Confirmado pelo Bruno. Backup da linha inteira impresso antes, conferência depois:
+
+```
+antes:  local = 'Salão 3 — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS'
+depois: local = 'Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS'
+        local_mapa, titulo, data_texto, data: inalterados · rsvps: 0 · festa: 1 linha
+```
+
+`replace()` no campo, não reescrita: endereço, bairro e cidade continuam byte a byte. O
+`local_mapa` não menciona o salão, então não precisou mudar. No ar:
+`ONDE  Salão Grande — Av. Cel. Marcos, 627, Pedra Redonda, Porto Alegre/RS`.
+
+### Um bug achado ao conferir o site publicado (`49e9f76`)
+
+O rodapé do formulário dizia "confirme até 01/10/2026" e eu tinha escrito neste arquivo que o
+prazo era 02/10. **A tela estava certa e eu estava errado**: li `prazo_confirmacao::date`, que
+casta o timestamp em UTC. O prazo é `2026-10-01 23:59:59` em São Paulo.
+
+Mas a conferência destapou um defeito real: o `main.js` formatava o prazo com
+`toLocaleDateString("pt-BR")` **sem fixar o fuso**, então usava o do navegador. Como o instante
+gravado é 23:59:59-03:00, qualquer fuso a leste de São Paulo já está no dia seguinte:
+
+```
+America/Sao_Paulo   01/10/2026   certo — por coincidência
+UTC                 02/10/2026   errado
+Europe/Lisbon       02/10/2026   errado
+Asia/Tokyo          02/10/2026   errado
+Pacific/Kiritimati  02/10/2026   errado
+```
+
+É a mesma armadilha da Fatia 7, que foi corrigida no `admin.js` e **nunca** no `main.js` — lá o
+problema estava no cálculo da data, aqui na formatação dela. Corrigido com
+`Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" })` nos dois pontos (o aviso de
+prazo aberto e o texto de prazo encerrado). Verificado nos cinco fusos acima.
+
+**Lição para o `verify.sh`:** ele não tem asserção de fuso. Os dois bugs desta família foram
+achados por inspeção, não por teste. Vale uma asserção que rode o formatador sob `TZ` diferente
+— fica anotado para quem pegar a próxima fatia.
 
 ## Próxima
 
